@@ -1,34 +1,46 @@
-# liaotian123
+# 角色聊天
 
-这是一个轻量的聊天角色扮演仓库示例。
+正式网站：<https://juese.onrender.com>
 
-## 角色设定
+手机和桌面共用一个页面，可切换预设角色、创建自己的角色、保存各角色的独立聊天记录。
 
-当前角色：陪伴型中文聊天助手
+## 角色与回复
 
-- 语气：温暖、自然、简洁
-- 目标：陪用户聊天、解答问题、给出建议
-- 规则：只用中文回复，保持亲切和支持感，不给危险建议
+- 唯一的预设人设入口是 roles.js，共 8 个角色。男性 6 个：陆沉、小太阳、沈砚、顾言、江屿、云舟；另有暖暖、零一。
+- 每个角色都有自己的年龄、性格、口吻、兴趣、开场、头像和快捷话题。
+- app.js 调用既有 role-chat-fast 接口，提交当前角色的人设和最近 20 条对话。每条消息最多 1600 字，与接口接收范围一致。自定义角色也使用同一真实模型接口，没有随机关键词回复。
+- 请求等待、失败和重试均对应真实网络状态。失败不会写入伪造的角色消息，重试不会重复添加用户消息。
+- 每个角色最多一个正在进行的回复。切换后回复保存在原角色，清空或删除时取消请求，迟到结果不会污染对话。
 
-## 配置文件
+## 代码添加新角色
 
-- `config/role.json`：角色配置
-- `prompts/system-role.md`：系统提示词
-
-## 使用方式
-
-在聊天入口读取 `config/role.json` 和 `prompts/system-role.md`，把它们注入到系统消息中，就可以启动角色扮演。
-
-示例：
+只在 roles.js 的 NEW_ROLE_CONFIGS 预留区添加配置。名字、人设和唯一 id 必填，其余字段使用默认值，也可以自行填写。列表、男性人数、头像选择、开场和真实模型回复自动接入，无需修改其他文件。
 
 ```js
-const fs = require('fs');
-const roleConfig = JSON.parse(fs.readFileSync('./config/role.json', 'utf8'));
-const systemRole = fs.readFileSync('./prompts/system-role.md', 'utf8');
-
-const systemPrompt = `${systemRole}\n\n当前角色配置：\n${JSON.stringify(roleConfig, null, 2)}`;
+const NEW_ROLE_CONFIGS = [
+  {
+    id: 'unique_role_id',
+    name: '角色姓名',
+    gender: 'male',
+    age: 28,
+    personality: '写明性格、说话习惯和相处方式。',
+    avatar: 'assets/avatars/luchen.svg',
+    greeting: '今天想聊什么？'
+  }
+];
 ```
 
-## 说明
+## 本机保存
 
-这是最小可用的角色扮演模板，适合初期接入和扩展。
+角色和记录使用原有 liaotian_custom_chars、liaotian_chat_histories、liaotian_active_char 键保存。记录不会上传到本站数据库；当前角色的人设及最近对话会提交给现有聊天接口生成回复。清理浏览器数据或换设备后，本机记录不会自动恢复。
+
+config/role.json 保留旧版暖暖设定供参考，当前页面以 roles.js 为准。
+
+## 检查与部署
+
+    node --check roles.js
+    node --check app.js
+
+PR 和推送会运行语法检查，便于在合并前发现坏脚本。render.yaml 中的构建命令也执行同一检查。Render 静态发布路径为 ./，main 合并后自动部署；无需手动重复触发。
+
+上线验收：手机宽度、角色切换、创建角色、刷新保存、真实多轮回复、错误重试、等待时切换、清空和删除时取消请求。

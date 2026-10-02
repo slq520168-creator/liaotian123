@@ -3,7 +3,7 @@ services:
     name: character-studio
     runtime: static
     staticPublishPath: ./
-    buildCommand: ""
+    buildCommand: "node --check roles.js && node --check app.js"
     routes:
       - type: rewrite
         source: /*

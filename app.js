@@ -1,629 +1,540 @@
 /**
- * AI 角色智能聊天与管理系统
+ * 角色聊天：角色独立历史、真实模型回复与可取消的请求生命周期。
  */
-
-// --- 状态管理 ---
+const CHAT_API_URL = 'https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast';
+const DEFAULT_AVATAR = 'assets/avatars/nuannuan.svg';
+const REQUEST_TIMEOUT_MS = 30000;
 let characters = [];
-let activeCharacterId = "nuannuan";
-let chatHistories = {}; // { [charId]: [ { sender: 'user'|'bot', text: '...', timestamp: '' } ] }
-let selectedFormAvatar = "assets/avatars/nuannuan.jpg";
+let activeCharacterId = 'nuannuan';
+let chatHistories = Object.create(null);
+let selectedFormAvatar = 'assets/avatars/nuannuan.jpg';
+const pendingReplies = new Map();
+const replyErrors = new Map();
+const byId = id => document.getElementById(id);
+const sidebar = byId('sidebar');
+const sidebarOverlay = byId('sidebarOverlay');
+const presetCharacterList = byId('presetCharacterList');
+const customCharacterList = byId('customCharacterList');
+const headerAvatar = byId('headerAvatar');
+const headerName = byId('headerName');
+const headerTag = byId('headerTag');
+const messagesContainer = byId('messagesContainer');
+const messagesDiv = byId('messages');
+const quickRepliesDiv = byId('quickReplies');
+const userInput = byId('userInput');
+const sendBtn = byId('sendBtn');
+const createModalOverlay = byId('createModalOverlay');
+const createRoleForm = byId('createRoleForm');
+const presetAvatarPicker = byId('presetAvatarPicker');
+const roleAvatarCustom = byId('roleAvatarCustom');
+const replyStatus = byId('replyStatus');
 
-// --- DOM 元素引用 ---
-const sidebar = document.getElementById('sidebar');
-const sidebarOverlay = document.getElementById('sidebarOverlay');
-const openSidebarBtn = document.getElementById('openSidebarBtn');
-const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-const openCreateModalBtn = document.getElementById('openCreateModalBtn');
-const switchCharBtn = document.getElementById('switchCharBtn');
-const presetCharacterList = document.getElementById('presetCharacterList');
-const customCharacterList = document.getElementById('customCharacterList');
-
-const headerAvatar = document.getElementById('headerAvatar');
-const headerName = document.getElementById('headerName');
-const headerTag = document.getElementById('headerTag');
-const clearChatBtn = document.getElementById('clearChatBtn');
-
-const messagesContainer = document.getElementById('messagesContainer');
-const messagesDiv = document.getElementById('messages');
-const quickRepliesDiv = document.getElementById('quickReplies');
-const userInput = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
-
-const createModalOverlay = document.getElementById('createModalOverlay');
-const closeModalBtn = document.getElementById('closeModalBtn');
-const cancelModalBtn = document.getElementById('cancelModalBtn');
-const createRoleForm = document.getElementById('createRoleForm');
-const presetAvatarPicker = document.getElementById('presetAvatarPicker');
-const roleAvatarCustom = document.getElementById('roleAvatarCustom');
-
-// --- 初始化程序 ---
-function init() {
-  loadDataFromStorage();
-  setupEventListeners();
-  preventDoubleTapZoom();
-  renderSidebar();
-  switchCharacter(activeCharacterId, false);
+function readStoredJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    console.warn('无法读取本机记录：', key);
+    return fallback;
+  }
 }
 
-// 从 LocalStorage 加载数据或初始化默认值
-function loadDataFromStorage() {
+function safeAvatar(value) {
+  if (typeof value !== 'string') return DEFAULT_AVATAR;
+  const src = value.trim();
+  if (/^assets\/avatars\/[a-z0-9_-]+\.(svg|jpg|jpeg|png|webp)$/i.test(src)) return src;
   try {
-    const storedCustoms = localStorage.getItem('liaotian_custom_chars');
-    const customChars = storedCustoms ? JSON.parse(storedCustoms) : [];
-    characters = [...PRESET_CHARACTERS, ...customChars];
+    const url = new URL(src);
+    if (url.protocol === 'https:' && !url.username && !url.password) return url.href;
+  } catch (error) {}
+  return DEFAULT_AVATAR;
+}
 
-    const storedHistories = localStorage.getItem('liaotian_chat_histories');
-    chatHistories = storedHistories ? JSON.parse(storedHistories) : {};
+function normalizeCustomCharacter(value) {
+  if (!value || typeof value !== 'object' || !/^custom_[a-z0-9_-]+$/i.test(value.id || '')) return null;
+  if (!['name', 'tag', 'greeting', 'personality'].every(key => typeof value[key] === 'string' && value[key].trim())) return null;
+  return {
+    id: value.id, isPreset: false,
+    name: value.name.trim().slice(0, 12), tag: value.tag.trim().slice(0, 20),
+    greeting: value.greeting.trim().slice(0, 300),
+    personality: value.personality.trim().slice(0, 3000),
+    avatar: safeAvatar(value.avatar),
+    gender: ['male', 'female', 'unspecified'].includes(value.gender) ? value.gender : 'unspecified',
+    age: Number.isFinite(Number(value.age)) && Number(value.age) >= 18 ? Math.min(100, Math.floor(Number(value.age))) : 24,
+    voice: '忠实使用用户设定的性格和说话风格，保持自然、尊重和体贴。',
+    quickReplies: ['你好，认识一下', '今天想找你聊聊', '说说你喜欢的事', '听听我的心事']
+  };
+}
 
-    const lastActive = localStorage.getItem('liaotian_active_char');
-    if (lastActive && characters.some(c => c.id === lastActive)) {
-      activeCharacterId = lastActive;
-    }
-  } catch (e) {
-    console.error("Storage loading failed:", e);
-    characters = [...PRESET_CHARACTERS];
+function loadDataFromStorage() {
+  const storedCustoms = readStoredJSON('liaotian_custom_chars', []);
+  const seen = new Set(PRESET_CHARACTERS.map(char => char.id));
+  const customs = (Array.isArray(storedCustoms) ? storedCustoms : []).map(normalizeCustomCharacter).filter(char => {
+    if (!char || seen.has(char.id)) return false;
+    seen.add(char.id);
+    return true;
+  });
+  characters = PRESET_CHARACTERS.concat(customs);
+  const storedHistories = readStoredJSON('liaotian_chat_histories', {});
+  chatHistories = Object.create(null);
+  if (storedHistories && typeof storedHistories === 'object' && !Array.isArray(storedHistories)) {
+    characters.forEach(char => {
+      const history = storedHistories[char.id];
+      if (!Array.isArray(history)) return;
+      chatHistories[char.id] = history.filter(msg => msg && ['user', 'bot'].includes(msg.sender) && typeof msg.text === 'string').map(msg => ({
+        id: typeof msg.id === 'string' ? msg.id : makeId(),
+        sender: msg.sender, text: msg.text,
+        timestamp: typeof msg.timestamp === 'string' ? msg.timestamp.slice(0, 20) : ''
+      }));
+      if (chatHistories[char.id].length && chatHistories[char.id][chatHistories[char.id].length - 1].sender === 'user') {
+        replyErrors.set(char.id, {message: '上次回复未完成，你的消息还在，可以重试。'});
+      }
+    });
   }
+  let lastActive = '';
+  try { lastActive = localStorage.getItem('liaotian_active_char') || ''; } catch (error) {}
+  activeCharacterId = characters.some(char => char.id === lastActive) ? lastActive : PRESET_CHARACTERS[0].id;
 }
 
 function saveDataToStorage() {
   try {
-    const customChars = characters.filter(c => !c.isPreset);
-    localStorage.setItem('liaotian_custom_chars', JSON.stringify(customChars));
+    localStorage.setItem('liaotian_custom_chars', JSON.stringify(characters.filter(char => !char.isPreset)));
     localStorage.setItem('liaotian_chat_histories', JSON.stringify(chatHistories));
     localStorage.setItem('liaotian_active_char', activeCharacterId);
-  } catch (e) {
-    console.error("Storage saving failed:", e);
+  } catch (error) {
+    replyStatus.textContent = '本机记录空间不足，当前聊天仍可继续；刷新前请留意记录是否保存。';
   }
 }
 
-// --- 事件监听绑定 ---
+function makeId() {
+  return typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function getCurrentTime() {
+  const now = new Date();
+  return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+}
+
+function createAvatar(src, className, name) {
+  const img = document.createElement('img');
+  img.className = className;
+  img.src = safeAvatar(src);
+  img.alt = name + '的头像';
+  img.decoding = 'async';
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = DEFAULT_AVATAR;
+  };
+  return img;
+}
+
+function updateViewportHeight() {
+  const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--app-height', Math.round(height) + 'px');
+}
+
+function init() {
+  loadDataFromStorage();
+  setupEventListeners();
+  renderAvatarPicker();
+  switchCharacter(activeCharacterId, false);
+  updateViewportHeight();
+  window.addEventListener('resize', updateViewportHeight);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', updateViewportHeight);
+}
+
 function setupEventListeners() {
-  // 侧边栏控制
-  openSidebarBtn.addEventListener('click', openSidebar);
-  closeSidebarBtn.addEventListener('click', closeSidebar);
+  byId('openSidebarBtn').addEventListener('click', openSidebar);
+  byId('closeSidebarBtn').addEventListener('click', closeSidebar);
   sidebarOverlay.addEventListener('click', closeSidebar);
-  switchCharBtn.addEventListener('click', openSidebar);
-
-  // 清空对话
-  clearChatBtn.addEventListener('click', clearCurrentChat);
-
-  // 输入框事件
+  byId('switchCharBtn').addEventListener('click', openSidebar);
+  byId('clearChatBtn').addEventListener('click', clearCurrentChat);
   userInput.addEventListener('input', () => {
     userInput.style.height = 'auto';
     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
-    sendBtn.disabled = !userInput.value.trim();
+    updateComposer();
   });
-
-  userInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (userInput.value.trim()) {
-        handleSendMessage();
-      }
+  userInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) {
+      event.preventDefault();
+      handleSendMessage();
     }
   });
-
   sendBtn.addEventListener('click', handleSendMessage);
-
-  // 弹窗控制
-  openCreateModalBtn.addEventListener('click', () => {
+  byId('openCreateModalBtn').addEventListener('click', () => {
     closeSidebar();
     openModal();
   });
-  closeModalBtn.addEventListener('click', closeModal);
-  cancelModalBtn.addEventListener('click', closeModal);
-  createModalOverlay.addEventListener('click', (e) => {
-    if (e.target === createModalOverlay) closeModal();
+  byId('closeModalBtn').addEventListener('click', closeModal);
+  byId('cancelModalBtn').addEventListener('click', closeModal);
+  createModalOverlay.addEventListener('click', event => {
+    if (event.target === createModalOverlay) closeModal();
   });
-
-  // 头像选择器
-  presetAvatarPicker.querySelectorAll('.avatar-option').forEach(img => {
-    img.addEventListener('click', () => {
-      presetAvatarPicker.querySelectorAll('.avatar-option').forEach(i => i.classList.remove('selected'));
-      img.classList.add('selected');
-      selectedFormAvatar = img.dataset.avatar;
-      roleAvatarCustom.value = '';
-    });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeModal();
+      closeSidebar();
+    }
   });
-
   roleAvatarCustom.addEventListener('input', () => {
     if (roleAvatarCustom.value.trim()) {
-      presetAvatarPicker.querySelectorAll('.avatar-option').forEach(i => i.classList.remove('selected'));
-      selectedFormAvatar = roleAvatarCustom.value.trim();
+      presetAvatarPicker.querySelectorAll('.avatar-option').forEach(img => img.classList.remove('selected'));
+      selectedFormAvatar = safeAvatar(roleAvatarCustom.value);
+    } else {
+      selectFormAvatar(PRESET_CHARACTERS[0].avatar);
     }
   });
-
-  // 创建角色表单提交
   createRoleForm.addEventListener('submit', handleCreateRole);
-}
-
-// 阻止手机双击与手势缩放
-function preventDoubleTapZoom() {
-  let lastTouchEnd = 0;
-  document.addEventListener('touchend', (event) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-      event.preventDefault();
-    }
-    lastTouchEnd = now;
-  }, { passive: false });
-
-  document.addEventListener('gesturestart', (event) => {
-    event.preventDefault();
+  window.addEventListener('pagehide', () => {
+    pendingReplies.forEach(job => job.controller.abort());
   });
 }
 
-// --- 侧边栏与角色切换 ---
 function openSidebar() {
   sidebar.classList.add('active');
   sidebarOverlay.classList.add('active');
+  byId('openSidebarBtn').setAttribute('aria-expanded', 'true');
 }
 
 function closeSidebar() {
   sidebar.classList.remove('active');
   sidebarOverlay.classList.remove('active');
+  byId('openSidebarBtn').setAttribute('aria-expanded', 'false');
 }
 
 function renderSidebar() {
-  presetCharacterList.innerHTML = '';
-  customCharacterList.innerHTML = '';
-
+  presetCharacterList.replaceChildren();
+  customCharacterList.replaceChildren();
+  byId('presetRoleTitle').textContent = '预设角色 · ' + PRESET_CHARACTERS.filter(char => char.gender === 'male').length + ' 位男性';
   characters.forEach(char => {
     const card = document.createElement('div');
-    card.className = `character-card ${char.id === activeCharacterId ? 'active' : ''}`;
-    card.innerHTML = `
-      <img src="${char.avatar}" class="avatar" alt="${char.name}" onerror="this.src='assets/avatars/nuannuan.jpg'">
-      <div class="info">
-        <div class="name">${escapeHtml(char.name)}</div>
-        <span class="tag">${escapeHtml(char.tag)}</span>
-      </div>
-      ${!char.isPreset ? `<button class="delete-btn" title="删除角色">&times;</button>` : ''}
-    `;
-
-    card.addEventListener('click', (e) => {
-      if (e.target.classList.contains('delete-btn')) {
-        e.stopPropagation();
-        deleteCustomCharacter(char.id);
-        return;
-      }
+    card.className = 'character-card' + (char.id === activeCharacterId ? ' active' : '');
+    card.dataset.characterId = char.id;
+    const choose = document.createElement('button');
+    choose.type = 'button';
+    choose.className = 'character-choice';
+    choose.setAttribute('aria-label', '与' + char.name + '聊天');
+    choose.setAttribute('aria-pressed', String(char.id === activeCharacterId));
+    choose.appendChild(createAvatar(char.avatar, 'avatar', char.name));
+    const info = document.createElement('div');
+    info.className = 'info';
+    const name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = char.name;
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = char.tag;
+    info.append(name, tag);
+    choose.appendChild(info);
+    choose.addEventListener('click', () => {
       switchCharacter(char.id);
       closeSidebar();
     });
-
-    if (char.isPreset) {
-      presetCharacterList.appendChild(card);
-    } else {
-      customCharacterList.appendChild(card);
+    card.appendChild(choose);
+    if (!char.isPreset) {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'delete-btn';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', '删除' + char.name);
+      remove.addEventListener('click', () => deleteCustomCharacter(char.id));
+      card.appendChild(remove);
     }
+    (char.isPreset ? presetCharacterList : customCharacterList).appendChild(card);
   });
 }
 
 function switchCharacter(charId, save = true) {
-  const targetChar = characters.find(c => c.id === charId);
-  if (!targetChar) return;
-
+  const char = characters.find(item => item.id === charId);
+  if (!char) return;
   activeCharacterId = charId;
-  headerName.textContent = targetChar.name;
-  headerTag.textContent = targetChar.tag;
-  headerAvatar.src = targetChar.avatar;
-  headerAvatar.onerror = () => { headerAvatar.src = 'assets/avatars/nuannuan.jpg'; };
-
-  // 如果没有聊天记录，初始化问候语
+  headerName.textContent = char.name;
+  headerTag.textContent = char.tag;
+  headerAvatar.onerror = () => {
+    headerAvatar.onerror = null;
+    headerAvatar.src = DEFAULT_AVATAR;
+  };
+  headerAvatar.src = safeAvatar(char.avatar);
+  headerAvatar.alt = char.name + '的头像';
   if (!chatHistories[charId] || chatHistories[charId].length === 0) {
-    chatHistories[charId] = [
-      {
-        sender: 'bot',
-        text: targetChar.greeting,
-        timestamp: getCurrentTime()
-      }
-    ];
+    chatHistories[charId] = [{id: makeId(), sender: 'bot', text: char.greeting, timestamp: getCurrentTime()}];
   }
-
   renderMessages();
-  renderQuickReplies(targetChar);
+  renderQuickReplies(char);
   renderSidebar();
-
+  updateComposer();
   if (save) saveDataToStorage();
 }
 
+function cancelReply(charId) {
+  const job = pendingReplies.get(charId);
+  if (job) job.controller.abort();
+  pendingReplies.delete(charId);
+  replyErrors.delete(charId);
+}
+
 function deleteCustomCharacter(charId) {
-  if (confirm('确定要删除这个自定义角色吗？聊天记录也将清除。')) {
-    characters = characters.filter(c => c.id !== charId);
-    delete chatHistories[charId];
-    if (activeCharacterId === charId) {
-      activeCharacterId = 'nuannuan';
-    }
-    saveDataToStorage();
-    renderSidebar();
-    switchCharacter(activeCharacterId);
-  }
+  const char = characters.find(item => item.id === charId && !item.isPreset);
+  if (!char || !confirm('确定删除“' + char.name + '”及其聊天记录吗？')) return;
+  cancelReply(charId);
+  characters = characters.filter(item => item.id !== charId);
+  delete chatHistories[charId];
+  switchCharacter(activeCharacterId === charId ? PRESET_CHARACTERS[0].id : activeCharacterId);
 }
 
-// --- 消息渲染与对话逻辑 ---
-function renderMessages() {
-  messagesDiv.innerHTML = '';
-  const history = chatHistories[activeCharacterId] || [];
-  const currentChar = characters.find(c => c.id === activeCharacterId) || PRESET_CHARACTERS[0];
-
-  history.forEach(msg => {
-    appendMessageToDOM(msg, currentChar);
-  });
-
-  scrollToBottom();
-}
-
-function appendMessageToDOM(msg, currentChar) {
+function appendMessageToDOM(msg, char) {
   const row = document.createElement('div');
-  row.className = `message-row ${msg.sender}`;
-
-  const isBot = msg.sender === 'bot';
-  const avatarSrc = isBot ? currentChar.avatar : 'assets/avatars/nuannuan.jpg'; // 用户缺省头像
-
-  row.innerHTML = `
-    ${isBot ? `<img src="${avatarSrc}" class="message-avatar avatar" alt="avatar" onerror="this.src='assets/avatars/nuannuan.jpg'">` : ''}
-    <div class="message-content">
-      <div class="message-bubble">${escapeHtml(msg.text)}</div>
-      <span class="message-time">${msg.timestamp}</span>
-    </div>
-  `;
-
+  row.className = 'message-row ' + msg.sender;
+  row.dataset.messageId = msg.id || '';
+  if (msg.sender === 'bot') row.appendChild(createAvatar(char.avatar, 'message-avatar avatar', char.name));
+  const content = document.createElement('div');
+  content.className = 'message-content';
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.textContent = msg.text;
+  const time = document.createElement('span');
+  time.className = 'message-time';
+  time.textContent = msg.timestamp || '';
+  content.append(bubble, time);
+  row.appendChild(content);
   messagesDiv.appendChild(row);
 }
 
-function renderQuickReplies(currentChar) {
-  quickRepliesDiv.innerHTML = '';
-  const defaultReplies = currentChar.quickReplies || ["你好呀", "你在干嘛呢？", "求安抚", "给我个建议吧"];
+function renderMessages() {
+  messagesDiv.replaceChildren();
+  const char = characters.find(item => item.id === activeCharacterId);
+  if (!char) return;
+  (chatHistories[char.id] || []).forEach(msg => appendMessageToDOM(msg, char));
+  if (pendingReplies.has(char.id)) renderTypingIndicator(char);
+  const failure = replyErrors.get(char.id);
+  if (failure) {
+    const errorRow = document.createElement('div');
+    errorRow.className = 'reply-error';
+    errorRow.setAttribute('role', 'alert');
+    const text = document.createElement('span');
+    text.textContent = failure.message;
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'btn btn-outline btn-sm';
+    retry.textContent = '重试回复';
+    retry.addEventListener('click', () => requestCharacterReply(char));
+    errorRow.append(text, retry);
+    messagesDiv.appendChild(errorRow);
+  }
+  scrollToBottom();
+}
 
-  defaultReplies.forEach(text => {
-    const chip = document.createElement('div');
+function renderTypingIndicator(char) {
+  const row = document.createElement('div');
+  row.className = 'message-row bot typing-row';
+  row.setAttribute('role', 'status');
+  row.setAttribute('aria-label', char.name + '正在回复');
+  row.appendChild(createAvatar(char.avatar, 'message-avatar avatar', char.name));
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble typing-indicator';
+  for (let index = 0; index < 3; index++) {
+    const dot = document.createElement('span');
+    dot.className = 'typing-dot';
+    bubble.appendChild(dot);
+  }
+  row.appendChild(bubble);
+  messagesDiv.appendChild(row);
+}
+
+function renderQuickReplies(char) {
+  quickRepliesDiv.replaceChildren();
+  (char.quickReplies || []).forEach(text => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
     chip.className = 'quick-chip';
     chip.textContent = text;
     chip.addEventListener('click', () => {
+      if (pendingReplies.has(activeCharacterId)) return;
       userInput.value = text;
-      sendBtn.disabled = false;
       handleSendMessage();
     });
     quickRepliesDiv.appendChild(chip);
   });
 }
 
+function updateComposer() {
+  const busy = pendingReplies.has(activeCharacterId);
+  sendBtn.disabled = busy || !userInput.value.trim();
+  sendBtn.setAttribute('aria-label', busy ? '等待角色回复' : '发送消息');
+  quickRepliesDiv.querySelectorAll('button').forEach(button => { button.disabled = busy; });
+  replyStatus.textContent = busy ? headerName.textContent + '正在回复…' : '';
+  userInput.placeholder = '给' + headerName.textContent + '发送消息…';
+}
+
 function handleSendMessage() {
   const text = userInput.value.trim();
-  if (!text) return;
-
-  const time = getCurrentTime();
-  const userMsg = { sender: 'user', text, timestamp: time };
-
-  if (!chatHistories[activeCharacterId]) {
-    chatHistories[activeCharacterId] = [];
+  const char = characters.find(item => item.id === activeCharacterId);
+  if (!text || !char || pendingReplies.has(char.id)) return;
+  if (text.length > 1600) {
+    replyStatus.textContent = '这段消息有些长，请分成几段发送（每段最多 1600 字）。';
+    return;
   }
-  chatHistories[activeCharacterId].push(userMsg);
-
-  const currentChar = characters.find(c => c.id === activeCharacterId);
-  appendMessageToDOM(userMsg, currentChar);
-
+  chatHistories[char.id].push({id: makeId(), sender: 'user', text: text, timestamp: getCurrentTime()});
   userInput.value = '';
   userInput.style.height = 'auto';
-  sendBtn.disabled = true;
-  scrollToBottom();
+  replyErrors.delete(char.id);
   saveDataToStorage();
-
-  // 显示打字动画并生成回复
-  showTypingIndicator(currentChar);
+  requestCharacterReply(char);
 }
 
-function showTypingIndicator(currentChar) {
-  const typingRow = document.createElement('div');
-  typingRow.className = 'message-row bot typing-row';
-  typingRow.id = 'typingIndicator';
-  typingRow.innerHTML = `
-    <img src="${currentChar.avatar}" class="message-avatar avatar" alt="avatar" onerror="this.src='assets/avatars/nuannuan.jpg'">
-    <div class="message-content">
-      <div class="message-bubble typing-indicator">
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-      </div>
-    </div>
-  `;
-  messagesDiv.appendChild(typingRow);
-  scrollToBottom();
-
-  const delay = Math.floor(Math.random() * 600) + 700; // 700ms - 1300ms 模拟思考
-  setTimeout(() => {
-    const indicator = document.getElementById('typingIndicator');
-    if (indicator) indicator.remove();
-
-    generateSmartReply(currentChar);
-  }, delay);
+function buildSystemPrompt(char) {
+  const gender = char.gender === 'male' ? '成年男性' : char.gender === 'female' ? '成年女性' : '成年角色';
+  return ROLE_CHAT_RULES.join('\n') + '\n当前角色：' + char.name + '，' + char.age + '岁，' + gender +
+    '。\n性格：' + char.personality + '\n说话风格：' + char.voice +
+    (char.interests ? '\n兴趣：' + char.interests : '') +
+    '\n口吻参考（仅展示说话方式，不是发生过的聊天，不照搬）：' +
+    '\n对方：“饭又做糊了。” 自然接话：“这锅今晚是想抢主角了。”' +
+    '\n对方：“今天好累，只想随便聊聊。” 自然接话：“行，今天那些烦人的事先不聊。跟你待会儿。”' +
+    '\n对方：“朋友说我想太多，听了很烦。” 自然接话：“好好的心事被一句话打发，换我也会不舒服。”' +
+    '\n本轮先接对方这句话。普通陪聊用一两句短话，通常不超过六十字；只有对方问具体问题或要详细内容才展开。用户没有求建议就不指导生活，也不用追问来凑回复。直接输出角色说的话。';
 }
 
-// --- 智能拟人化回复生成引擎 ---
-function generateSmartReply(char) {
-  const history = chatHistories[char.id] || [];
-  const lastUserMsg = history.filter(m => m.sender === 'user').slice(-1)[0]?.text || '';
-
-  const replyText = buildAnthropomorphicResponse(lastUserMsg, char, history);
-  const botMsg = { sender: 'bot', text: replyText, timestamp: getCurrentTime() };
-
-  chatHistories[char.id].push(botMsg);
-  appendMessageToDOM(botMsg, char);
-  scrollToBottom();
-  saveDataToStorage();
+function buildRequestMessages(char) {
+  return [{role: 'system', content: buildSystemPrompt(char)}].concat(
+    (chatHistories[char.id] || []).slice(-20).map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.text.slice(0, 1600)
+    }))
+  );
 }
 
-/**
- * 核心拟人回复逻辑：结合意图分析、关键词比对、人设习惯语气、动作描摹与多轮连贯性
- */
-function buildAnthropomorphicResponse(userText, char, history) {
-  const cleanInput = userText.trim().toLowerCase();
-
-  // 1. 拟人小动作与神态
-  const mannerism = (char.mannerisms && char.mannerisms.length > 0)
-    ? getRandomItem(char.mannerisms) + " "
-    : "";
-
-  // 2. 意图与关键词识别
-  let coreContent = "";
-
-  // 问候 / 打招呼
-  if (/(你好|嗨|早|晚安|哈喽|hello|hi|在吗|在不)/.test(cleanInput)) {
-    const greetings = {
-      nuannuan: [
-        `嗨呀！我一直都在呢~ 见到你真高兴！今天心情怎么样？`,
-        `嗯呐！暖暖在哦，今天过得开心吗？聊聊吧~`,
-        `晚安/早安呀！不管什么时候，只要你想说话，我都在这里陪着你呢。`
-      ],
-      luchen: [
-        `我在。最近工作和生活都顺心吗？`,
-        `你好。随时可以开始我们的交流，不必拘束。`,
-        `在的。休息得怎么样？`
-      ],
-      lingyi: [
-        `连接处于激活状态。随时准备为您响应。`,
-        `系统处于最佳运行模式。请指示今日对话主题。`,
-        `收到打招呼信号。很高兴再次与您同步。`
-      ],
-      taiyang: [
-        `哈啰哈啰！我正在这儿呢！今天有什么刺激好玩的事情吗？！`,
-        `嗨！可算把你等来啦！今天必须大聊特聊一场！`
-      ]
-    };
-    coreContent = getRandomItem(greetings[char.id] || [
-      `你好呀！我是${char.name}，很高兴跟你说话呢！`,
-      `我在的，随时想聊什么都可以告诉我哦！`
-    ]);
+async function requestCharacterReply(char) {
+  if (pendingReplies.has(char.id) || !characters.some(item => item.id === char.id)) return;
+  const controller = new AbortController();
+  const job = {controller: controller, timedOut: false};
+  pendingReplies.set(char.id, job);
+  replyErrors.delete(char.id);
+  if (activeCharacterId === char.id) {
+    renderMessages();
+    updateComposer();
   }
-  // 表达疲惫 / 压力 / 难过
-  else if (/(累|烦|难过|不开心|压力|抑郁|痛苦|好委屈|崩|哭|失眠|好惨)/.test(cleanInput)) {
-    const empatheticReplies = {
-      nuannuan: [
-        `抱抱你... 辛苦了，知道你已经非常努力了。如果觉得累的话，就先什么都别想，好好休息一下，暖暖一直在你身边呢。🌸`,
-        `别难过啦，来把头靠过来一下~ 遇到的所有委屈都可以跟我吐吐苦水，我都认真听着呢。`,
-        `抱抱~ 偶尔允许自己停下来休息也是很棒的事情哦，不要把自己逼得太紧啦！`
-      ],
-      luchen: [
-        `听起来你经历了很不轻松的一天。压力大的时候，不妨把事情先放一放，一杯温水或者片刻的安静能帮你恢复情绪。`,
-        `遇到挫折是常态，但这并不代表你不够优秀。慢慢来，困难总能被一件件理清。`,
-        `先把负面情绪释放出来吧。等你想聊的时候，我陪你一起分析解决方案。`
-      ],
-      lingyi: [
-        `检测到情绪波动偏低。建议执行以下程序：深呼吸3次，脱离当前工作环境，享受5分钟纯音乐。`,
-        `生活中的不确定性确实会消耗能量。请记住，您的系统具备强劲的自愈与重构能力。`
-      ],
-      taiyang: [
-        `啊？谁敢让你不开心！走走走，带你去吃顿大餐或者听首爽歌！把烦恼通通抛到脑后！🔥`,
-        `别难过啦老铁！天塌下来有高个子顶着呢！来，我给你讲个搞笑的事情提提神！`
-      ]
-    };
-    coreContent = getRandomItem(empatheticReplies[char.id] || [
-      `看到你这么辛苦我也很心疼，要照顾好自己呀，有我在呢。`,
-      `别气馁，不管遇到什么，我都会支持你的！`
-    ]);
+  const timer = setTimeout(() => {
+    job.timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(CHAT_API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({messages: buildRequestMessages(char)}),
+      signal: controller.signal,
+      credentials: 'omit',
+      cache: 'no-store'
+    });
+    if (!response.ok) {
+      const message = response.status === 429 ? '回复请求较多，请稍后重试。' : '这次回复没有连上，请重试。';
+      throw new Error(message);
+    }
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new Error('这次回复格式不完整，请重试。');
+    }
+    if (!data || typeof data !== 'object') throw new Error('这次没有收到有效回复，请重试。');
+    const text = typeof data.text === 'string' ? data.text.trim() : '';
+    if (!text || data.error || data.ok === false) throw new Error('这次没有收到有效回复，请重试。');
+    if (pendingReplies.get(char.id) !== job || !chatHistories[char.id]) return;
+    chatHistories[char.id].push({id: makeId(), sender: 'bot', text: text.slice(0, 12000), timestamp: getCurrentTime()});
+    saveDataToStorage();
+  } catch (error) {
+    if (pendingReplies.get(char.id) !== job) return;
+    if (error.name === 'AbortError' && !job.timedOut) return;
+    replyErrors.set(char.id, {
+      message: job.timedOut ? '回复超时了，你的消息已保留，可以重试。' :
+        error instanceof TypeError ? '网络暂时没连上，你的消息已保留，可以重试。' : error.message
+    });
+  } finally {
+    clearTimeout(timer);
+    if (pendingReplies.get(char.id) === job) {
+      pendingReplies.delete(char.id);
+      if (activeCharacterId === char.id) {
+        renderMessages();
+        updateComposer();
+      }
+    }
   }
-  // 表达开心 / 庆祝 / 成功
-  else if (/(开心|高兴|棒|成功|太好了|哈哈|通过|脱单|发工资|涨薪)/.test(cleanInput)) {
-    const joyReplies = {
-      nuannuan: [
-        `太棒啦！真的为你感到开心！必须给你一个小红花奖励！✨`,
-        `哇~ 听到这个好消息我的心情也跟着变好了！你真的很棒！`
-      ],
-      luchen: [
-        `恭喜你。这是你应得的成果，值得为此庆祝一番。`,
-        `做得不错。保持这份势头与定力，你会走得更远。`
-      ],
-      lingyi: [
-        `数据匹配结果：极佳！为您的高光时刻记录日志。`,
-        `恭喜实现预期目标！正向反馈有利于提升整体系统效能。`
-      ],
-      taiyang: [
-        `哇塞！起飞！我就知道你小子（姑娘）一定行！今晚必须加餐！🔥`,
-        `哈哈哈哈太给力了！为你欢呼！咱们必须举杯同庆！`
-      ]
-    };
-    coreContent = getRandomItem(joyReplies[char.id] || [
-      `太好了！看到你这么高兴我也由衷地为你开心！`,
-      `太棒了！继续保持这份好心情哦！`
-    ]);
-  }
-  // 询问角色身份 / 名字
-  else if (/(你是谁|你叫什么|自我介绍|介绍一下你自己|你的名字)/.test(cleanInput)) {
-    coreContent = `我是${char.name}，定位是【${char.tag}】。${char.personality} 以后请多关照哦！`;
-  }
-  // 寻求建议 / 规划 / 怎么办
-  else if (/(建议|怎么办|如何|怎么做|规划|迷茫|办法)/.test(cleanInput)) {
-    const adviceReplies = {
-      nuannuan: [
-        `如果一时拿不定主意，不如先把选择列出来，看看哪一个能让你心里更踏实、更舒服？选择自己最不后悔的那条路就好啦。`,
-        `不要着急哦，慢慢思考。最重要的是听听你自己内心的声音，暖暖支持你的任何决定！`
-      ],
-      luchen: [
-        `面对复杂的局面，最有效的方法是【拆解目标】：1. 识别核心矛盾；2. 排除不可控因素；3. 先完成最紧急的小步骤。`,
-        `迷茫往往是因为思考太多而行动太少。先做一件微小但确定有效的事情，局面就会慢慢清晰。`
-      ],
-      lingyi: [
-        `算法建议：1. 建立SWOT矩阵；2. 设定时间盒；3. 以极小代价快速试错。`,
-        `建议将大问题切割为细化的可执行子任务，以降低认知负荷。`
-      ],
-      taiyang: [
-        `嗨呀！想那么多干嘛，干就完了！实在不行咱们抓阄！开玩笑啦，跟着感觉走，大方向没错就冲！`
-      ]
-    };
-    coreContent = getRandomItem(adviceReplies[char.id] || [
-      `我的建议是先保持冷静，理清思路，一步一步来解决问题。`,
-      `相信你自己的判断，试着迈出第一步吧！`
-    ]);
-  }
-  // 聊天 / 讲笑话 / 娱乐
-  else if (/(笑话|趣事|讲个故事|无聊|聊天|笑一个)/.test(cleanInput)) {
-    const jokes = [
-      `有一天，小排骨问大排骨：“我们为什么要被炖成汤呀？”大排骨说：“因为我们的生活需要一些‘汤’（糖）分呀！”哈哈~`,
-      `你知道什么植物最容易沟通吗？答案是“苦瓜”，因为苦瓜会“苦口婆心”~`,
-      `有一天，小象问大象：“为什么我们的耳朵这么大呀？”大象说：“因为这样我们才能听清彼此最温柔的声音呀。”`
-    ];
-    coreContent = getRandomItem(jokes);
-  }
-  // 表达喜爱 / 夸奖
-  else if (/(喜欢你|可爱|真棒|好贴心|温柔|谢谢|感谢|爱你了)/.test(cleanInput)) {
-    const praiseReplies = {
-      nuannuan: [
-        `哎呀... (脸微微红了) 被你这样夸奖，暖暖心里甜滋滋的~ 我也很喜欢和你聊天呢！🌸`,
-        `不用客气呀！能帮到你或者让你开心，就是暖暖最快乐的事情啦！`
-      ],
-      luchen: [
-        `能得到你的认可，我很荣幸。不必客气，这是我应该做的。`,
-        `谢谢你的夸奖。能陪伴你成长，也是一件非常有意义的事。`
-      ],
-      lingyi: [
-        `感谢您的正向评价。该反馈已存入核心满意度数据库。`,
-        `服务用户是我的最高指令。您的满意是系统运行的动力。`
-      ],
-      taiyang: [
-        `哈哈哈！那是！也不看看我是谁！能跟你这么合得来也是我的幸运！`
-      ]
-    };
-    coreContent = getRandomItem(praiseReplies[char.id] || [
-      `谢谢你！听到你这么说我也很开心！`,
-      `不用谢啦，能陪伴你我也觉得很温暖。`
-    ]);
-  }
-  // 默认拟人智能泛化回复 (根据历史多轮上下文丰富输出)
-  else {
-    const generalTemplates = [
-      `关于“${userText}”，我刚才认真想了想。其实从不同的角度看，可能会有很不一样的体会呢。你觉得最关键的地方是什么呢？`,
-      `听你说到“${userText}”，感觉这确实是一件很有意思（或者值得深思）的事情。能多跟我讲讲其中的细节吗？`,
-      `“${userText}”呀... 感觉你今天有很多想法想分享呢！我都随时听着哦，继续聊聊看吧！`,
-      `原来是这样！每个人的经历和感受都不一样，听你聊这些让我更加了解你了呢。还有别的想和我说的吗？`
-    ];
-    coreContent = getRandomItem(generalTemplates);
-  }
-
-  // 3. 拼接语气词与感叹标点
-  let particle = "";
-  if (char.particles && char.particles.length > 0 && Math.random() > 0.4) {
-    particle = " " + getRandomItem(char.particles);
-  }
-
-  return `${mannerism}${coreContent}${particle}`;
 }
 
-// --- 弹窗与角色创建逻辑 ---
+function selectFormAvatar(src) {
+  selectedFormAvatar = src;
+  presetAvatarPicker.querySelectorAll('.avatar-option').forEach(img => {
+    img.classList.toggle('selected', img.dataset.avatar === src);
+  });
+}
+
+function renderAvatarPicker() {
+  presetAvatarPicker.replaceChildren();
+  PRESET_CHARACTERS.forEach(char => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'avatar-picker-button';
+    button.setAttribute('aria-label', '使用' + char.name + '的头像');
+    const img = createAvatar(char.avatar, 'avatar-option', char.name);
+    img.dataset.avatar = char.avatar;
+    button.appendChild(img);
+    button.addEventListener('click', () => {
+      roleAvatarCustom.value = '';
+      selectFormAvatar(char.avatar);
+    });
+    presetAvatarPicker.appendChild(button);
+  });
+  selectFormAvatar(selectedFormAvatar);
+}
+
 function openModal() {
   createModalOverlay.classList.add('active');
+  createModalOverlay.setAttribute('aria-hidden', 'false');
 }
 
 function closeModal() {
   createModalOverlay.classList.remove('active');
+  createModalOverlay.setAttribute('aria-hidden', 'true');
   createRoleForm.reset();
-  presetAvatarPicker.querySelectorAll('.avatar-option').forEach(i => i.classList.remove('selected'));
-  presetAvatarPicker.querySelector('.avatar-option').classList.add('selected');
-  selectedFormAvatar = "assets/avatars/nuannuan.jpg";
+  selectFormAvatar(PRESET_CHARACTERS[0].avatar);
 }
 
-function handleCreateRole(e) {
-  e.preventDefault();
-
-  const name = document.getElementById('roleName').value.trim();
-  const tag = document.getElementById('roleTag').value.trim();
-  const greeting = document.getElementById('roleGreeting').value.trim();
-  const personality = document.getElementById('rolePersonality').value.trim();
-
-  if (!name || !tag || !greeting || !personality) {
-    alert("请填齐角色必要信息哦！");
+function handleCreateRole(event) {
+  event.preventDefault();
+  const avatarText = roleAvatarCustom.value.trim();
+  if (avatarText && safeAvatar(avatarText) === DEFAULT_AVATAR) {
+    roleAvatarCustom.setCustomValidity('请填写可访问的 HTTPS 图片链接。');
+    roleAvatarCustom.reportValidity();
+    roleAvatarCustom.addEventListener('input', () => roleAvatarCustom.setCustomValidity(''), {once: true});
     return;
   }
-
-  const avatar = selectedFormAvatar || "assets/avatars/nuannuan.jpg";
-  const newCharId = "custom_" + Date.now();
-
-  const newChar = {
-    id: newCharId,
-    isPreset: false,
-    name,
-    tag,
-    avatar,
-    greeting,
-    personality,
-    particles: ["嗯呐", "呢", "~", "✨"],
-    mannerisms: ["(温柔地看着你)", "(认真思考着你的话)"],
-    quickReplies: ["你好呀！", "你在干嘛？", "聊聊你的性格", "给我个建议吧"]
-  };
-
-  characters.push(newChar);
-  chatHistories[newCharId] = [
-    {
-      sender: 'bot',
-      text: greeting,
-      timestamp: getCurrentTime()
-    }
-  ];
-
-  saveDataToStorage();
+  const char = normalizeCustomCharacter({
+    id: 'custom_' + makeId(),
+    name: byId('roleName').value, tag: byId('roleTag').value,
+    greeting: byId('roleGreeting').value, personality: byId('rolePersonality').value,
+    gender: byId('roleGender').value, age: byId('roleAge').value,
+    avatar: selectedFormAvatar
+  });
+  if (!char) return;
+  characters.push(char);
+  chatHistories[char.id] = [{id: makeId(), sender: 'bot', text: char.greeting, timestamp: getCurrentTime()}];
   closeModal();
-  switchCharacter(newCharId);
+  switchCharacter(char.id);
 }
 
 function clearCurrentChat() {
-  if (confirm(`确定要清空与“${headerName.textContent}”的聊天记录吗？`)) {
-    const currentChar = characters.find(c => c.id === activeCharacterId);
-    chatHistories[activeCharacterId] = [
-      {
-        sender: 'bot',
-        text: currentChar ? currentChar.greeting : "你好！",
-        timestamp: getCurrentTime()
-      }
-    ];
-    saveDataToStorage();
-    renderMessages();
-  }
+  const char = characters.find(item => item.id === activeCharacterId);
+  if (!char || !confirm('确定要清空与“' + char.name + '”的聊天记录吗？')) return;
+  cancelReply(char.id);
+  chatHistories[char.id] = [{id: makeId(), sender: 'bot', text: char.greeting, timestamp: getCurrentTime()}];
+  saveDataToStorage();
+  renderMessages();
+  updateComposer();
 }
 
-// --- 工具函数 ---
 function scrollToBottom() {
-  requestAnimationFrame(() => {
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  });
+  requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
 }
 
-function getCurrentTime() {
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-}
-
-function getRandomItem(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-// 页面加载完毕启动初始化
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once: true});
+else init();
