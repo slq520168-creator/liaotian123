@@ -38,6 +38,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
 | 设置 | 值 |
 | --- | --- |
 | 服务类型 | Static Site |
+| Node版本 | 24，仓库.node-version与Blueprint已指定 |
 | 发布分支 | main或自己的发布分支 |
 | Build Command | node scripts/validate.mjs |
 | Publish Directory | ./ |

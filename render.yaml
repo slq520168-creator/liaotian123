@@ -2,8 +2,11 @@ services:
   - type: web
     name: character-studio
     runtime: static
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
     staticPublishPath: ./
-    buildCommand: "node --check roles.js && node --check memory.js && node --check role-code.js && node --check app.js"
+    buildCommand: "node scripts/validate.mjs"
     routes:
       - type: rewrite
         source: /*

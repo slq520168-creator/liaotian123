@@ -1,18 +1,16 @@
-name: Validate browser scripts
+name: Validate website and guides
 
 on:
   push:
   pull_request:
 
 jobs:
-  syntax:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check published JavaScript
-        run: |
-          node --check roles.js
-          node --check app.js
-          node --check memory.js
-          node --check role-code.js
-          node -e "JSON.parse(require('fs').readFileSync('roles/new-role.role.json')); JSON.parse(require('fs').readFileSync('roles/preset-roles.json'))"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check website, documentation and chat contract
+        run: node scripts/validate.mjs
