@@ -1,0 +1,15 @@
+name: Validate browser scripts
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check published JavaScript
+        run: |
+          node --check roles.js
+          node --check app.js
