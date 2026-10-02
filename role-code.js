@@ -15,6 +15,7 @@ function parseRoleCode(source) {
   if (!list.length || list.length > 24) throw new Error('一次可添加1到24个角色。');
   return list.map(item => {
     if (!item || typeof item !== 'object' || typeof item.name !== 'string' || !item.name.trim() || typeof item.personality !== 'string' || !item.personality.trim()) throw new Error('请补全角色姓名和性格。');
+    if (item.personality.trim().length > CHAT_LIMITS.personality) throw new Error('角色性格最多12000字，请精简后生成。');
     if (item.age !== undefined && (!Number.isFinite(Number(item.age)) || Number(item.age) < 18 || Number(item.age) > 100)) throw new Error('角色年龄请填写18到100岁。');
     const id = typeof item.id === 'string' && /^[a-z0-9_-]{1,70}$/i.test(item.id) ? item.id : makeId();
     return normalizeCustomCharacter({

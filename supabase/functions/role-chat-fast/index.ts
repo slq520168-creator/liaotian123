@@ -12,18 +12,20 @@ function json(data:unknown,status=200){
     headers:{...cors,"content-type":"application/json; charset=utf-8","cache-control":"no-store","connection":"keep-alive"}
   });
 }
-function compact(messages:any[],maxUserChars=1600){
+function compact(messages:any[],maxUserChars=1600,maxSystemChars=6000,historyBudget=Infinity){
   const a=Array.isArray(messages)?messages:[];
   const system=a.find((m:any)=>m?.role==="system");
   const tail=a.filter((m:any)=>m?.role!=="system").slice(-20);
   const latestUser=[...tail].reverse().find((m:any)=>m?.role==="user");
-  return [
-    ...(system?[{role:"system",content:String(system.content||"").slice(0,6000)}]:[]),
-    ...tail.map((m:any)=>({
-      role:["assistant","user"].includes(m?.role)?m.role:"user",
-      content:String(m?.content||"").slice(0,m===latestUser?maxUserChars:1600)
-    }))
-  ];
+  const recent:{role:string,content:string}[]=[];
+  for(let i=tail.length-1;i>=0;i--){
+    const m=tail[i],full=m===latestUser;
+    const content=String(m?.content||"").slice(0,full?maxUserChars:Math.min(1600,historyBudget));
+    if(!content)continue;
+    if(!full)historyBudget-=content.length;
+    recent.unshift({role:["assistant","user"].includes(m?.role)?m.role:"user",content});
+  }
+  return [...(system?[{role:"system",content:String(system.content||"").slice(0,maxSystemChars)}]:[]),...recent];
 }
 function lastUser(messages:any[]){
   const row=[...(Array.isArray(messages)?messages:[])].reverse().find((m:any)=>m?.role==="user");
@@ -195,7 +197,7 @@ function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal
       const open=async(provider:typeof STREAM_PROVIDERS[number])=>{
         const controller=new AbortController();aborters.push(controller);
         const firstTimer=setTimeout(()=>controller.abort(),9000);
-        const wholeTimer=setTimeout(()=>controller.abort(),32000);
+        const wholeTimer=setTimeout(()=>controller.abort(),maxTokens>1400?90000:32000);
         const close=()=>{clearTimeout(firstTimer);clearTimeout(wholeTimer);controller.abort();};
         try{
           const response=await fetch(provider.url,{method:"POST",headers:{"content-type":"application/json",...(provider.auth?{authorization:provider.auth}:{})},body:JSON.stringify({model:provider.model,messages,temperature:.85,max_tokens:maxTokens,stream:true}),signal:controller.signal});
@@ -220,12 +222,13 @@ function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal
         aborters.filter(controller=>controller!==winner.controller).forEach(controller=>controller.abort());
         sessions.filter(session=>session.controller!==winner.controller).forEach(session=>{session.close();session.iterator.return().catch(()=>{});});
         console.log("role_chat_first_content",winner.provider,"ms",Date.now()-started);
+        if(winner.prefix.length>30000)throw new Error("reply_too_large");
         send({delta:winner.prefix});
         let complete=false,total=winner.prefix.length;
         try{
           for await(const event of winner.iterator){
             if(closed)break;
-            if(event.delta){total+=event.delta.length;if(total>12000)throw new Error("reply_too_large");send({delta:event.delta});}
+            if(event.delta){total+=event.delta.length;if(total>30000)throw new Error("reply_too_large");send({delta:event.delta});}
             if(event.done){complete=true;send({done:true,limited:event.limited===true});break;}
           }
           if(!complete&&!closed)throw new Error("stream_incomplete");
@@ -248,10 +251,12 @@ Deno.serve(async(req:Request)=>{
   try{
     const body=await req.json().catch(()=>({}));
     const website=body?.client==="liaotian123";
-    const messages=compact(body?.messages||[],website?6000:1600);
+    const incoming=Array.isArray(body?.messages)?body.messages:[];
+    if(website&&(lastUser(incoming).length>30000||String(incoming.find((m:any)=>m?.role==="system")?.content||"").length>24000))return json({error:"message_too_large"},400);
+    const messages=compact(incoming,website?30000:1600,website?24000:6000,website?12000:Infinity);
     const requestedTokens=Number(body?.max_tokens);
     const maxTokens=body?.client==="liaotian123"&&Number.isFinite(requestedTokens)
-      ? Math.max(180,Math.min(1400,Math.floor(requestedTokens)))
+      ? Math.max(180,Math.min(6000,Math.floor(requestedTokens)))
       : 180;
     if(messages.length<2) return json({error:"messages_required"},400);
     if(website&&body?.stream===true)return streamedReply(messages,maxTokens,req.signal);

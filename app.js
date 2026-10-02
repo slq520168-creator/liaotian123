@@ -1,11 +1,20 @@
 /**
  * 角色聊天：角色独立历史、真实模型回复与可取消的请求生命周期。
  */
-const CHAT_API_URL = 'https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast';
+const CHAT_API_URL = (() => {
+  try {
+    const url = new URL(window.LIAOTIAN_CONFIG?.chatApiUrl || '', location.href);
+    if (!window.LIAOTIAN_CONFIG?.chatApiUrl || url.username || url.password) return '';
+    if (url.protocol === 'https:' || url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return url.href;
+  } catch (error) {}
+  return '';
+})();
+const CHAT_LIMITS = Object.freeze({message: 30000, personality: 12000, system: 24000, reply: 30000, history: 12000});
 const DEFAULT_AVATAR = 'assets/avatars/nuannuan-portrait.jpg';
 const DEFAULT_USER_AVATAR = 'assets/avatars/user.svg';
 const MAX_AVATAR_DATA_LENGTH = 180000;
 const REQUEST_TIMEOUT_MS = 40000;
+const LONG_REQUEST_TIMEOUT_MS = 100000;
 let characters = [];
 let activeCharacterId = 'nuannuan';
 let chatHistories = Object.create(null);
@@ -72,7 +81,7 @@ function normalizeCustomCharacter(value) {
     id: value.id, isPreset: false,
     name: value.name.trim().slice(0, 12), tag: value.tag.trim().slice(0, 20),
     greeting: value.greeting.trim().slice(0, 300),
-    personality: value.personality.trim().slice(0, 3000),
+    personality: value.personality.trim().slice(0, CHAT_LIMITS.personality),
     avatar: safeAvatar(value.avatar),
     gender: ['male', 'female', 'unspecified'].includes(value.gender) ? value.gender : 'unspecified',
     age: Number.isFinite(Number(value.age)) && Number(value.age) >= 18 ? Math.min(100, Math.floor(Number(value.age))) : 24,
@@ -229,7 +238,7 @@ function init() {
 }
 
 function warmReplyConnection() {
-  if (navigator.onLine === false || Date.now() - lastConnectionWarmAt < 300000) return;
+  if (!CHAT_API_URL || navigator.onLine === false || Date.now() - lastConnectionWarmAt < 300000) return;
   lastConnectionWarmAt = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
@@ -547,8 +556,12 @@ function handleSendMessage() {
   const text = userInput.value.trim();
   const char = characters.find(item => item.id === activeCharacterId);
   if (!text || !char || pendingReplies.has(char.id)) return;
-  if (text.length > 6000) {
-    replyStatus.textContent = '消息过长，请分段发送。';
+  if (text.length > CHAT_LIMITS.message) {
+    replyStatus.textContent = '每条消息最多30000字，请分段发送。';
+    return;
+  }
+  if (!CHAT_API_URL) {
+    replyStatus.textContent = '聊天接口未配置，请联系站点维护者。';
     return;
   }
   const createdAt = new Date().toISOString();
@@ -579,20 +592,26 @@ function buildSystemPrompt(char) {
     '\n本轮顺着对方正在聊的事接话。变化措辞和节奏，直接输出角色说的话，不复述这些规则。';
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const memory = ROLE_MEMORY.prompt(roleMemories[char.id] || ROLE_MEMORY.normalize(null), playerProfile, latest, previousVisits[char.id]);
-  const lengthRule = replyLength === 'short' && !/长文|长一点|多写|详细|完整|故事|展开/.test(latest) ? '本轮一到两句自然接话，优先快而贴切；用户明确要故事、长文时仍要完整。' : replyLength === 'long' ? '本轮认真长聊，按话题展开具体细节，可分自然段，通常约300到600字，有结尾，不套清单。' : '普通闲聊可短到一句或两三句；要故事、长文、解释时完整展开。只发表情也要懂得接情绪，可用文字和少量贴切表情回应。';
+  const lengthRule = replyLength === 'short' && !/长文|长一点|多写|详细|完整|故事|展开/.test(latest) ? '本轮一到两句自然接话，优先快而贴切；用户明确要故事、长文时仍要完整。' : replyLength === 'long' ? '本轮认真长聊，按对方需要展开具体细节，可分自然段。对方指定篇幅时尽量满足，尽量有结尾；没有指定篇幅时按内容自然决定，不硬凑字数，不套清单。' : '普通闲聊可短到一句或两三句；要故事、长文、解释时完整展开。只发表情也要懂得接情绪，可用文字和少量贴切表情回应。';
   const lastBot = (chatHistories[char.id] || []).filter(msg => msg.sender === 'bot').at(-1)?.text || '';
   const preferences = roleMemories[char.id]?.preferences.join(' ') || '';
   const noQuestion = /(?:不要|别|少|不用).{0,16}(?:追问|反问|问号|问题)/.test(preferences) || /[？?]\s*$/.test(lastBot) && !/[？?]\s*$/.test(latest);
-  return base.slice(0, 3200) + memory.slice(0, 2500) + '\n' + lengthRule + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '');
+  return (base + '\n' + lengthRule + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
 }
 
 function buildRequestMessages(char) {
-  return [{role: 'system', content: buildSystemPrompt(char)}].concat(
-    (chatHistories[char.id] || []).slice(-20).map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'assistant',
-      content: msg.text.slice(0, 6000)
-    }))
-  );
+  const history = (chatHistories[char.id] || []).slice(-20);
+  const latestUser = history.findLastIndex(msg => msg.sender === 'user');
+  const recent = [];
+  let budget = CHAT_LIMITS.history;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const full = i === latestUser;
+    const content = history[i].text.slice(0, full ? CHAT_LIMITS.message : Math.min(1600, budget));
+    if (!content) continue;
+    if (!full) budget -= content.length;
+    recent.unshift({role: history[i].sender === 'user' ? 'user' : 'assistant', content});
+  }
+  return [{role: 'system', content: buildSystemPrompt(char)}, ...recent];
 }
 
 async function requestCharacterReply(char) {
@@ -600,7 +619,7 @@ async function requestCharacterReply(char) {
   const controller = new AbortController();
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const longRequest = replyLength === 'long' || /长文|长一点|多写|详细|完整|故事|展开/.test(latest);
-  const job = {controller, timedOut: false, text: '', messages: buildRequestMessages(char), maxTokens: longRequest ? 1200 : replyLength === 'short' ? 180 : 300};
+  const job = {controller, timedOut: false, text: '', messages: buildRequestMessages(char), maxTokens: longRequest ? 6000 : replyLength === 'short' ? 180 : 300};
   pendingReplies.set(char.id, job);
   replyErrors.delete(char.id);
   if (activeCharacterId === char.id) {
@@ -610,7 +629,7 @@ async function requestCharacterReply(char) {
   const timer = setTimeout(() => {
     job.timedOut = true;
     controller.abort();
-  }, REQUEST_TIMEOUT_MS);
+  }, longRequest ? LONG_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
   try {
     let text = '';
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -628,7 +647,7 @@ async function requestCharacterReply(char) {
         }
         text = await readModelReply(response, delta => {
           if (pendingReplies.get(char.id) !== job) return;
-          job.text = (job.text + delta).slice(0, 12000);
+          job.text = (job.text + delta).slice(0, CHAT_LIMITS.reply);
           if (activeCharacterId !== char.id) return;
           const bubble = messagesDiv.querySelector('[data-message-id="stream_' + char.id + '"] .message-bubble');
           if (bubble) {bubble.textContent = job.text; scrollToBottom();}
@@ -642,7 +661,7 @@ async function requestCharacterReply(char) {
     }
     if (!text.trim()) throw new Error('没有收到回复，请重试。');
     if (pendingReplies.get(char.id) !== job || !chatHistories[char.id]) return;
-    chatHistories[char.id].push({id: makeId(), sender: 'bot', text: text.trim().slice(0, 12000), timestamp: getCurrentTime(), createdAt: new Date().toISOString()});
+    chatHistories[char.id].push({id: makeId(), sender: 'bot', text: text.trim().slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()});
     previousVisits[char.id] = '';
     saveDataToStorage();
   } catch (error) {
@@ -671,6 +690,7 @@ async function readModelReply(response, onDelta) {
     let data;
     try { data = await response.json(); } catch (error) { throw new Error('回复中断，请重试。'); }
     if (!data || typeof data.text !== 'string' || !data.text.trim() || data.error || data.ok === false) throw new Error('没有收到回复，请重试。');
+    if (data.text.length > CHAT_LIMITS.reply) throw new Error('回复过长，请分段继续聊。');
     return data.text;
   }
   const reader = response.body.getReader();
@@ -688,7 +708,7 @@ async function readModelReply(response, onDelta) {
       throw error;
     }
     if (typeof event.delta === 'string') {
-      if (text.length + event.delta.length > 12000) throw new Error('回复过长，请分段继续聊。');
+      if (text.length + event.delta.length > CHAT_LIMITS.reply) throw new Error('回复过长，请分段继续聊。');
       text += event.delta;
       onDelta(event.delta);
     }
@@ -972,7 +992,7 @@ async function restoreBackup() {
         chatHistories[char.id] = incoming.concat(chatHistories[char.id] || []).filter(msg => {
           if (!msg || typeof msg.text !== 'string' || !['bot', 'user'].includes(msg.sender) || typeof msg.id !== 'string' || ids.has(msg.id)) return false;
           ids.add(msg.id); return true;
-        }).map(msg => ({id: msg.id, sender: msg.sender, text: msg.text.slice(0, 12000), timestamp: String(msg.timestamp || '').slice(0, 20), createdAt: String(msg.createdAt || '').slice(0, 30)}));
+        }).map(msg => ({id: msg.id, sender: msg.sender, text: msg.text.slice(0, CHAT_LIMITS.message), timestamp: String(msg.timestamp || '').slice(0, 20), createdAt: String(msg.createdAt || '').slice(0, 30)}));
       }
       const incomingMemory = ROLE_MEMORY.normalize(backup.memories?.[char.id]);
       const old = roleMemories[char.id] || ROLE_MEMORY.normalize(null);
