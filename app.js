@@ -205,7 +205,7 @@ function closeSidebar() {
 function renderSidebar() {
   presetCharacterList.replaceChildren();
   customCharacterList.replaceChildren();
-  byId('presetRoleTitle').textContent = '预设角色 · ' + PRESET_CHARACTERS.filter(char => char.gender === 'male').length + ' 位男性';
+  byId('presetRoleTitle').textContent = '预设角色 · ' + PRESET_CHARACTERS.filter(char => char.gender === 'female').length + ' 女 / ' + PRESET_CHARACTERS.filter(char => char.gender === 'male').length + ' 男';
   characters.forEach(char => {
     const card = document.createElement('div');
     card.className = 'character-card' + (char.id === activeCharacterId ? ' active' : '');
