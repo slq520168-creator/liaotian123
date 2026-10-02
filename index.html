@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>暖暖 - AI角色创建器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧：角色创建面板 -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <h1>✨ 角色创建器</h1>
+                <p>创建你的专属AI伴侣</p>
+            </div>
+
+            <form class="character-form" id="characterForm">
+                <!-- 头像上传 -->
+                <div class="form-group avatar-upload">
+                    <label>角色头像</label>
+                    <div class="avatar-preview" id="avatarPreview">
+                        <img id="avatarImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='100' fill='%23e0e0e0'/%3E%3Ccircle cx='100' cy='70' r='30' fill='%23999'/%3E%3Cellipse cx='100' cy='140' rx='40' ry='50' fill='%23999'/%3E%3C/svg%3E" alt="头像">
+                    </div>
+                    <input type="file" id="avatarInput" accept="image/*" style="display:none">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('avatarInput').click()">上传头像</button>
+                </div>
+
+                <!-- 基本信息 -->
+                <div class="form-group">
+                    <label for="characterName">角色名字 *</label>
+                    <input type="text" id="characterName" placeholder="例如：暖暖" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="characterAge">年龄 *</label>
+                        <input type="number" id="characterAge" placeholder="18" min="1" max="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="characterHeight">身高</label>
+                        <input type="text" id="characterHeight" placeholder="158cm">
+                    </div>
+                </div>
+
+                <!-- 外观设定 -->
+                <div class="form-group">
+                    <label for="characterAppearance">外观描述</label>
+                    <textarea id="characterAppearance" placeholder="例如：双马尾，清秀可爱，气质温柔..." rows="3"></textarea>
+                </div>
+
+                <!-- 性格标签 -->
+                <div class="form-group">
+                    <label>性格标签（可多选）</label>
+                    <div class="tag-container" id="personalityTags">
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="温和">
+                            <span>温和</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="善解人意">
+                            <span>善解人意</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="细心">
+                            <span>细心</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="开朗">
+                            <span>开朗</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="有耐心">
+                            <span>有耐心</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="幽默">
+                            <span>幽默</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="独立">
+                            <span>独立</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="温柔">
+                            <span>温柔</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="认真">
+                            <span>认真</span>
+                        </label>
+                        <label class="tag-checkbox">
+                            <input type="checkbox" name="personality" value="乐观">
+                            <span>乐观</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 说话风格 -->
+                <div class="form-group">
+                    <label for="characterTone">说话风格</label>
+                    <textarea id="characterTone" placeholder="例如：温柔、自然、口语化、偶尔会撒娇..." rows="2"></textarea>
+                </div>
+
+                <!-- 角色背景 -->
+                <div class="form-group">
+                    <label for="characterBackground">角色背景/故事</label>
+                    <textarea id="characterBackground" placeholder="讲述角色的背景故事..." rows="3"></textarea>
+                </div>
+
+                <!-- 喜好 -->
+                <div class="form-group">
+                    <label for="characterLikes">喜好/爱好</label>
+                    <textarea id="characterLikes" placeholder="例如：喜欢陪伴、喜欢倾听、喜欢笑..." rows="2"></textarea>
+                </div>
+
+                <!-- 系统提示词 -->
+                <div class="form-group">
+                    <label for="characterPrompt">系统提示词</label>
+                    <textarea id="characterPrompt" placeholder="放入详细的AI系统提示词..." rows="4"></textarea>
+                </div>
+
+                <!-- 按钮组 -->
+                <div class="button-group">
+                    <button type="button" class="btn btn-primary" onclick="saveCharacter()">💾 保存角色</button>
+                    <button type="button" class="btn btn-secondary" onclick="loadCharacters()">📂 加载角色</button>
+                    <button type="reset" class="btn btn-light">🔄 重置表单</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 右侧：角色预览 & 对话 -->
+        <div class="right-panel">
+            <!-- 角色卡片 -->
+            <div class="character-card" id="characterCard">
+                <div class="card-avatar">
+                    <img id="cardAvatarImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='100' fill='%23e0e0e0'/%3E%3Ccircle cx='100' cy='70' r='30' fill='%23999'/%3E%3Cellipse cx='100' cy='140' rx='40' ry='50' fill='%23999'/%3E%3C/svg%3E" alt="角色头像">
+                </div>
+                <div class="card-info">
+                    <h2 id="cardName">未设置</h2>
+                    <p id="cardBasicInfo" class="basic-info">年龄 / 身高</p>
+                    <p id="cardAppearance" class="appearance">外观描述</p>
+                </div>
+                <div class="card-personality">
+                    <div class="tag-list" id="cardPersonalityTags"></div>
+                </div>
+                <div class="card-description">
+                    <h3>角色介绍</h3>
+                    <p id="cardDescription">还没有创建角色...快来创建一个吧！</p>
+                </div>
+            </div>
+
+            <!-- 对话界面 -->
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <h3 id="chatWith">与 未知 对话</h3>
+                    <button class="btn-small" onclick="toggleChatInfo()">ℹ️</button>
+                </div>
+                
+                <div class="messages" id="messagesContainer">
+                    <div class="message system">
+                        <p>开始与你的角色聊天吧！</p>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <textarea id="userInput" placeholder="输入你的消息..." rows="2"></textarea>
+                    <button class="btn-send" onclick="sendMessage()">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 已保存角色列表模态框 -->
+    <div id="characterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>已保存的角色</h2>
+                <span class="close" onclick="closeCharacterModal()">&times;</span>
+            </div>
+            <div id="charactersList" class="characters-list"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
