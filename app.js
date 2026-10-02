@@ -2,12 +2,18 @@
  * 角色聊天：角色独立历史、真实模型回复与可取消的请求生命周期。
  */
 const CHAT_API_URL = 'https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast';
-const DEFAULT_AVATAR = 'assets/avatars/nuannuan.svg';
+const DEFAULT_AVATAR = 'assets/avatars/nuannuan-portrait.jpg';
+const DEFAULT_USER_AVATAR = 'assets/avatars/user.svg';
+const MAX_AVATAR_DATA_LENGTH = 180000;
 const REQUEST_TIMEOUT_MS = 30000;
 let characters = [];
 let activeCharacterId = 'nuannuan';
 let chatHistories = Object.create(null);
-let selectedFormAvatar = 'assets/avatars/nuannuan.jpg';
+let selectedFormAvatar = DEFAULT_AVATAR;
+let userAvatar = DEFAULT_USER_AVATAR;
+let roleAvatarUploadVersion = 0;
+let userAvatarUploadVersion = 0;
+let roleAvatarBusy = false;
 const pendingReplies = new Map();
 const replyErrors = new Map();
 const byId = id => document.getElementById(id);
@@ -26,7 +32,8 @@ const sendBtn = byId('sendBtn');
 const createModalOverlay = byId('createModalOverlay');
 const createRoleForm = byId('createRoleForm');
 const presetAvatarPicker = byId('presetAvatarPicker');
-const roleAvatarCustom = byId('roleAvatarCustom');
+const roleAvatarUpload = byId('roleAvatarUpload');
+const userAvatarUpload = byId('userAvatarUpload');
 const replyStatus = byId('replyStatus');
 
 function readStoredJSON(key, fallback) {
@@ -39,15 +46,16 @@ function readStoredJSON(key, fallback) {
   }
 }
 
-function safeAvatar(value) {
-  if (typeof value !== 'string') return DEFAULT_AVATAR;
+function safeAvatar(value, fallback = DEFAULT_AVATAR) {
+  if (typeof value !== 'string') return fallback;
   const src = value.trim();
+  if (src.length <= MAX_AVATAR_DATA_LENGTH && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(src)) return src;
   if (/^assets\/avatars\/[a-z0-9_-]+\.(svg|jpg|jpeg|png|webp)$/i.test(src)) return src;
   try {
     const url = new URL(src);
     if (url.protocol === 'https:' && !url.username && !url.password) return url.href;
   } catch (error) {}
-  return DEFAULT_AVATAR;
+  return fallback;
 }
 
 function normalizeCustomCharacter(value) {
@@ -61,12 +69,18 @@ function normalizeCustomCharacter(value) {
     avatar: safeAvatar(value.avatar),
     gender: ['male', 'female', 'unspecified'].includes(value.gender) ? value.gender : 'unspecified',
     age: Number.isFinite(Number(value.age)) && Number(value.age) >= 18 ? Math.min(100, Math.floor(Number(value.age))) : 24,
-    voice: '忠实使用用户设定的性格和说话风格，保持自然、尊重和体贴。',
-    quickReplies: ['你好，认识一下', '今天想找你聊聊', '说说你喜欢的事', '听听我的心事']
+    voice: typeof value.voice === 'string' && value.voice.trim() ? value.voice.trim().slice(0, 240) : '忠实使用用户设定的性格和说话风格，保持自然、尊重和体贴。',
+    interests: typeof value.interests === 'string' ? value.interests.trim().slice(0, 240) : '',
+    relationship: typeof value.relationship === 'string' ? value.relationship.trim().slice(0, 300) : '',
+    quickReplies: ['你好，认识一下', '今天想找你聊聊', '说说你喜欢的事', '听听我的心事', '我有件开心的事', '讲一个有意思的小故事']
   };
 }
 
 function loadDataFromStorage() {
+  try {
+    const storedAvatar = localStorage.getItem('liaotian_user_avatar');
+    if (storedAvatar) userAvatar = safeAvatar(storedAvatar, DEFAULT_USER_AVATAR);
+  } catch (error) {}
   const storedCustoms = readStoredJSON('liaotian_custom_chars', []);
   const seen = new Set(PRESET_CHARACTERS.map(char => char.id));
   const customs = (Array.isArray(storedCustoms) ? storedCustoms : []).map(normalizeCustomCharacter).filter(char => {
@@ -137,6 +151,7 @@ function init() {
   loadDataFromStorage();
   setupEventListeners();
   renderAvatarPicker();
+  updateUserAvatarPreview();
   switchCharacter(activeCharacterId, false);
   updateViewportHeight();
   window.addEventListener('resize', updateViewportHeight);
@@ -176,14 +191,10 @@ function setupEventListeners() {
       closeSidebar();
     }
   });
-  roleAvatarCustom.addEventListener('input', () => {
-    if (roleAvatarCustom.value.trim()) {
-      presetAvatarPicker.querySelectorAll('.avatar-option').forEach(img => img.classList.remove('selected'));
-      selectedFormAvatar = safeAvatar(roleAvatarCustom.value);
-    } else {
-      selectFormAvatar(PRESET_CHARACTERS[0].avatar);
-    }
-  });
+  byId('chooseRoleAvatarBtn').addEventListener('click', () => roleAvatarUpload.click());
+  roleAvatarUpload.addEventListener('change', handleRoleAvatarUpload);
+  byId('changeUserAvatarBtn').addEventListener('click', () => userAvatarUpload.click());
+  userAvatarUpload.addEventListener('change', handleUserAvatarUpload);
   createRoleForm.addEventListener('submit', handleCreateRole);
   window.addEventListener('pagehide', () => {
     pendingReplies.forEach(job => job.controller.abort());
@@ -286,7 +297,17 @@ function appendMessageToDOM(msg, char) {
   const row = document.createElement('div');
   row.className = 'message-row ' + msg.sender;
   row.dataset.messageId = msg.id || '';
-  if (msg.sender === 'bot') row.appendChild(createAvatar(char.avatar, 'message-avatar avatar', char.name));
+  if (msg.sender === 'bot') {
+    row.appendChild(createAvatar(char.avatar, 'message-avatar avatar', char.name));
+  } else {
+    const avatarButton = document.createElement('button');
+    avatarButton.type = 'button';
+    avatarButton.className = 'message-avatar-button';
+    avatarButton.setAttribute('aria-label', '从相册设置我的头像');
+    avatarButton.appendChild(createAvatar(userAvatar, 'message-avatar avatar', '我'));
+    avatarButton.addEventListener('click', () => userAvatarUpload.click());
+    row.appendChild(avatarButton);
+  }
   const content = document.createElement('div');
   content.className = 'message-content';
   const bubble = document.createElement('div');
@@ -384,14 +405,15 @@ function handleSendMessage() {
 
 function buildSystemPrompt(char) {
   const gender = char.gender === 'male' ? '成年男性' : char.gender === 'female' ? '成年女性' : '成年角色';
+  const scenes = char.conversation && typeof char.conversation === 'object' ?
+    Object.entries(char.conversation).filter(([, value]) => typeof value === 'string').map(([key, value]) => key + '：' + value).join('\n') : ROLE_REPLY_SCENES.join('\n');
   return ROLE_CHAT_RULES.join('\n') + '\n当前角色：' + char.name + '，' + char.age + '岁，' + gender +
     '。\n性格：' + char.personality + '\n说话风格：' + char.voice +
     (char.interests ? '\n兴趣：' + char.interests : '') +
-    '\n口吻参考（仅展示说话方式，不是发生过的聊天，不照搬）：' +
-    '\n对方：“饭又做糊了。” 自然接话：“这锅今晚是想抢主角了。”' +
-    '\n对方：“今天好累，只想随便聊聊。” 自然接话：“行，今天那些烦人的事先不聊。跟你待会儿。”' +
-    '\n对方：“朋友说我想太多，听了很烦。” 自然接话：“好好的心事被一句话打发，换我也会不舒服。”' +
-    '\n本轮先接对方这句话。普通陪聊用一两句短话，通常不超过六十字；只有对方问具体问题或要详细内容才展开。用户没有求建议就不指导生活，也不用追问来凑回复。直接输出角色说的话。';
+    (char.background ? '\n角色背景（虚构设定）：' + char.background : '') +
+    (char.relationship ? '\n相处方式：' + char.relationship : '') +
+    '\n不同情境的接话方式（用来理解性格，不是固定回复，不要照着念）：\n' + scenes +
+    '\n本轮顺着对方正在聊的事接话。普通闲聊可以两到四句，也可以短一些；需要故事、解释、建议或认真长聊时给完整内容，不要因为字数限制只回一句。变化措辞和节奏，直接输出角色说的话，不复述这些规则。';
 }
 
 function buildRequestMessages(char) {
@@ -421,7 +443,7 @@ async function requestCharacterReply(char) {
     const response = await fetch(CHAT_API_URL, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({messages: buildRequestMessages(char)}),
+      body: JSON.stringify({messages: buildRequestMessages(char), client: 'liaotian123', max_tokens: 480}),
       signal: controller.signal,
       credentials: 'omit',
       cache: 'no-store'
@@ -462,7 +484,12 @@ async function requestCharacterReply(char) {
 }
 
 function selectFormAvatar(src) {
-  selectedFormAvatar = src;
+  roleAvatarUploadVersion++;
+  roleAvatarBusy = false;
+  byId('createRoleSubmitBtn').disabled = false;
+  selectedFormAvatar = safeAvatar(src);
+  byId('roleAvatarPreview').src = selectedFormAvatar;
+  byId('roleAvatarStatus').textContent = selectedFormAvatar.startsWith('data:') ? '照片已选好。' : '可选预设人像，也可以从相册选择。';
   presetAvatarPicker.querySelectorAll('.avatar-option').forEach(img => {
     img.classList.toggle('selected', img.dataset.avatar === src);
   });
@@ -479,7 +506,7 @@ function renderAvatarPicker() {
     img.dataset.avatar = char.avatar;
     button.appendChild(img);
     button.addEventListener('click', () => {
-      roleAvatarCustom.value = '';
+      roleAvatarUpload.value = '';
       selectFormAvatar(char.avatar);
     });
     presetAvatarPicker.appendChild(button);
@@ -501,18 +528,14 @@ function closeModal() {
 
 function handleCreateRole(event) {
   event.preventDefault();
-  const avatarText = roleAvatarCustom.value.trim();
-  if (avatarText && safeAvatar(avatarText) === DEFAULT_AVATAR) {
-    roleAvatarCustom.setCustomValidity('请填写可访问的 HTTPS 图片链接。');
-    roleAvatarCustom.reportValidity();
-    roleAvatarCustom.addEventListener('input', () => roleAvatarCustom.setCustomValidity(''), {once: true});
-    return;
-  }
+  if (roleAvatarBusy) return;
   const char = normalizeCustomCharacter({
     id: 'custom_' + makeId(),
     name: byId('roleName').value, tag: byId('roleTag').value,
     greeting: byId('roleGreeting').value, personality: byId('rolePersonality').value,
     gender: byId('roleGender').value, age: byId('roleAge').value,
+    voice: byId('roleVoice').value, interests: byId('roleInterests').value,
+    relationship: byId('roleRelationship').value,
     avatar: selectedFormAvatar
   });
   if (!char) return;
@@ -520,6 +543,89 @@ function handleCreateRole(event) {
   chatHistories[char.id] = [{id: makeId(), sender: 'bot', text: char.greeting, timestamp: getCurrentTime()}];
   closeModal();
   switchCharacter(char.id);
+}
+
+async function readAlbumAvatar(file) {
+  if (!file || (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(file.name)) || file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
+    throw new Error('请选择相册里的照片。');
+  }
+  if (file.size > 20 * 1024 * 1024) throw new Error('这张照片超过20MB，请换一张较小的照片。');
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('这张照片暂时无法读取，请换用JPEG、PNG或WebP照片。'));
+      img.src = objectUrl;
+    });
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    if (!side) throw new Error('照片没有有效尺寸，请重新选择。');
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 384;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('手机暂时无法处理照片，请重试。');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, 384, 384);
+    context.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 384, 384);
+    let result = canvas.toDataURL('image/jpeg', 0.86);
+    if (result.length > MAX_AVATAR_DATA_LENGTH) result = canvas.toDataURL('image/jpeg', 0.65);
+    if (result.length > MAX_AVATAR_DATA_LENGTH || !result.startsWith('data:image/jpeg;base64,')) throw new Error('照片处理失败，请换一张照片重试。');
+    return result;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function handleRoleAvatarUpload() {
+  const file = roleAvatarUpload.files[0];
+  if (!file) return;
+  const version = ++roleAvatarUploadVersion;
+  roleAvatarBusy = true;
+  byId('createRoleSubmitBtn').disabled = true;
+  byId('roleAvatarStatus').textContent = '正在处理照片…';
+  try {
+    const avatar = await readAlbumAvatar(file);
+    if (version !== roleAvatarUploadVersion) return;
+    selectFormAvatar(avatar);
+  } catch (error) {
+    if (version === roleAvatarUploadVersion) byId('roleAvatarStatus').textContent = error.message;
+  } finally {
+    if (version === roleAvatarUploadVersion) {
+      roleAvatarBusy = false;
+      byId('createRoleSubmitBtn').disabled = false;
+    }
+    roleAvatarUpload.value = '';
+  }
+}
+
+function updateUserAvatarPreview() {
+  byId('userAvatarPreview').src = userAvatar;
+}
+
+async function handleUserAvatarUpload() {
+  const file = userAvatarUpload.files[0];
+  if (!file) return;
+  const version = ++userAvatarUploadVersion;
+  const status = byId('avatarUploadStatus');
+  status.textContent = '正在处理我的头像…';
+  try {
+    const avatar = await readAlbumAvatar(file);
+    if (version !== userAvatarUploadVersion) return;
+    userAvatar = avatar;
+    updateUserAvatarPreview();
+    renderMessages();
+    try {
+      localStorage.setItem('liaotian_user_avatar', userAvatar);
+      status.textContent = '我的头像已更新。';
+    } catch (error) {
+      status.textContent = '头像已显示，但手机存储空间不足，刷新后可能无法保留。';
+    }
+  } catch (error) {
+    if (version === userAvatarUploadVersion) status.textContent = error.message;
+  } finally {
+    userAvatarUpload.value = '';
+  }
 }
 
 function clearCurrentChat() {
