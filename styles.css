@@ -98,7 +98,6 @@ body { position: fixed; inset: 0; }
 }
 
 .template-link { color: var(--primary-color); font-size: 12px; text-align: center; }
-.role-save-hint { margin-bottom: 12px; }
 .chat-tools { max-width: 800px; margin: 0 auto 8px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); }
 .tool-btn { padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 20px; background: var(--bg-app); color: var(--text-main); font-family: inherit; cursor: pointer; min-height: 32px; }
 .chat-tools select { font: inherit; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); padding: 6px; }
@@ -108,7 +107,10 @@ body { position: fixed; inset: 0; }
 .memory-facts { font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .memory-fact { display: flex; align-items: start; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border-color); padding: 8px 0; }
 .memory-fact button { flex-shrink: 0; }
-.backup-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.backup-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.backup-actions .btn { width: 100%; min-height: 44px; padding: 10px 12px; font-size: 14px; line-height: 22px; }
+.memory-facts:empty, .form-hint:empty { display: none; }
+[hidden] { display: none !important; }
 .role-details-content { display: flex; flex-direction: column; gap: 12px; line-height: 1.7; font-size: 14px; overflow-wrap: anywhere; }
 .role-details-content img { width: 84px; height: 84px; align-self: center; }
 .role-details-content p { white-space: pre-wrap; }
