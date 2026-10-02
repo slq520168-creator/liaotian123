@@ -35,6 +35,8 @@ const quickRepliesDiv = byId('quickReplies');
 const userInput = byId('userInput');
 const sendBtn = byId('sendBtn');
 const createModalOverlay = byId('createModalOverlay');
+const dialogReturnFocus = new Map();
+let sidebarReturnFocus = null;
 const createRoleForm = byId('createRoleForm');
 const presetAvatarPicker = byId('presetAvatarPicker');
 const roleAvatarUpload = byId('roleAvatarUpload');
@@ -139,6 +141,7 @@ function saveDataToStorage() {
     localStorage.setItem('liaotian_player_profile', JSON.stringify(playerProfile));
     localStorage.setItem('liaotian_role_memories', JSON.stringify(roleMemories));
     localStorage.setItem('liaotian_reply_length', JSON.stringify(replyLength));
+    if (replyStatus.textContent === '空间不足，暂时无法保存。') replyStatus.textContent = '';
     return true;
   } catch (error) {
     replyStatus.textContent = '空间不足，暂时无法保存。';
@@ -175,6 +178,32 @@ function updateViewportHeight() {
   document.documentElement.style.setProperty('--viewport-top', viewport ? Math.max(0, viewport.offsetTop) + 'px' : '0px');
   const typing = document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
   document.documentElement.classList.toggle('keyboard-open', typing && height < window.innerHeight - 100);
+  syncSidebarLayout();
+}
+
+function usesSidebarDrawer() {
+  return window.matchMedia('(max-width: 767px)').matches ||
+    (document.documentElement.classList.contains('keyboard-open') && window.matchMedia('(max-width: 1199px)').matches);
+}
+
+function syncSidebarLayout() {
+  const drawer = usesSidebarDrawer();
+  if (!drawer) {
+    sidebar.classList.remove('active');
+    sidebarOverlay.classList.remove('active');
+    byId('openSidebarBtn').setAttribute('aria-expanded', 'false');
+  }
+  const drawerOpen = drawer && sidebar.classList.contains('active');
+  sidebar.setAttribute('aria-hidden', String(drawer && !drawerOpen));
+  sidebar.inert = drawer && !drawerOpen;
+  document.querySelector('.chat-main').inert = drawerOpen;
+}
+
+function restoreInterfaceFocus(previous) {
+  const bounds = previous?.getBoundingClientRect();
+  const visible = bounds && bounds.width && bounds.height && bounds.right > 0 && bounds.x < window.innerWidth && bounds.bottom > 0 &&
+    bounds.y < window.innerHeight && !previous.closest('[inert]');
+  (visible && previous.isConnected ? previous : byId('roleDetailsBtn')).focus({preventScroll: true});
 }
 
 function init() {
@@ -236,9 +265,29 @@ function setupEventListeners() {
     if (event.target === createModalOverlay) closeModal();
   });
   document.addEventListener('keydown', event => {
+    const dialog = document.querySelector('.modal-overlay.active');
     if (event.key === 'Escape') {
-      closeModal();
-      closeSidebar();
+      if (dialog) {
+        if (dialog.id === 'createModalOverlay') closeModal();
+        else closeDialog(dialog.id);
+      } else if (sidebar.classList.contains('active')) closeSidebar();
+      else {
+        byId('emojiPicker').hidden = true;
+        byId('emojiBtn').setAttribute('aria-expanded', 'false');
+      }
+      event.preventDefault();
+    } else if (event.key === 'Tab') {
+      const container = dialog || (usesSidebarDrawer() && sidebar.classList.contains('active') ? sidebar : null);
+      if (container) {
+        const controls = [...container.querySelectorAll('button, a[href], input, select, textarea, [tabindex="0"]')]
+          .filter(item => !item.disabled && !item.hidden && item.getClientRects().length);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (first && (!container.contains(document.activeElement) || document.activeElement === container.querySelector('.modal') ||
+          (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last))) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        }
+      }
     }
   });
   byId('chooseRoleAvatarBtn').addEventListener('click', () => roleAvatarUpload.click());
@@ -246,7 +295,23 @@ function setupEventListeners() {
   byId('changeUserAvatarBtn').addEventListener('click', () => userAvatarUpload.click());
   userAvatarUpload.addEventListener('change', handleUserAvatarUpload);
   createRoleForm.addEventListener('submit', handleCreateRole);
-  byId('uploadRoleCodeBtn').addEventListener('click', () => byId('roleCodeUpload').click());
+  byId('uploadRoleCodeBtn').addEventListener('click', openRoleCodeEditor);
+  byId('chooseRoleCodeFileBtn').addEventListener('click', () => byId('roleCodeUpload').click());
+  byId('useRoleCodeTemplateBtn').addEventListener('click', () => {
+    byId('roleCodeEditor').value = createRoleCodeTemplate();
+    byId('roleCodeEditorStatus').textContent = '';
+    saveRoleCodeDraft();
+  });
+  byId('roleCodeEditor').addEventListener('input', saveRoleCodeDraft);
+  byId('closeRoleCodeBtn').addEventListener('click', () => closeDialog('roleCodeModalOverlay'));
+  byId('cancelRoleCodeBtn').addEventListener('click', () => closeDialog('roleCodeModalOverlay'));
+  byId('roleCodeForm').addEventListener('submit', handleRoleCodeSubmit);
+  byId('roleCodeEditor').addEventListener('keydown', event => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing && event.keyCode !== 229) {
+      event.preventDefault();
+      byId('roleCodeForm').requestSubmit();
+    }
+  });
   byId('roleCodeUpload').addEventListener('change', handleRoleCodeUpload);
   byId('replyLength').addEventListener('change', () => {replyLength = byId('replyLength').value; saveDataToStorage();});
   byId('emojiBtn').addEventListener('click', () => {
@@ -264,8 +329,7 @@ function setupEventListeners() {
   byId('roleDetailsBtn').addEventListener('click', openRoleDetails);
   byId('closeRoleDetailsBtn').addEventListener('click', () => closeDialog('roleDetailsOverlay'));
   byId('adjustRoleBtn').addEventListener('click', () => {closeDialog('roleDetailsOverlay'); openMemoryModal();});
-  ['memoryModalOverlay', 'roleDetailsOverlay'].forEach(id => byId(id).addEventListener('click', event => {if (event.target === byId(id)) closeDialog(id);}));
-  document.addEventListener('keydown', event => {if (event.key === 'Escape') ['memoryModalOverlay', 'roleDetailsOverlay'].forEach(closeDialog);});
+  ['memoryModalOverlay', 'roleDetailsOverlay', 'roleCodeModalOverlay'].forEach(id => byId(id).addEventListener('click', event => {if (event.target === byId(id)) closeDialog(id);}));
   window.addEventListener('online', () => {
     replyErrors.forEach((failure, id) => {
       const char = characters.find(item => item.id === id);
@@ -278,15 +342,26 @@ function setupEventListeners() {
 }
 
 function openSidebar() {
+  if (!usesSidebarDrawer()) {
+    sidebar.querySelector('.character-card.active')?.scrollIntoView({block: 'nearest'});
+    return;
+  }
+  sidebarReturnFocus = document.activeElement;
   sidebar.classList.add('active');
   sidebarOverlay.classList.add('active');
   byId('openSidebarBtn').setAttribute('aria-expanded', 'true');
+  syncSidebarLayout();
+  byId('closeSidebarBtn').focus({preventScroll: true});
 }
 
 function closeSidebar() {
+  const wasOpen = sidebar.classList.contains('active');
   sidebar.classList.remove('active');
   sidebarOverlay.classList.remove('active');
   byId('openSidebarBtn').setAttribute('aria-expanded', 'false');
+  syncSidebarLayout();
+  if (wasOpen) restoreInterfaceFocus(sidebarReturnFocus);
+  sidebarReturnFocus = null;
 }
 
 function renderSidebar() {
@@ -667,13 +742,11 @@ function renderAvatarPicker() {
 }
 
 function openModal() {
-  createModalOverlay.classList.add('active');
-  createModalOverlay.setAttribute('aria-hidden', 'false');
+  openDialog('createModalOverlay');
 }
 
 function closeModal() {
-  createModalOverlay.classList.remove('active');
-  createModalOverlay.setAttribute('aria-hidden', 'true');
+  closeDialog('createModalOverlay');
   createRoleForm.reset();
   selectFormAvatar(PRESET_CHARACTERS[0].avatar);
 }
@@ -771,9 +844,27 @@ function renderEmojiPicker() {
   });
 }
 
+function openDialog(id) {
+  const overlay = byId(id);
+  if (!overlay.classList.contains('active')) dialogReturnFocus.set(id, document.activeElement);
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.querySelector('.app-container').inert = true;
+  const dialog = overlay.querySelector('.modal');
+  dialog.tabIndex = -1;
+  dialog.focus({preventScroll: true});
+}
+
 function closeDialog(id) {
-  byId(id).classList.remove('active');
-  byId(id).setAttribute('aria-hidden', 'true');
+  const overlay = byId(id);
+  if (!overlay.classList.contains('active')) return;
+  overlay.classList.remove('active');
+  const otherDialog = document.querySelector('.modal-overlay.active');
+  document.querySelector('.app-container').inert = !!otherDialog;
+  if (otherDialog) otherDialog.querySelector('.modal').focus({preventScroll: true});
+  else restoreInterfaceFocus(dialogReturnFocus.get(id));
+  overlay.setAttribute('aria-hidden', 'true');
+  dialogReturnFocus.delete(id);
 }
 
 function openMemoryModal() {
@@ -785,8 +876,7 @@ function openMemoryModal() {
   byId('rolePreferences').value = '';
   byId('memoryStatus').textContent = '';
   renderMemoryFacts();
-  byId('memoryModalOverlay').classList.add('active');
-  byId('memoryModalOverlay').setAttribute('aria-hidden', 'false');
+  openDialog('memoryModalOverlay');
 }
 
 function renderMemoryFacts() {
@@ -839,7 +929,7 @@ function openRoleDetails() {
   [char.tag + ' · ' + char.age + '岁', char.isPreset ? char.personality.split('。')[0] + '。' : char.personality, char.background, char.interests ? '爱好：' + char.interests : ''].filter(Boolean).forEach(text => {
     const p = document.createElement('p'); p.textContent = text; box.appendChild(p);
   });
-  byId('roleDetailsOverlay').classList.add('active'); byId('roleDetailsOverlay').setAttribute('aria-hidden', 'false');
+  openDialog('roleDetailsOverlay');
 }
 
 function buildBackup() {
