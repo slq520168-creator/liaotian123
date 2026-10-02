@@ -2,131 +2,30 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>聊天</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI角色聊天</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="header-banner">
-    <img id="headerImage" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80" alt="封面">
-    <button class="btn-header-menu" id="headerMenuBtn" aria-label="打开设置">☰</button>
-  </header>
-
-  <main class="chat-container">
-    <section class="chat-top">
-      <div class="character-brief">
-        <img id="chatCharacterAvatar" class="brief-avatar" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80" alt="角色头像">
-        <div class="brief-info">
-          <h2 id="chatCharacterName">暖暖</h2>
-          <p id="chatCharacterStatus">在线 · 25岁 · 168cm</p>
+  <div class="container">
+    <div class="chat-box">
+      <div class="chat-header">
+        <h1>角色聊天</h1>
+      </div>
+      
+      <div class="messages" id="messages">
+        <div class="message bot">
+          <p>你好，我在这里。</p>
         </div>
       </div>
-      <button class="btn-settings" id="settingsBtn" aria-label="设置">⚙️</button>
-    </section>
-
-    <section class="messages-box" id="messagesBox">
-      <div class="message-group bot">
-        <img class="message-avatar" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80" alt="角色头像">
-        <div class="message-bubble">
-          <p>嗯，你好呀～我在。</p>
-        </div>
+      
+      <div class="input-area">
+        <input type="text" id="userInput" placeholder="说点什么..." />
+        <button id="sendBtn">发送</button>
       </div>
-    </section>
-
-    <section class="chat-input-section">
-      <input id="userInput" class="input-chat" type="text" placeholder="说点什么吧..." maxlength="500" aria-label="输入消息">
-      <button id="sendChatBtn" class="btn-send-chat" type="button">发送</button>
-    </section>
-  </main>
-
-  <div id="settingsOverlay" class="modal-overlay"></div>
-
-  <aside id="settingsPanel" class="settings-panel" aria-label="设置面板">
-    <div class="panel-header">
-      <h3>设置</h3>
-      <button id="closePanelBtn" class="btn-close-panel" type="button">✕</button>
-    </div>
-
-    <div class="settings-content">
-      <details class="setting-section" open>
-        <summary>预设角色</summary>
-        <div id="presetGrid" class="preset-grid"></div>
-      </details>
-
-      <details class="setting-section" open>
-        <summary>角色信息</summary>
-        <div class="form-group">
-          <label>角色名</label>
-          <input id="editName" class="input-field" type="text" value="暖暖">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>年龄</label>
-            <input id="editAge" class="input-field" type="number" value="25" min="18" max="80">
-          </div>
-          <div class="form-group">
-            <label>身高</label>
-            <input id="editHeight" class="input-field" type="text" value="168cm">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>描述</label>
-          <textarea id="editDescription" class="input-field" rows="3">温柔、懂你、偏暧昧，喜欢慢慢靠近你。</textarea>
-        </div>
-      </details>
-
-      <details class="setting-section" open>
-        <summary>头像设置</summary>
-        <div class="avatar-grid">
-          <div class="avatar-box">
-            <label>角色头像</label>
-            <div class="avatar-line">
-              <img id="charAvatarPreview" class="avatar-preview" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80" alt="角色头像">
-              <input id="charAvatarInput" type="file" accept="image/*" hidden>
-              <button id="pickCharAvatarBtn" class="btn-pick-avatar" type="button">选择</button>
-            </div>
-          </div>
-
-          <div class="avatar-box">
-            <label>我的头像</label>
-            <div class="avatar-line">
-              <img id="userAvatarPreview" class="avatar-preview" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" alt="我的头像">
-              <input id="userAvatarInput" type="file" accept="image/*" hidden>
-              <button id="pickUserAvatarBtn" class="btn-pick-avatar" type="button">选择</button>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <details class="setting-section" open>
-        <summary>封面图</summary>
-        <div class="form-group">
-          <input id="headerImageInput" type="file" accept="image/*" hidden>
-          <button id="pickHeaderImageBtn" class="btn-primary" type="button">上传封面图</button>
-        </div>
-      </details>
-
-      <div class="action-row">
-        <button id="saveCharacterBtn" class="btn-primary" type="button">保存</button>
-        <button id="loadCharacterBtn" class="btn-secondary" type="button">加载</button>
-      </div>
-      <button id="resetChatBtn" class="btn-ghost" type="button">清空聊天</button>
-    </div>
-  </aside>
-
-  <div id="loadModal" class="modal">
-    <div id="loadModalOverlay" class="modal-overlay-bg"></div>
-    <div class="modal-window">
-      <div class="modal-header">
-        <h3>已保存角色</h3>
-        <button id="closeLoadModalBtn" class="btn-close-modal" type="button">✕</button>
-      </div>
-      <div id="savedList" class="saved-list"></div>
     </div>
   </div>
-
+  
   <script src="app.js"></script>
 </body>
 </html>
