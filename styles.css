@@ -40,7 +40,9 @@ html, body {
   /* 锁定防止用户放大缩小 */
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
 }
+body { position: fixed; inset: 0; }
 
 /* App Container Layout */
 .app-container {
@@ -48,7 +50,9 @@ html, body {
   width: 100%;
   height: 100%;
   height: var(--app-height, 100dvh);
-  position: relative;
+  position: fixed;
+  top: var(--viewport-top, 0px);
+  left: 0;
   overflow: hidden;
 }
 
@@ -88,7 +92,26 @@ html, body {
 
 .sidebar-actions {
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
+.template-link { color: var(--primary-color); font-size: 12px; text-align: center; }
+.role-save-hint { margin-bottom: 12px; }
+.chat-tools { max-width: 800px; margin: 0 auto 8px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); }
+.tool-btn { padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 20px; background: var(--bg-app); color: var(--text-main); font-family: inherit; cursor: pointer; min-height: 32px; }
+.chat-tools select { font: inherit; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); padding: 6px; }
+.emoji-picker { max-width: 800px; margin: 0 auto 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.emoji-picker[hidden] { display: none; }
+.emoji-picker button { font-size: 23px; min-width: 38px; min-height: 38px; border: 0; border-radius: 10px; background: var(--primary-light); cursor: pointer; }
+.memory-facts { font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.memory-fact { display: flex; align-items: start; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border-color); padding: 8px 0; }
+.memory-fact button { flex-shrink: 0; }
+.backup-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.role-details-content { display: flex; flex-direction: column; gap: 12px; line-height: 1.7; font-size: 14px; overflow-wrap: anywhere; }
+.role-details-content img { width: 84px; height: 84px; align-self: center; }
+.role-details-content p { white-space: pre-wrap; }
 
 .character-section {
   padding: 12px 16px;
@@ -444,11 +467,11 @@ html, body {
 
 .reply-status {
   max-width: 800px;
-  min-height: 18px;
   margin: 6px auto 0;
   color: var(--text-muted);
   font-size: 0.75rem;
 }
+.reply-status:empty { display: none; }
 
 .reply-error {
   display: flex;
@@ -651,7 +674,10 @@ html, body {
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: var(--viewport-top, 0px);
+  left: 0;
+  width: 100%;
+  height: var(--app-height, 100dvh);
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(4px);
   z-index: 1000;
@@ -831,7 +857,7 @@ html, body {
 /* Mobile Layout */
 @media (max-width: 768px) {
   .sidebar {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     bottom: 0;
@@ -893,6 +919,13 @@ html, body {
     padding: 4px 8px;
     font-size: 0.75rem;
   }
+  .sidebar-overlay { top: var(--viewport-top, 0px); bottom: auto; height: var(--app-height, 100dvh); }
+  .keyboard-open .quick-replies { display: none; }
+  .keyboard-open .chat-tools { margin-bottom: 4px; }
+  .keyboard-open .input-container { padding-top: 6px; padding-bottom: 6px; }
+  .keyboard-open .modal-overlay { padding: 8px; }
+  .keyboard-open .modal { max-height: calc(var(--app-height, 100dvh) - 16px); }
+  .keyboard-open .modal-body { padding: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

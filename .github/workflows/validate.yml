@@ -13,3 +13,6 @@ jobs:
         run: |
           node --check roles.js
           node --check app.js
+          node --check memory.js
+          node --check role-code.js
+          node -e "JSON.parse(require('fs').readFileSync('roles/new-role.role.json')); JSON.parse(require('fs').readFileSync('roles/preset-roles.json'))"

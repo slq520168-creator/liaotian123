@@ -3,7 +3,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const cors={
   "access-control-allow-origin":"*",
   "access-control-allow-headers":"content-type, authorization",
-  "access-control-allow-methods":"POST,OPTIONS"
+  "access-control-allow-methods":"POST,OPTIONS",
+  "access-control-max-age":"600"
 };
 function json(data:unknown,status=200){
   return new Response(JSON.stringify(data),{
@@ -11,15 +12,16 @@ function json(data:unknown,status=200){
     headers:{...cors,"content-type":"application/json; charset=utf-8","cache-control":"no-store","connection":"keep-alive"}
   });
 }
-function compact(messages:any[]){
+function compact(messages:any[],maxUserChars=1600){
   const a=Array.isArray(messages)?messages:[];
   const system=a.find((m:any)=>m?.role==="system");
   const tail=a.filter((m:any)=>m?.role!=="system").slice(-20);
+  const latestUser=[...tail].reverse().find((m:any)=>m?.role==="user");
   return [
     ...(system?[{role:"system",content:String(system.content||"").slice(0,6000)}]:[]),
     ...tail.map((m:any)=>({
       role:["assistant","user"].includes(m?.role)?m.role:"user",
-      content:String(m?.content||"").slice(0,1600)
+      content:String(m?.content||"").slice(0,m===latestUser?maxUserChars:1600)
     }))
   ];
 }
@@ -124,17 +126,135 @@ async function pollinations(messages:any[],maxTokens=180){
     return {text:String(t).trim(),provider:"pollinations"};
   }finally{clearTimeout(timer)}
 }
+
+const STREAM_PROVIDERS=[
+  {name:"cehpoint",url:"https://ai-api.cehpoint.co.in/v1/chat/completions",model:"cehpoint-ai"},
+  {name:"vireonix",url:"https://vireonix.ai/v1/chat/completions",model:"auto"},
+  {name:"free-router",url:"https://api.llmfaucet.dev/v1/chat/completions",model:"auto:smart",auth:"Bearer free"},
+  {name:"pollinations",url:"https://text.pollinations.ai/openai",model:"openai-fast"}
+];
+
+async function* readUpstream(response:Response):AsyncGenerator<{delta?:string,done?:boolean,limited?:boolean}> {
+  if(!response.headers.get("content-type")?.includes("text/event-stream")){
+    const data=await response.json();
+    const text=data?.choices?.[0]?.message?.content||data?.choices?.[0]?.text;
+    if(typeof text!=="string"||!text.trim())throw new Error("empty_reply");
+    yield {delta:text};
+    yield {done:true,limited:data?.choices?.[0]?.finish_reason==="length"};
+    return;
+  }
+  if(!response.body)throw new Error("empty_stream");
+  const reader=response.body.getReader(),decoder=new TextDecoder();
+  let buffer="",finished=false;
+  function parse(line:string){
+    if(!line.startsWith("data:"))return null;
+    const raw=line.slice(5).trim();
+    if(!raw)return null;
+    if(raw==="[DONE]")return {done:true};
+    const data=JSON.parse(raw);
+    if(data.error)throw new Error("upstream_error");
+    const choice=data?.choices?.[0];
+    const content=choice?.delta?.content;
+    const result:{delta?:string,done?:boolean,limited?:boolean}={};
+    if(typeof content==="string"&&content)result.delta=content;
+    if(choice?.finish_reason){result.done=true;result.limited=choice.finish_reason==="length";}
+    return result;
+  }
+  try{
+    while(!finished){
+      const chunk=await reader.read();
+      buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});
+      if(buffer.length>1000000)throw new Error("stream_frame_too_large");
+      const lines=buffer.split("\n");buffer=lines.pop()||"";
+      for(const line of lines){
+        const event=parse(line);
+        if(event){if(event.delta)yield {delta:event.delta};if(event.done){yield {done:true,limited:event.limited};finished=true;break;}}
+      }
+      if(chunk.done){
+        if(!finished&&buffer.trim()){const event=parse(buffer);if(event){yield event;finished=event.done===true;}}
+        if(!finished)throw new Error("stream_incomplete");
+        break;
+      }
+    }
+  }finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+}
+
+function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal){
+  const encoder=new TextEncoder();
+  const aborters:AbortController[]=[];
+  const sessions:{controller:AbortController,close:()=>void,iterator:AsyncGenerator}[]=[];
+  let closed=false;
+  const stop=()=>{closed=true;aborters.forEach(controller=>controller.abort());sessions.forEach(session=>session.close());};
+  const stream=new ReadableStream({
+    async start(output){
+      const started=Date.now();
+      const send=(event:unknown)=>{if(!closed)output.enqueue(encoder.encode("data: "+JSON.stringify(event)+"\n\n"));};
+      const onAbort=()=>{stop();try{output.close();}catch{}};
+      requestSignal.addEventListener("abort",onAbort,{once:true});
+      if(requestSignal.aborted){onAbort();return;}
+      const open=async(provider:typeof STREAM_PROVIDERS[number])=>{
+        const controller=new AbortController();aborters.push(controller);
+        const firstTimer=setTimeout(()=>controller.abort(),9000);
+        const wholeTimer=setTimeout(()=>controller.abort(),32000);
+        const close=()=>{clearTimeout(firstTimer);clearTimeout(wholeTimer);controller.abort();};
+        try{
+          const response=await fetch(provider.url,{method:"POST",headers:{"content-type":"application/json",...(provider.auth?{authorization:provider.auth}:{})},body:JSON.stringify({model:provider.model,messages,temperature:.85,max_tokens:maxTokens,stream:true}),signal:controller.signal});
+          if(!response.ok)throw new Error(provider.name+"_"+response.status);
+          const iterator=readUpstream(response);
+          let prefix="";
+          // 首批真实内容才参赛；空心跳、角色字段、错误不会成为赢家。
+          while(!prefix){
+            const next=await iterator.next();
+            if(next.done||next.value.done&&!next.value.delta)throw new Error("empty_stream");
+            if(next.value.delta)prefix+=next.value.delta;
+          }
+          if(matureButSafe(lastUser(messages))&&refusalLike(prefix))throw new Error("over_refusal");
+          clearTimeout(firstTimer);
+          sessions.push({controller,iterator,close});
+          return {provider:provider.name,controller,iterator,prefix,close};
+        }catch(error){close();throw error;}
+      };
+      try{
+        const winner=await Promise.any(STREAM_PROVIDERS.map(open));
+        if(closed){winner.close();await winner.iterator.return();return;}
+        aborters.filter(controller=>controller!==winner.controller).forEach(controller=>controller.abort());
+        sessions.filter(session=>session.controller!==winner.controller).forEach(session=>{session.close();session.iterator.return().catch(()=>{});});
+        console.log("role_chat_first_content",winner.provider,"ms",Date.now()-started);
+        send({delta:winner.prefix});
+        let complete=false,total=winner.prefix.length;
+        try{
+          for await(const event of winner.iterator){
+            if(closed)break;
+            if(event.delta){total+=event.delta.length;if(total>12000)throw new Error("reply_too_large");send({delta:event.delta});}
+            if(event.done){complete=true;send({done:true,limited:event.limited===true});break;}
+          }
+          if(!complete&&!closed)throw new Error("stream_incomplete");
+        }finally{winner.close();}
+      }catch(error){
+        if(!closed)send({error:"reply_unavailable"});
+        console.warn("role_chat_stream_failed",String(error).slice(0,160));
+      }finally{
+        requestSignal.removeEventListener("abort",onAbort);
+        if(!closed){stop();output.close();}
+      }
+    },
+    cancel(){stop();}
+  });
+  return new Response(stream,{headers:{...cors,"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform","x-accel-buffering":"no"}});
+}
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS") return new Response(null,{status:204,headers:cors});
   if(req.method!=="POST") return json({error:"method_not_allowed"},405);
   try{
     const body=await req.json().catch(()=>({}));
-    const messages=compact(body?.messages||[]);
+    const website=body?.client==="liaotian123";
+    const messages=compact(body?.messages||[],website?6000:1600);
     const requestedTokens=Number(body?.max_tokens);
     const maxTokens=body?.client==="liaotian123"&&Number.isFinite(requestedTokens)
-      ? Math.max(180,Math.min(640,Math.floor(requestedTokens)))
+      ? Math.max(180,Math.min(1400,Math.floor(requestedTokens)))
       : 180;
     if(messages.length<2) return json({error:"messages_required"},400);
+    if(website&&body?.stream===true)return streamedReply(messages,maxTokens,req.signal);
     try{
       const started=Date.now();
       const winner=await Promise.any([
