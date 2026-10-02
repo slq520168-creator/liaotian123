@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#fff0f5">
   <title>角色聊天</title>
   <link rel="preconnect" href="https://afzcohtnljnmucrkgcaz.supabase.co" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20261003-4">
+  <link rel="stylesheet" href="styles.css?v=20261003-5">
 </head>
 <body>
   <div class="app-container">
@@ -21,23 +21,22 @@
         <button class="btn btn-primary btn-block" id="openCreateModalBtn">
           <span class="icon">+</span> 创建新角色
         </button>
-        <button class="btn btn-outline btn-block" id="uploadRoleCodeBtn" type="button">上传角色代码，一键添加</button>
-        <a class="template-link" href="roles/new-role.role.json" download>下载单独的角色模板</a>
+        <button class="btn btn-outline btn-block" id="uploadRoleCodeBtn" type="button">上传角色代码</button>
+        <a class="template-link" href="roles/new-role.role.json" download>角色模板</a>
         <input type="file" id="roleCodeUpload" accept=".json,.js,application/json,text/javascript" hidden>
         <p id="roleCodeStatus" class="form-hint" role="status"></p>
-        <button class="btn btn-secondary btn-block" id="openMemoryBtn" type="button">我的资料与长期记忆</button>
+        <button class="btn btn-secondary btn-block" id="openMemoryBtn" type="button">资料与记忆</button>
       </div>
 
       <div class="character-section">
-        <h3 id="presetRoleTitle">预设角色 · 6 女 / 6 男</h3>
-        <p class="form-hint role-save-hint">点聊天头像查看人设。角色与记忆会保留；换手机前可备份到 Google Drive。</p>
+        <h3 id="presetRoleTitle">角色</h3>
         <div class="character-list" id="presetCharacterList">
           <!-- 预设角色由 JS 动态渲染 -->
         </div>
       </div>
 
       <div class="character-section">
-        <h3>自定义角色</h3>
+        <h3>我的角色</h3>
         <div class="character-list" id="customCharacterList">
           <!-- 自定义角色由 JS 动态渲染 -->
         </div>
@@ -88,7 +87,7 @@
           <select id="replyLength" aria-label="回复长短">
             <option value="auto">随聊随回</option>
             <option value="short">短一点</option>
-    <option value="long">认真长聊</option>
+            <option value="long">认真长聊</option>
           </select>
         </div>
         <div id="emojiPicker" class="emoji-picker" hidden></div>
@@ -116,17 +115,16 @@
 
   <div class="modal-overlay" id="memoryModalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memoryTitle">
-      <div class="modal-header"><h2 id="memoryTitle">我的资料与长期记忆</h2><button type="button" class="icon-btn" id="closeMemoryBtn" aria-label="关闭资料">&times;</button></div>
+      <div class="modal-header"><h2 id="memoryTitle">资料与记忆</h2><button type="button" class="icon-btn" id="closeMemoryBtn" aria-label="关闭资料">&times;</button></div>
       <div class="modal-body">
         <div class="form-group"><label for="playerName">希望怎么称呼你</label><input id="playerName" maxlength="24" placeholder="例如：小禾"></div>
         <div class="form-group"><label for="playerAbout">希望一直记住的事</label><textarea id="playerAbout" rows="3" maxlength="600" placeholder="喜好、生日、宠物，以及你希望角色记得的生活细节"></textarea></div>
         <button class="btn btn-primary" id="savePlayerProfileBtn" type="button">保存我的资料</button>
         <div class="form-group"><label for="rolePreferences" id="rolePreferencesLabel">希望当前角色怎么和你相处</label><textarea id="rolePreferences" rows="3" maxlength="600" placeholder="例如：慢慢更温柔一些，少问问题，喜欢甜一点的语气"></textarea></div>
-        <button class="btn btn-outline" id="saveRolePreferencesBtn" type="button">记住这些相处偏好</button>
+        <button class="btn btn-outline" id="saveRolePreferencesBtn" type="button">保存偏好</button>
         <div id="memoryFacts" class="memory-facts"></div>
-        <button class="btn btn-outline" id="forgetRoleMemoryBtn" type="button">忘掉当前角色的相处记忆</button>
-        <p class="form-hint">记忆保存在这台设备；清除浏览器数据会删除本机记录。备份包括头像、角色、聊天和相处偏好，可在新手机恢复。保存备份时，在手机分享菜单选择 Google Drive。</p>
-        <div class="backup-actions"><button class="btn btn-secondary" id="saveBackupBtn" type="button">保存角色与记忆备份</button><button class="btn btn-outline" id="restoreBackupBtn" type="button">恢复备份</button></div>
+        <button class="btn btn-outline" id="forgetRoleMemoryBtn" type="button" hidden>清除记忆</button>
+        <div class="backup-actions"><button class="btn btn-secondary" id="saveBackupBtn" type="button">记忆备份</button><button class="btn btn-secondary" id="restoreBackupBtn" type="button">恢复记忆</button></div>
         <input id="backupUpload" type="file" accept=".json,application/json" hidden>
         <p class="form-hint" id="memoryStatus" role="status"></p>
       </div>
@@ -135,7 +133,7 @@
   <div class="modal-overlay" id="roleDetailsOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleDetailsTitle">
       <div class="modal-header"><h2 id="roleDetailsTitle">角色人设</h2><button type="button" class="icon-btn" id="closeRoleDetailsBtn" aria-label="关闭人设">&times;</button></div>
-      <div class="modal-body"><div id="roleDetailsContent" class="role-details-content"></div><button class="btn btn-primary" id="adjustRoleBtn" type="button">告诉角色我的相处偏好</button></div>
+      <div class="modal-body"><div id="roleDetailsContent" class="role-details-content"></div><button class="btn btn-primary" id="adjustRoleBtn" type="button">相处偏好</button></div>
     </div>
   </div>
 
@@ -175,7 +173,7 @@
               <div class="avatar-upload-controls">
                 <button type="button" id="chooseRoleAvatarBtn" class="btn btn-outline">从相册选择</button>
                 <input type="file" id="roleAvatarUpload" accept="image/*" aria-label="选择角色头像照片" hidden>
-                <p id="roleAvatarStatus" class="form-hint" role="status" aria-live="polite">可选预设人像，也可以从相册选择。</p>
+                <p id="roleAvatarStatus" class="form-hint" role="status" aria-live="polite"></p>
               </div>
             </div>
             <div class="preset-avatars" id="presetAvatarPicker"></div>
@@ -183,7 +181,7 @@
         </div>
 
         <div class="form-group">
-          <label for="roleTag">角色定位 / 标签 <span class="required">*</span></label>
+          <label for="roleTag">角色标签 <span class="required">*</span></label>
           <input type="text" id="roleTag" placeholder="例如：高冷学霸、幽默老友、古风侠客" required maxlength="20">
         </div>
 
@@ -194,7 +192,7 @@
 
         <div class="form-group">
           <label for="rolePersonality">性格特征与人设描述 <span class="required">*</span></label>
-          <textarea id="rolePersonality" rows="4" placeholder="写清性格、背景、习惯和相处时的细节。例如：平时爱开玩笑，遇到我难过时先认真听，不急着给建议。" required maxlength="3000"></textarea>
+          <textarea id="rolePersonality" rows="4" placeholder="性格、背景与相处习惯" required maxlength="3000"></textarea>
         </div>
 
         <div class="form-group">
@@ -214,15 +212,15 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
-          <button type="submit" class="btn btn-primary" id="createRoleSubmitBtn">立即创建并对话</button>
+          <button type="submit" class="btn btn-primary" id="createRoleSubmitBtn">创建角色</button>
         </div>
       </form>
     </div>
   </div>
 
-  <script src="roles.js?v=20261003-4" defer></script>
-  <script src="memory.js?v=20261003-4" defer></script>
-  <script src="role-code.js?v=20261003-4" defer></script>
-  <script src="app.js?v=20261003-4" defer></script>
+  <script src="roles.js?v=20261003-5" defer></script>
+  <script src="memory.js?v=20261003-5" defer></script>
+  <script src="role-code.js?v=20261003-5" defer></script>
+  <script src="app.js?v=20261003-5" defer></script>
 </body>
 </html>
