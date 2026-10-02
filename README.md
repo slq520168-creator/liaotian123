@@ -10,6 +10,18 @@
 
 </div>
 
+## 手机版界面
+
+下面是实际页面截图，依次为聊天、表情面板和角色代码编辑。手机可从相册选择头像，也能上传角色文件或直接编写、粘贴角色代码。
+
+<p align="center">
+  <img src="docs/images/phone-chat.png" width="240" alt="手机版聊天：浅粉色背景，角色头像与玩家头像分列两侧，底部输入区" />
+  <img src="docs/images/emoji-chat.png" width="240" alt="手机版表情面板：在聊天输入区选择表情" />
+  <img src="docs/images/role-code-phone.png" width="240" alt="手机版角色代码：上传文件、使用模板或直接编辑代码，再生成角色" />
+</p>
+
+## 电脑版界面
+
 ![角色聊天电脑界面](docs/images/desktop-chat.png)
 
 ## 先认识它
@@ -103,6 +115,12 @@ flowchart TD
 ## 手机、平板和电脑
 
 手机使用角色抽屉，输入区跟随可见画面。平板与电脑宽度足够时并排显示角色列表和聊天，角色列表独立滚动。触屏键盘弹出时优先留出聊天空间。电脑用 `Enter` 发送、`Shift + Enter` 换行，输入法确认不会误发。
+
+<p align="center">
+  <img src="docs/images/tablet-chat.png" width="360" alt="平板聊天界面：左侧角色列表，右侧聊天与输入区" />
+</p>
+
+上图为平板竖屏界面；手机与电脑截图在本页前面。更多头像、人设、备份和创建角色的操作截图见[在线图文说明书](https://juese.onrender.com/docs/index.html)。
 
 [完整操作说明](docs/user-guide.md)覆盖头像、长文、人设、记忆、备份和快捷键。网页版说明书适合手机阅读，PPT可编辑并用于介绍项目。
 
