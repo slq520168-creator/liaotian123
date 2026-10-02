@@ -2,10 +2,11 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#fff0f5">
   <title>角色聊天</title>
-  <link rel="stylesheet" href="styles.css?v=20261003-2">
+  <link rel="preconnect" href="https://afzcohtnljnmucrkgcaz.supabase.co" crossorigin>
+  <link rel="stylesheet" href="styles.css?v=20261003-4">
 </head>
 <body>
   <div class="app-container">
@@ -20,10 +21,16 @@
         <button class="btn btn-primary btn-block" id="openCreateModalBtn">
           <span class="icon">+</span> 创建新角色
         </button>
+        <button class="btn btn-outline btn-block" id="uploadRoleCodeBtn" type="button">上传角色代码，一键添加</button>
+        <a class="template-link" href="roles/new-role.role.json" download>下载单独的角色模板</a>
+        <input type="file" id="roleCodeUpload" accept=".json,.js,application/json,text/javascript" hidden>
+        <p id="roleCodeStatus" class="form-hint" role="status"></p>
+        <button class="btn btn-secondary btn-block" id="openMemoryBtn" type="button">我的资料与长期记忆</button>
       </div>
 
       <div class="character-section">
         <h3 id="presetRoleTitle">预设角色 · 6 女 / 6 男</h3>
+        <p class="form-hint role-save-hint">点聊天头像查看人设。角色与记忆会保留；换手机前可备份到 Google Drive。</p>
         <div class="character-list" id="presetCharacterList">
           <!-- 预设角色由 JS 动态渲染 -->
         </div>
@@ -49,7 +56,7 @@
           </svg>
         </button>
         <div class="current-character-info" id="currentCharacterInfo">
-          <img src="assets/avatars/nuannuan.jpg" alt="头像" class="avatar avatar-sm" id="headerAvatar">
+          <button class="message-avatar-button" id="roleDetailsBtn" type="button" aria-label="查看当前角色人设与相处偏好"><img src="assets/avatars/nuannuan-portrait.jpg" alt="头像" class="avatar avatar-sm" id="headerAvatar"></button>
           <div class="char-details">
             <h1 class="char-name" id="headerName">暖暖</h1>
             <span class="char-tag" id="headerTag">温柔细腻 · 女</span>
@@ -75,18 +82,61 @@
         <div class="quick-replies" id="quickReplies">
           <!-- 快捷对话选项 -->
         </div>
-        <div class="input-area">
-          <textarea id="userInput" placeholder="给角色发送消息..." aria-label="聊天消息" rows="1" maxlength="1600"></textarea>
+        <div class="chat-tools">
+          <button class="tool-btn" id="emojiBtn" type="button" aria-expanded="false" aria-controls="emojiPicker">😊 表情</button>
+          <label for="replyLength">回复</label>
+          <select id="replyLength" aria-label="回复长短">
+            <option value="auto">随聊随回</option>
+            <option value="short">短一点</option>
+    <option value="long">认真长聊</option>
+          </select>
+        </div>
+        <div id="emojiPicker" class="emoji-picker" hidden></div>
+        <div class="composer-row">
+          <button class="user-avatar-button" id="changeUserAvatarBtn" type="button" aria-label="从相册设置我的头像" title="从相册设置我的头像">
+            <img class="avatar" id="userAvatarPreview" src="assets/avatars/user.svg" alt="我的头像">
+            <span>头像</span>
+          </button>
+          <div class="input-area">
+          <textarea id="userInput" placeholder="给角色发送消息..." aria-label="聊天消息" rows="1" maxlength="6000"></textarea>
           <button id="sendBtn" class="btn btn-send" disabled>
             <span>发送</span>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
             </svg>
           </button>
+          </div>
         </div>
+        <input type="file" id="userAvatarUpload" accept="image/*" aria-label="选择我的头像照片" hidden>
+        <div class="avatar-upload-status" id="avatarUploadStatus" role="status" aria-live="polite"></div>
         <div class="reply-status" id="replyStatus" role="status" aria-live="polite"></div>
       </div>
     </main>
+  </div>
+
+  <div class="modal-overlay" id="memoryModalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memoryTitle">
+      <div class="modal-header"><h2 id="memoryTitle">我的资料与长期记忆</h2><button type="button" class="icon-btn" id="closeMemoryBtn" aria-label="关闭资料">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group"><label for="playerName">希望怎么称呼你</label><input id="playerName" maxlength="24" placeholder="例如：小禾"></div>
+        <div class="form-group"><label for="playerAbout">希望一直记住的事</label><textarea id="playerAbout" rows="3" maxlength="600" placeholder="喜好、生日、宠物，以及你希望角色记得的生活细节"></textarea></div>
+        <button class="btn btn-primary" id="savePlayerProfileBtn" type="button">保存我的资料</button>
+        <div class="form-group"><label for="rolePreferences" id="rolePreferencesLabel">希望当前角色怎么和你相处</label><textarea id="rolePreferences" rows="3" maxlength="600" placeholder="例如：慢慢更温柔一些，少问问题，喜欢甜一点的语气"></textarea></div>
+        <button class="btn btn-outline" id="saveRolePreferencesBtn" type="button">记住这些相处偏好</button>
+        <div id="memoryFacts" class="memory-facts"></div>
+        <button class="btn btn-outline" id="forgetRoleMemoryBtn" type="button">忘掉当前角色的相处记忆</button>
+        <p class="form-hint">记忆保存在这台设备；清除浏览器数据会删除本机记录。备份包括头像、角色、聊天和相处偏好，可在新手机恢复。保存备份时，在手机分享菜单选择 Google Drive。</p>
+        <div class="backup-actions"><button class="btn btn-secondary" id="saveBackupBtn" type="button">保存角色与记忆备份</button><button class="btn btn-outline" id="restoreBackupBtn" type="button">恢复备份</button></div>
+        <input id="backupUpload" type="file" accept=".json,application/json" hidden>
+        <p class="form-hint" id="memoryStatus" role="status"></p>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="roleDetailsOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleDetailsTitle">
+      <div class="modal-header"><h2 id="roleDetailsTitle">角色人设</h2><button type="button" class="icon-btn" id="closeRoleDetailsBtn" aria-label="关闭人设">&times;</button></div>
+      <div class="modal-body"><div id="roleDetailsContent" class="role-details-content"></div><button class="btn btn-primary" id="adjustRoleBtn" type="button">告诉角色我的相处偏好</button></div>
+    </div>
   </div>
 
   <!-- 创建角色弹窗 -->
@@ -118,10 +168,17 @@
         </div>
 
         <div class="form-group">
-          <label>选择角色头像预设 / 链接 <span class="required">*</span></label>
+          <label>角色头像 <span class="required">*</span></label>
           <div class="avatar-picker">
+            <div class="avatar-upload-row">
+              <img id="roleAvatarPreview" class="avatar avatar-upload-preview" src="assets/avatars/nuannuan-portrait.jpg" alt="所选角色头像">
+              <div class="avatar-upload-controls">
+                <button type="button" id="chooseRoleAvatarBtn" class="btn btn-outline">从相册选择</button>
+                <input type="file" id="roleAvatarUpload" accept="image/*" aria-label="选择角色头像照片" hidden>
+                <p id="roleAvatarStatus" class="form-hint" role="status" aria-live="polite">可选预设人像，也可以从相册选择。</p>
+              </div>
+            </div>
             <div class="preset-avatars" id="presetAvatarPicker"></div>
-            <input type="text" id="roleAvatarCustom" placeholder="或粘贴自定义头像图片URL (可选)">
           </div>
         </div>
 
@@ -137,18 +194,35 @@
 
         <div class="form-group">
           <label for="rolePersonality">性格特征与人设描述 <span class="required">*</span></label>
-          <textarea id="rolePersonality" rows="3" placeholder="写下角色的性格、爱好和说话习惯，聊天时会按这份人设回复。" required maxlength="3000"></textarea>
+          <textarea id="rolePersonality" rows="4" placeholder="写清性格、背景、习惯和相处时的细节。例如：平时爱开玩笑，遇到我难过时先认真听，不急着给建议。" required maxlength="3000"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="roleVoice">说话习惯</label>
+          <input type="text" id="roleVoice" placeholder="例如：直白温柔，有一点幽默，不爱说大道理" maxlength="240">
+        </div>
+
+        <div class="form-group">
+          <label for="roleInterests">爱好与日常</label>
+          <input type="text" id="roleInterests" placeholder="例如：电影、旅行、做饭，喜欢聊生活里的小事" maxlength="240">
+        </div>
+
+        <div class="form-group">
+          <label for="roleRelationship">相处方式</label>
+          <textarea id="roleRelationship" rows="2" placeholder="例如：像熟悉的朋友，记得我说过的话；需要安静时不追问" maxlength="300"></textarea>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
-          <button type="submit" class="btn btn-primary">立即创建并对话</button>
+          <button type="submit" class="btn btn-primary" id="createRoleSubmitBtn">立即创建并对话</button>
         </div>
       </form>
     </div>
   </div>
 
-  <script src="roles.js?v=20261003-2" defer></script>
-  <script src="app.js?v=20261003-2" defer></script>
+  <script src="roles.js?v=20261003-4" defer></script>
+  <script src="memory.js?v=20261003-4" defer></script>
+  <script src="role-code.js?v=20261003-4" defer></script>
+  <script src="app.js?v=20261003-4" defer></script>
 </body>
 </html>
