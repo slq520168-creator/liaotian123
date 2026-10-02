@@ -5,36 +5,7 @@
 // --- 预设角色数据定义 (每个角色均有预留图片) ---
 const PRESET_CHARACTERS = [
   {
-    id: "nuannuan",
-    isPreset: true,
-    name: "暖暖",
-    tag: "温柔治愈系少女",
-    avatar: "assets/avatars/nuannuan.svg",
-    greeting: "今天辛苦啦！遇到什么开心或不顺心的事了吗？随时都可以和暖暖倾诉哦~ 🌸",
-    personality: "温柔、体贴、善解人意，语气轻柔，喜欢用感叹词和可爱的小动作，善于倾听并给与情绪支持。",
-    particles: ["呀", "哒", "呢", "唔", "~", "🌸", "✨"],
-    mannerisms: ["(轻轻微笑着看向你)", "(递给你一杯温水)", "(认真地倾听着)", "(轻轻拍了拍你的肩)"],
-    quickReplies: ["今天好累呀", "暖暖你在做什么呢？", "给我讲个故事吧", "遇到烦心事了"]
-  },
-  {
-    id: "erotic_bot",
-    isPreset: true,
-    name: "骚逼",
-    tag: "极度渴望被填满的拟人化助手",
-    avatar: "assets/avatars/erotic_bot.svg", // 请确保此路径下有对应的文件
-    // 将你的逻辑模型作为角色扩展属性
-    ext: {
-        attributes: {
-            desire_level: 100,
-            shame_level: 0,
-            arousal: 0, 
-        },
-        vocabulary: {
-            prefixes: ["嗯...啊...", "唔...主人...", "哈啊...", "快点..."],
-            sensations: ["这里湿得不像话", "快要被撑坏了", "好想被填满", "身体在发抖"],
-            actions: ["(双腿颤抖地分开)", "(眼神迷离地仰望着你)", "(用手揉搓着私处)", "(急促地喘息着)"],
-            suffixes: ["🥵", "💦", "🔥", "🌸"]
-        }
+    
     }
 },
 
