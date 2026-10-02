@@ -2,30 +2,140 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI角色聊天</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <title>AI 角色智能聊天系统</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <div class="chat-box">
-      <div class="chat-header">
-        <h1>角色聊天</h1>
+  <div class="app-container">
+    <!-- 侧边栏：角色列表与管理 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>角色中心</h2>
+        <button class="icon-btn close-sidebar-btn" id="closeSidebarBtn" title="关闭侧边栏">&times;</button>
       </div>
-      
-      <div class="messages" id="messages">
-        <div class="message bot">
-          <p>你好，我在这里。</p>
+
+      <div class="sidebar-actions">
+        <button class="btn btn-primary btn-block" id="openCreateModalBtn">
+          <span class="icon">+</span> 创建新角色
+        </button>
+      </div>
+
+      <div class="character-section">
+        <h3>预设角色</h3>
+        <div class="character-list" id="presetCharacterList">
+          <!-- 预设角色由 JS 动态渲染 -->
         </div>
       </div>
-      
-      <div class="input-area">
-        <input type="text" id="userInput" placeholder="说点什么..." />
-        <button id="sendBtn">发送</button>
+
+      <div class="character-section">
+        <h3>自定义角色</h3>
+        <div class="character-list" id="customCharacterList">
+          <!-- 自定义角色由 JS 动态渲染 -->
+        </div>
       </div>
+    </aside>
+
+    <!-- 侧边栏遮罩 (移动端) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- 主聊天界面 -->
+    <main class="chat-main">
+      <header class="chat-header">
+        <button class="icon-btn menu-btn" id="openSidebarBtn" title="打开角色菜单">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          </svg>
+        </button>
+        <div class="current-character-info" id="currentCharacterInfo">
+          <img src="assets/avatars/nuannuan.svg" alt="头像" class="avatar avatar-sm" id="headerAvatar">
+          <div class="char-details">
+            <h1 class="char-name" id="headerName">暖暖</h1>
+            <span class="char-tag" id="headerTag">温柔治愈系少女</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-outline btn-sm" id="switchCharBtn">切换/创建角色</button>
+          <button class="icon-btn" id="clearChatBtn" title="清空对话">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="messages-container" id="messagesContainer">
+        <div class="messages" id="messages">
+          <!-- 消息历史由 JS 渲染 -->
+        </div>
+      </div>
+
+      <div class="input-container">
+        <div class="quick-replies" id="quickReplies">
+          <!-- 快捷对话选项 -->
+        </div>
+        <div class="input-area">
+          <textarea id="userInput" placeholder="给角色发送消息..." rows="1"></textarea>
+          <button id="sendBtn" class="btn btn-send" disabled>
+            <span>发送</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 创建角色弹窗 -->
+  <div class="modal-overlay" id="createModalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>创建全新 AI 角色</h2>
+        <button class="icon-btn close-modal-btn" id="closeModalBtn">&times;</button>
+      </div>
+      <form id="createRoleForm" class="modal-body">
+        <div class="form-group">
+          <label for="roleName">角色姓名 <span class="required">*</span></label>
+          <input type="text" id="roleName" placeholder="例如：云舟" required maxlength="12">
+        </div>
+
+        <div class="form-group">
+          <label>选择角色头像预设 / 链接 <span class="required">*</span></label>
+          <div class="avatar-picker">
+            <div class="preset-avatars" id="presetAvatarPicker">
+              <img src="assets/avatars/nuannuan.svg" class="avatar-option selected" data-avatar="assets/avatars/nuannuan.svg" alt="预设1">
+              <img src="assets/avatars/luchen.svg" class="avatar-option" data-avatar="assets/avatars/luchen.svg" alt="预设2">
+              <img src="assets/avatars/lingyi.svg" class="avatar-option" data-avatar="assets/avatars/lingyi.svg" alt="预设3">
+              <img src="assets/avatars/taiyang.svg" class="avatar-option" data-avatar="assets/avatars/taiyang.svg" alt="预设4">
+            </div>
+            <input type="text" id="roleAvatarCustom" placeholder="或粘贴自定义头像图片URL (可选)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="roleTag">角色定位 / 标签 <span class="required">*</span></label>
+          <input type="text" id="roleTag" placeholder="例如：高冷学霸、幽默老友、古风侠客" required maxlength="20">
+        </div>
+
+        <div class="form-group">
+          <label for="roleGreeting">首句问候语 <span class="required">*</span></label>
+          <input type="text" id="roleGreeting" placeholder="例如：今天有什么有趣的事要和我分享吗？" required>
+        </div>
+
+        <div class="form-group">
+          <label for="rolePersonality">性格特征与人设描述 <span class="required">*</span></label>
+          <textarea id="rolePersonality" rows="3" placeholder="详细说明角色的口吻、性格习惯、说话风格。例如：说话喜欢带些幽默，性格傲娇但关心人，常用口头禅..." required></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
+          <button type="submit" class="btn btn-primary">立即创建并对话</button>
+        </div>
+      </form>
     </div>
   </div>
-  
+
   <script src="app.js"></script>
 </body>
 </html>
