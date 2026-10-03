@@ -274,7 +274,7 @@ function warmReplyConnection() {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
   // 只预热连接和函数，不生成回复，也不发送用户资料。
-  fetch(CHAT_API_URL, {method: 'OPTIONS', credentials: 'omit', signal: controller.signal}).catch(() => {}).finally(() => clearTimeout(timer));
+  fetch(CHAT_API_URL, {method: 'GET', credentials: 'omit', cache: 'no-store', signal: controller.signal}).catch(() => {}).finally(() => clearTimeout(timer));
 }
 
 function setupEventListeners() {
@@ -686,7 +686,8 @@ async function requestCharacterReply(char) {
       try {
         if (navigator.onLine === false) throw new TypeError('offline');
         const response = await fetch(CHAT_API_URL, {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
+          // JSON正文使用CORS安全的文本类型，手机发送时无需额外预检往返。
+          method: 'POST', headers: {'Content-Type': 'text/plain;charset=UTF-8'},
           body: JSON.stringify({messages: job.messages, client: 'liaotian123', max_tokens: job.maxTokens, stream: true, attempt}),
           signal: controller.signal, credentials: 'omit', cache: 'no-store'
         });
@@ -721,7 +722,7 @@ async function requestCharacterReply(char) {
       partial: job.text,
       offline: navigator.onLine === false,
       message: navigator.onLine === false ? '网络已断开。' : job.timedOut ? '回复超时，请重试。' :
-        error instanceof TypeError ? '网络未连接，请重试。' : error.message
+        job.text ? '回复中断，请重试。' : error instanceof TypeError ? '连接失败，请重试。' : error.message
     });
   } finally {
     clearTimeout(timer);
@@ -753,7 +754,7 @@ async function readModelReply(response, onDelta) {
     let event;
     try { event = JSON.parse(raw); } catch (error) { throw new Error('回复中断，请重试。'); }
     if (event.error) {
-      const error = new Error('暂时没连上，请重试。');
+      const error = new Error(text ? '回复中断，请重试。' : '聊天服务暂时繁忙，请重试。');
       error.retryable = !text;
       throw error;
     }
@@ -765,18 +766,25 @@ async function readModelReply(response, onDelta) {
     if (event.done === true) complete = true;
   }
   try {
-    while (true) {
+    while (!complete) {
       const part = await reader.read();
       buffer += decoder.decode(part.value || new Uint8Array(), {stream: !part.done});
       const lines = buffer.split('\n');
       buffer = lines.pop();
-      lines.forEach(consume);
+      for (const line of lines) {
+        consume(line);
+        if (complete) break;
+      }
       if (part.done) break;
     }
-    if (buffer.trim()) consume(buffer);
+    if (!complete && buffer.trim()) consume(buffer);
     if (!complete || !text.trim()) throw new Error('回复中断，请重试。');
     return text;
-  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+  } finally {
+    // done是完成依据，关闭连接的清理不能再次阻塞已完成的回复。
+    reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
 }
 
 function selectFormAvatar(src) {

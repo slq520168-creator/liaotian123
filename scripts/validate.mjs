@@ -30,4 +30,5 @@ for (const file of walk('.')) {
   else for (const match of source.matchAll(/\]\(([^)\s]+)\)/g)) checkRef(file, match[1]);
 }
 run(['--disable-warning=ExperimentalWarning', 'scripts/test-chat-contract.mjs']);
-console.log('检查通过：网页脚本、角色JSON、文档及静态资源引用、聊天容量契约。');
+run(['scripts/test-chat-transport.mjs']);
+console.log('检查通过：网页脚本、角色JSON、文档及静态资源引用、聊天容量与传输契约。');

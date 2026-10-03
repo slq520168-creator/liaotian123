@@ -69,7 +69,9 @@ supabase functions deploy role-chat-fast --no-verify-jwt
 
 ## 请求协议
 
-浏览器发送POST，Content-Type为application/json，credentials为omit。
+浏览器发送POST，Content-Type为text/plain;charset=UTF-8，正文仍为下面的JSON，credentials为omit。这种发送方式减少跨域预检往返；后台也继续接受旧版application/json请求。
+
+GET仅返回`{"ok":true}`用于连接检查，不调用模型、不发送玩家资料。OPTIONS继续支持旧客户端的跨域预检。
 
 ```json
 {
@@ -116,7 +118,7 @@ data: {"done":true}
 
 ```
 
-最后的done必须存在。流中可用`{"error":"reply_unavailable"}`说明失败。空内容、错误或未完成流不会成为正常答复。模型碰到输出额度时可能带limited=true，用户可要求继续，页面不会伪造剩余内容。
+最后的done必须存在。页面收到done后立即保存有效答复，不再等待连接关闭；连接清理也不会阻塞完成状态。流中可用`{"error":"reply_unavailable"}`说明失败。空内容、错误或未完成流不会成为正常答复。模型碰到输出额度时可能带limited=true，用户可要求继续，页面不会伪造剩余内容。
 
 跨域后台要响应OPTIONS，并允许Content-Type与POST。不要缓存个性化聊天响应。参考实现使用no-store或no-cache、no-transform，防止代理缓存或缓冲影响聊天。
 

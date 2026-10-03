@@ -3,7 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const cors={
   "access-control-allow-origin":"*",
   "access-control-allow-headers":"content-type, authorization",
-  "access-control-allow-methods":"POST,OPTIONS",
+  "access-control-allow-methods":"GET,POST,OPTIONS",
   "access-control-max-age":"600"
 };
 function json(data:unknown,status=200){
@@ -178,7 +178,7 @@ async function* readUpstream(response:Response):AsyncGenerator<{delta?:string,do
         break;
       }
     }
-  }finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+  }finally{reader.cancel().catch(()=>{});reader.releaseLock();}
 }
 
 function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal){
@@ -247,6 +247,7 @@ function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal
 }
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS") return new Response(null,{status:204,headers:cors});
+  if(req.method==="GET") return json({ok:true});
   if(req.method!=="POST") return json({error:"method_not_allowed"},405);
   try{
     const body=await req.json().catch(()=>({}));

@@ -21,9 +21,19 @@ vm.runInNewContext(stripTypeScriptTypes(source), sandbox);
 const user = '长文正文。'.repeat(4900) + '全文尾部标记';
 const system = '人设细节。'.repeat(3500) + '人设尾部标记';
 const history = Array.from({length: 19}, (_, i) => ({role: i % 2 ? 'assistant' : 'user', content: '往事'.repeat(1500)}));
-async function post(body) {
-  return handler(new Request('https://example.test/role-chat-fast', {method: 'POST', body: JSON.stringify(body)}));
+async function post(body, contentType = 'text/plain;charset=UTF-8') {
+  return handler(new Request('https://example.test/role-chat-fast', {method: 'POST', headers: {'content-type': contentType}, body: JSON.stringify(body)}));
 }
+const health = await handler(new Request('https://example.test/role-chat-fast'));
+assert.equal(health.status, 200);
+assert.deepEqual(await health.json(), {ok: true});
+assert.equal(health.headers.get('access-control-allow-origin'), '*');
+assert.equal(health.headers.get('cache-control'), 'no-store');
+assert.equal(requests.length, 0, '连接检查不得请求模型');
+const preflight = await handler(new Request('https://example.test/role-chat-fast', {method: 'OPTIONS'}));
+assert.equal(preflight.status, 204);
+assert.match(preflight.headers.get('access-control-allow-methods'), /POST/);
+assert.equal((await handler(new Request('https://example.test/role-chat-fast', {method: 'DELETE'}))).status, 405);
 const result = await post({client: 'liaotian123', stream: true, max_tokens: 6000, messages: [{role: 'system', content: system}, ...history, {role: 'user', content: user}]});
 const stream = await result.text();
 assert.equal(result.status, 200);
@@ -36,10 +46,25 @@ for (const request of requests) {
   assert(request.messages.slice(1, -1).reduce((n, m) => n + m.content.length, 0) <= 12000);
 }
 requests.length = 0;
-await post({messages: [{role: 'system', content: system}, {role: 'user', content: user}]}).then(r => r.text());
+await post({messages: [{role: 'system', content: system}, {role: 'user', content: user}]}, 'application/json').then(r => r.text());
 assert(requests.filter(r => Array.isArray(r.messages)).every(r => r.max_tokens === 180 && r.messages[0].content.length === 6000 && r.messages.at(-1).content.length === 1600));
 requests.length = 0;
 const rejected = await post({client: 'liaotian123', messages: [{role: 'system', content: '正常人设'}, {role: 'user', content: '字'.repeat(30001)}]});
 assert.equal(rejected.status, 400);
 assert.equal(requests.length, 0);
-console.log('聊天契约通过：长文末尾、人设末尾、上下文预算、旧入口兼容、超限拒绝。');
+// 上游在完成标记之后仍不关连接，甚至取消清理也挂起：转发必须正常结束。
+sandbox.fetch = async () => new Response(new ReadableStream({
+  start(controller) {controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"完整真实回复"}}]}\n\ndata: [DONE]\n\n'));},
+  cancel() {return new Promise(() => {});}
+}), {headers: {'content-type': 'text/event-stream'}});
+let deadline;
+try {
+  const completed = await Promise.race([
+    post({client: 'liaotian123', stream: true, messages: [{role: 'system', content: '正常人设'}, {role: 'user', content: '下午好'}]}).then(r => r.text()),
+    new Promise((_, reject) => {deadline = setTimeout(() => reject(new Error('完成后的连接清理阻塞了回复')), 1000);})
+  ]);
+  assert.match(completed, /完整真实回复/);
+  assert.match(completed, /"done":true/);
+  assert.doesNotMatch(completed, /"error"/);
+} finally {clearTimeout(deadline);}
+console.log('聊天契约通过：连接检查、文本JSON、旧入口兼容、长文与人设末尾、上下文预算、超限拒绝、完成后关闭。');
