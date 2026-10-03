@@ -127,7 +127,8 @@ body { position: fixed; inset: 0; }
 .role-code-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .role-code-toolbar .template-link { margin-left: auto; }
 .form-group .role-code-editor { min-height: 180px; max-height: min(480px, calc(var(--app-height, 100dvh) * 0.5)); resize: vertical; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; line-height: 1.6; tab-size: 2; }
-.chat-tools { max-width: var(--chat-content-width); margin: 0 auto 8px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); }
+.chat-tools { max-width: var(--chat-content-width); margin: 0 auto 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.chat-tool-group { display: flex; align-items: center; gap: 6px; }
 .tool-btn { padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 20px; background: var(--bg-app); color: var(--text-main); font-family: inherit; cursor: pointer; min-height: 32px; }
 .chat-tools select { font: inherit; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); padding: 6px; }
 .emoji-picker { max-width: var(--chat-content-width); max-height: 168px; overflow-y: auto; margin: 0 auto 10px; display: flex; flex-wrap: wrap; gap: 6px; }

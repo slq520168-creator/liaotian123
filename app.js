@@ -27,6 +27,7 @@ let playerProfile = {id: '', name: '', about: ''};
 let roleMemories = Object.create(null);
 const previousVisits = Object.create(null);
 let replyLength = 'auto';
+let chatStyle = 'mature';
 let lastConnectionWarmAt = 0;
 const pendingReplies = new Map();
 const replyErrors = new Map();
@@ -101,6 +102,8 @@ function loadDataFromStorage() {
   roleMemories = Object.create(null);
   const length = readStoredJSON('liaotian_reply_length', 'auto');
   replyLength = ['auto', 'short', 'long'].includes(length) ? length : 'auto';
+  const style = readStoredJSON('liaotian_chat_style', 'mature');
+  chatStyle = typeof style === 'string' && Object.hasOwn(ROLE_CHAT_STYLES, style) ? style : 'mature';
   try {
     const storedAvatar = localStorage.getItem('liaotian_user_avatar');
     if (storedAvatar) userAvatar = safeAvatar(storedAvatar, DEFAULT_USER_AVATAR);
@@ -150,6 +153,7 @@ function saveDataToStorage() {
     localStorage.setItem('liaotian_player_profile', JSON.stringify(playerProfile));
     localStorage.setItem('liaotian_role_memories', JSON.stringify(roleMemories));
     localStorage.setItem('liaotian_reply_length', JSON.stringify(replyLength));
+    localStorage.setItem('liaotian_chat_style', JSON.stringify(chatStyle));
     if (replyStatus.textContent === '空间不足，暂时无法保存。') replyStatus.textContent = '';
     return true;
   } catch (error) {
@@ -221,6 +225,7 @@ function init() {
   renderAvatarPicker();
   updateUserAvatarPreview();
   byId('replyLength').value = replyLength;
+  byId('chatStyle').value = chatStyle;
   renderEmojiPicker();
   switchCharacter(activeCharacterId, false);
   updateViewportHeight();
@@ -323,6 +328,15 @@ function setupEventListeners() {
   });
   byId('roleCodeUpload').addEventListener('change', handleRoleCodeUpload);
   byId('replyLength').addEventListener('change', () => {replyLength = byId('replyLength').value; saveDataToStorage();});
+  byId('chatStyle').addEventListener('change', () => {
+    const value = byId('chatStyle').value;
+    if (!Object.hasOwn(ROLE_CHAT_STYLES, value)) return;
+    chatStyle = value;
+    const char = characters.find(item => item.id === activeCharacterId);
+    renderQuickReplies(char);
+    updateComposer();
+    saveDataToStorage();
+  });
   byId('emojiBtn').addEventListener('click', () => {
     byId('emojiPicker').hidden = !byId('emojiPicker').hidden;
     byId('emojiBtn').setAttribute('aria-expanded', String(!byId('emojiPicker').hidden));
@@ -529,7 +543,9 @@ function renderTypingIndicator(char) {
 
 function renderQuickReplies(char) {
   quickRepliesDiv.replaceChildren();
-  (char.quickReplies || []).forEach(text => {
+  const starters = ROLE_CHAT_STYLES[chatStyle].starters;
+  const replies = starters.length ? [...starters, ...(char.quickReplies || []).slice(0, 4)] : char.quickReplies || [];
+  [...new Set(replies)].forEach(text => {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'quick-chip';
@@ -596,7 +612,8 @@ function buildSystemPrompt(char) {
   const lastBot = (chatHistories[char.id] || []).filter(msg => msg.sender === 'bot').at(-1)?.text || '';
   const preferences = roleMemories[char.id]?.preferences.join(' ') || '';
   const noQuestion = /(?:不要|别|少|不用).{0,16}(?:追问|反问|问号|问题)/.test(preferences) || /[？?]\s*$/.test(lastBot) && !/[？?]\s*$/.test(latest);
-  return (base + '\n' + lengthRule + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
+  const styleRule = '\n当前聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label + '。\n' + ROLE_CHAT_STYLES[chatStyle].rules.join('\n');
+  return (base + styleRule + '\n' + lengthRule + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
 }
 
 function buildRequestMessages(char) {
@@ -946,14 +963,14 @@ function openRoleDetails() {
   byId('roleDetailsTitle').textContent = char.name + '的人设';
   const box = byId('roleDetailsContent'); box.replaceChildren();
   box.appendChild(createAvatar(char.avatar, 'avatar', char.name));
-  [char.tag + ' · ' + char.age + '岁', char.isPreset ? char.personality.split('。')[0] + '。' : char.personality, char.background, char.interests ? '爱好：' + char.interests : ''].filter(Boolean).forEach(text => {
+  [char.tag + ' · ' + char.age + '岁', '聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label, char.isPreset ? char.personality.split('。')[0] + '。' : char.personality, char.background, char.interests ? '爱好：' + char.interests : ''].filter(Boolean).forEach(text => {
     const p = document.createElement('p'); p.textContent = text; box.appendChild(p);
   });
   openDialog('roleDetailsOverlay');
 }
 
 function buildBackup() {
-  return {format: 'liaotian123-backup', version: 1, savedAt: new Date().toISOString(), profile: playerProfile, userAvatar, characters: characters.filter(char => !char.isPreset), histories: chatHistories, memories: roleMemories};
+  return {format: 'liaotian123-backup', version: 1, savedAt: new Date().toISOString(), profile: playerProfile, userAvatar, chatStyle, characters: characters.filter(char => !char.isPreset), histories: chatHistories, memories: roleMemories};
 }
 
 async function saveBackup() {
@@ -1006,6 +1023,8 @@ async function restoreBackup() {
     characters = all;
     if (backup.profile && typeof backup.profile === 'object') playerProfile = {id: typeof backup.profile.id === 'string' ? backup.profile.id.slice(0, 80) : playerProfile.id, name: String(backup.profile.name || '').slice(0, 24), about: String(backup.profile.about || '').slice(0, 600)};
     userAvatar = safeAvatar(backup.userAvatar, DEFAULT_USER_AVATAR);
+    if (typeof backup.chatStyle === 'string' && Object.hasOwn(ROLE_CHAT_STYLES, backup.chatStyle)) chatStyle = backup.chatStyle;
+    byId('chatStyle').value = chatStyle;
     try {localStorage.setItem('liaotian_user_avatar', userAvatar);} catch (error) {}
     updateUserAvatarPreview(); switchCharacter(activeCharacterId); openMemoryModal();
     closeDialog('memoryModalOverlay');

@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261003-logo1">
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="preconnect" href="https://afzcohtnljnmucrkgcaz.supabase.co" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20261003-logo1">
+  <link rel="stylesheet" href="styles.css?v=20261003-mature1">
 </head>
 <body>
   <div class="app-container">
@@ -69,7 +69,7 @@
           <button class="message-avatar-button" id="roleDetailsBtn" type="button" aria-label="查看当前角色人设与相处偏好"><img src="assets/avatars/nuannuan-portrait.jpg" alt="头像" class="avatar avatar-sm" id="headerAvatar"></button>
           <div class="char-details">
             <h1 class="char-name" id="headerName">暖暖</h1>
-            <span class="char-tag" id="headerTag">温柔细腻 · 女</span>
+            <span class="char-tag" id="headerTag">温柔亲密 · 女</span>
           </div>
         </div>
         <div class="header-actions">
@@ -94,12 +94,21 @@
         </div>
         <div class="chat-tools">
           <button class="tool-btn" id="emojiBtn" type="button" aria-expanded="false" aria-controls="emojiPicker">😊 表情</button>
+          <div class="chat-tool-group">
+            <label for="chatStyle">风格</label>
+            <select id="chatStyle" aria-label="聊天风格">
+              <option value="mature">成年情感</option>
+              <option value="daily">日常聊天</option>
+            </select>
+          </div>
+          <div class="chat-tool-group">
           <label for="replyLength">回复</label>
           <select id="replyLength" aria-label="回复长短">
             <option value="auto">随聊随回</option>
             <option value="short">短一点</option>
             <option value="long">认真长聊</option>
           </select>
+          </div>
         </div>
         <div id="emojiPicker" class="emoji-picker" hidden></div>
         <div class="composer-row">
@@ -259,9 +268,9 @@
   </div>
 
   <script src="config/app.js?v=20261003-7" defer></script>
-  <script src="roles.js?v=20261003-6" defer></script>
+  <script src="roles.js?v=20261003-mature1" defer></script>
   <script src="memory.js?v=20261003-6" defer></script>
   <script src="role-code.js?v=20261003-7" defer></script>
-  <script src="app.js?v=20261003-7" defer></script>
+  <script src="app.js?v=20261003-mature1" defer></script>
 </body>
 </html>
