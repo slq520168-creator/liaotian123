@@ -31,4 +31,5 @@ for (const file of walk('.')) {
 }
 run(['--disable-warning=ExperimentalWarning', 'scripts/test-chat-contract.mjs']);
 run(['scripts/test-chat-transport.mjs']);
-console.log('检查通过：网页脚本、角色JSON、文档及静态资源引用、聊天容量与传输契约。');
+run(['scripts/test-role-code.mjs']);
+console.log('检查通过：网页脚本、角色JSON、文档及静态资源引用、聊天容量与传输契约、角色代码解析和保存。');

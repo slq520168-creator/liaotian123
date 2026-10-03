@@ -10,19 +10,181 @@ function saveRoleCodeDraft() {
   }
   catch (error) { byId('roleCodeEditorStatus').textContent = '草稿暂时无法保存。'; }
 }
+// Read data literals only. Never evaluate the submitted JavaScript.
+function parseRoleData(source) {
+  let text = String(source ?? '').replace(/^\uFEFF/, ' ');
+  if (text.length > 524288) throw new Error('角色代码最多524288字符，请精简后生成。');
+  if (!text.trim()) throw new Error('请先填写或粘贴角色代码。');
+  const fence = text.match(/^(\s*```(?:json5?|javascript|js)?[^\S\r\n]*\r?\n)([\s\S]*?)(\r?\n?```\s*)$/i);
+  if (fence) text = fence[1].replace(/[^\r\n]/g, ' ') + fence[2] + fence[3].replace(/[^\r\n]/g, ' ');
+  let position = 0;
+  const quotes = {'"': '"', "'": "'", '`': '`', '“': '”', '”': '”', '‘': '’', '’': '’'};
+  const punctuation = {'：': ':', '，': ',', '；': ';', '｛': '{', '｝': '}', '［': '[', '］': ']'};
+  function fail(message, at = position) {
+    const lines = text.slice(0, at).split(/\r\n?|\n/);
+    const error = new Error('第' + lines.length + '行，第' + (lines.at(-1).length + 1) + '列：' + message);
+    error.position = at;
+    throw error;
+  }
+  function skip() {
+    while (position < text.length) {
+      if (/\s/.test(text[position])) {position++; continue;}
+      if (text.startsWith('//', position)) {
+        position += 2;
+        while (position < text.length && !/[\r\n]/.test(text[position])) position++;
+        continue;
+      }
+      if (text.startsWith('/*', position)) {
+        const end = text.indexOf('*/', position + 2);
+        if (end < 0) fail('注释缺少结尾 */。');
+        position = end + 2;
+        continue;
+      }
+      break;
+    }
+  }
+  function take(symbol) {
+    skip();
+    if ((punctuation[text[position]] || text[position]) !== symbol) return false;
+    position++;
+    return true;
+  }
+  function expect(symbol, message) {if (!take(symbol)) fail(message);}
+  function identifier() {
+    skip();
+    const match = text.slice(position).match(/^[$_\p{ID_Start}][$_\u200c\u200d\p{ID_Continue}]*/u);
+    if (!match) fail('字段名请写成 name 或 "name" 这样的形式。');
+    position += match[0].length;
+    return match[0];
+  }
+  function word(value) {
+    skip();
+    const match = text.slice(position).match(/^[$_\p{ID_Start}][$_\u200c\u200d\p{ID_Continue}]*/u);
+    if (match?.[0] !== value) return false;
+    position += value.length;
+    return true;
+  }
+  function string() {
+    const start = position, endQuote = quotes[text[position++]];
+    let out = '';
+    while (position < text.length) {
+      const character = text[position++];
+      if (character === endQuote) return out;
+      if (character !== '\\') {out += character; continue;}
+      if (position >= text.length) fail('字符串末尾的反斜杠后缺少内容。');
+      const escape = text[position++];
+      const escapes = {n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', '0': '\0'};
+      if (Object.hasOwn(escapes, escape)) {out += escapes[escape]; continue;}
+      if (escape === '\n' || escape === '\r') {
+        if (escape === '\r' && text[position] === '\n') position++;
+        continue;
+      }
+      if (escape === 'u' || escape === 'x') {
+        if (escape === 'u' && text[position] === '{') {
+          const match = text.slice(position).match(/^\{([0-9a-f]{1,6})\}/i);
+          if (!match || parseInt(match[1], 16) > 0x10ffff) fail('Unicode转义不完整，请检查 \\u{...}。');
+          out += String.fromCodePoint(parseInt(match[1], 16)); position += match[0].length;
+        } else {
+          const length = escape === 'u' ? 4 : 2, hex = text.slice(position, position + length);
+          if (hex.length !== length || !/^[0-9a-f]+$/i.test(hex)) fail('字符转义不完整，请检查 \\u 或 \\x 后的数字。');
+          out += String.fromCharCode(parseInt(hex, 16)); position += length;
+        }
+        continue;
+      }
+      out += escape;
+    }
+    fail('字符串缺少结尾' + endQuote + '。', start);
+  }
+  function value(depth = 0) {
+    skip();
+    if (depth > 64) fail('嵌套层数太多，请简化角色数据。');
+    if (Object.hasOwn(quotes, text[position])) return string();
+    if (take('{')) {
+      const object = Object.create(null);
+      if (take('}')) return object;
+      while (true) {
+        skip();
+        const key = Object.hasOwn(quotes, text[position]) ? string() : identifier();
+        expect(':', '字段名后缺少冒号，例如 name: "小雨"。');
+        object[key] = value(depth + 1);
+        if (take('}')) return object;
+        expect(',', '字段之间缺少逗号，或缺少结尾 }。');
+        if (take('}')) return object;
+      }
+    }
+    if (take('[')) {
+      const array = [];
+      if (take(']')) return array;
+      while (true) {
+        array.push(value(depth + 1));
+        if (take(']')) return array;
+        expect(',', '数组项之间缺少逗号，或缺少结尾 ]。');
+        if (take(']')) return array;
+      }
+    }
+    if (take('(')) {
+      const inner = value(depth + 1);
+      expect(')', '缺少结尾 )。');
+      return inner;
+    }
+    for (const [literal, result] of [['true', true], ['false', false], ['null', null]]) if (word(literal)) return result;
+    const number = text.slice(position).match(/^[+-]?(?:0[xX][0-9a-f]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)/i);
+    if (number) {
+      position += number[0].length;
+      const result = /^[+-]?0x/i.test(number[0]) ? parseInt(number[0], 16) : Number(number[0]);
+      if (!Number.isFinite(result)) fail('数字太大，请填写普通数字。');
+      return result;
+    }
+    fail(position === text.length ? '代码没有写完，请补上字段值或结尾括号。' : '字段值请直接填写文字、数字、数组或对象，不支持函数和计算表达式。');
+  }
+  function finish() {
+    take(';'); skip();
+    if (position < text.length) fail('角色数据后还有其他内容，请只保留这一份角色配置。');
+  }
+  function declaration() {
+    const name = identifier();
+    expect('=', '角色变量名后缺少 =。');
+    const result = value();
+    take(';');
+    if (word('export')) {
+      if (!word('default') || identifier() !== name) fail('export default 后请填写上面定义的角色变量名。');
+    } else if (word('module')) {
+      expect('.', '请使用 module.exports = 角色变量名。');
+      if (!word('exports')) fail('请使用 module.exports = 角色变量名。');
+      expect('=', 'module.exports 后缺少 =。');
+      if (identifier() !== name) fail('module.exports 后请填写上面定义的角色变量名。');
+    }
+    finish();
+    return result;
+  }
+  if (word('export')) {
+    if (word('default')) {const result = value(); finish(); return result;}
+    if (word('const') || word('let') || word('var')) return declaration();
+    fail('export 后请写 default 或角色变量声明。');
+  }
+  if (word('const') || word('let') || word('var')) return declaration();
+  if (word('module')) {
+    expect('.', '请使用 module.exports = {...}。');
+    if (!word('exports')) fail('请使用 module.exports = {...}。');
+    expect('=', 'module.exports 后缺少 =。');
+  }
+  const result = value();
+  finish();
+  return result;
+}
+
 function parseRoleCode(source, targetId = '') {
-  let text = String(source).replace(/^\uFEFF/, '').trim();
-  if (text.startsWith('export default ')) text = text.slice('export default '.length).replace(/;\s*$/, '').trim();
-  else if (text.startsWith('module.exports = ')) text = text.slice('module.exports = '.length).replace(/;\s*$/, '').trim();
-  let value;
-  try { value = JSON.parse(text); } catch (error) { throw new Error('格式不对，请使用角色模板。'); }
+  const value = parseRoleData(source);
   const list = Array.isArray(value) ? value : value && Array.isArray(value.roles) ? value.roles : [value];
   if (!list.length || list.length > 24) throw new Error('一次可添加1到24个角色。');
   const existing = targetId ? characters.find(char => char.id === targetId && !char.isPreset) : null;
   if (targetId && !existing) throw new Error('这个自定义角色已不存在，请重新选择。');
   if (targetId && list.length !== 1) throw new Error('修改角色时请只填写一个角色。');
-  return list.map(item => {
-    if (!item || typeof item !== 'object' || typeof item.name !== 'string' || !item.name.trim() || typeof item.personality !== 'string' || !item.personality.trim()) throw new Error('请补全角色姓名和性格。');
+  return list.map((item, index) => {
+    const label = list.length > 1 ? '第' + (index + 1) + '个角色：' : '';
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(label + '请用 { ... } 填写角色配置。');
+    if (typeof item.name !== 'string' || !item.name.trim()) throw new Error(label + '缺少角色姓名，请填写 name: "角色姓名"。');
+    if (typeof item.personality !== 'string' || !item.personality.trim()) throw new Error(label + '缺少角色性格，请填写 personality: "性格与人设"。');
     if (item.personality.trim().length > CHAT_LIMITS.personality) throw new Error('角色性格最多12000字，请精简后生成。');
     if (item.age !== undefined && (!Number.isFinite(Number(item.age)) || Number(item.age) < 18 || Number(item.age) > 100)) throw new Error('角色年龄请填写18到100岁。');
     const id = typeof item.id === 'string' && /^[a-z0-9_-]{1,70}$/i.test(item.id) ? item.id : makeId();
@@ -98,6 +260,7 @@ function renderRoleCodeControls() {
     byId('roleCodeEditor').focus();
   };
   byId('roleCodeEditor').wrap = 'soft';
+  byId('roleCodeEditor').placeholder = "填写角色数据，例如 { name: '小雨', personality: '成熟坦率，喜欢读书' }；也支持 JSON 和 JS 对象";
 }
 
 function useRoleCodeTemplate() {
@@ -141,7 +304,14 @@ function handleRoleCodeSubmit(event) {
   if (byId('generateRoleCodeBtn').disabled) return;
   byId('roleCodeEditorStatus').textContent = '';
   try { addRolesFromCode(byId('roleCodeEditor').value); }
-  catch (error) { byId('roleCodeEditorStatus').textContent = error.message; }
+  catch (error) {
+    byId('roleCodeEditorStatus').textContent = error.message;
+    if (Number.isInteger(error.position)) {
+      const editor = byId('roleCodeEditor');
+      editor.focus();
+      editor.setSelectionRange(error.position, error.position);
+    }
+  }
 }
 
 async function handleRoleCodeUpload() {
