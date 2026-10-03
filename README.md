@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/brand/app-icon-512.png" width="96" height="96" alt="角色聊天：玫瑰粉对话心形 Logo" />
+
 # 角色聊天
 
 **挑一位有性格的朋友，把今天想说的话慢慢说完。**
@@ -9,6 +11,12 @@
 [打开聊天](https://juese.onrender.com) · [在线说明书](https://juese.onrender.com/docs/index.html) · [PPT说明书](docs/character-chat-guide.pptx) · [新角色模板](roles/new-role.role.json)
 
 </div>
+
+## 添加到手机桌面
+
+iPhone / iPad：在 Safari 打开[聊天首页](https://juese.onrender.com)，点分享 → 添加到主屏幕。安卓：打开首页，在浏览器菜单中选择安装应用或添加到主屏幕。桌面名称为“角色聊天”，使用玫瑰粉对话心形图标，打开后进入独立聊天窗口。
+
+已经添加过旧快捷方式的设备，可移除旧图标后重新添加。移除桌面图标即可，保留浏览器中的网站数据。
 
 ## 手机版界面
 

@@ -1,0 +1,28 @@
+{
+  "id": "./",
+  "name": "角色聊天",
+  "short_name": "角色聊天",
+  "description": "选择有性格的朋友，创建自己的角色，保存聊天与相处记忆。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff0f5",
+  "theme_color": "#fff0f5",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "assets/brand/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/brand/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

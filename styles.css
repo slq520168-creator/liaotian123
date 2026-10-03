@@ -76,12 +76,22 @@ body { position: fixed; inset: 0; }
   padding: 16px 20px;
   display: flex;
   align-items: center;
+  gap: 10px;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
+.site-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
 .sidebar-header h2 {
+  flex: 1;
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-main);
