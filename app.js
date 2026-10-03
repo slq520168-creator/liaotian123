@@ -19,6 +19,7 @@ let characters = [];
 let activeCharacterId = 'nuannuan';
 let chatHistories = Object.create(null);
 let selectedFormAvatar = DEFAULT_AVATAR;
+let editingCharacterId = '';
 let userAvatar = DEFAULT_USER_AVATAR;
 let roleAvatarUploadVersion = 0;
 let userAvatarUploadVersion = 0;
@@ -334,13 +335,9 @@ function setupEventListeners() {
   byId('changeUserAvatarBtn').addEventListener('click', () => userAvatarUpload.click());
   userAvatarUpload.addEventListener('change', handleUserAvatarUpload);
   createRoleForm.addEventListener('submit', handleCreateRole);
-  byId('uploadRoleCodeBtn').addEventListener('click', openRoleCodeEditor);
+  byId('uploadRoleCodeBtn').addEventListener('click', () => openRoleCodeEditor());
   byId('chooseRoleCodeFileBtn').addEventListener('click', () => byId('roleCodeUpload').click());
-  byId('useRoleCodeTemplateBtn').addEventListener('click', () => {
-    byId('roleCodeEditor').value = createRoleCodeTemplate();
-    byId('roleCodeEditorStatus').textContent = '';
-    saveRoleCodeDraft();
-  });
+  byId('useRoleCodeTemplateBtn').addEventListener('click', useRoleCodeTemplate);
   byId('roleCodeEditor').addEventListener('input', saveRoleCodeDraft);
   byId('closeRoleCodeBtn').addEventListener('click', () => closeDialog('roleCodeModalOverlay'));
   byId('cancelRoleCodeBtn').addEventListener('click', () => closeDialog('roleCodeModalOverlay'));
@@ -442,6 +439,13 @@ function renderSidebar() {
     });
     card.appendChild(choose);
     if (!char.isPreset) {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'edit-role-btn';
+      edit.textContent = '编辑';
+      edit.setAttribute('aria-label', '编辑' + char.name);
+      edit.addEventListener('click', () => {closeSidebar(); openModal(char.id);});
+      card.appendChild(edit);
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'delete-btn';
@@ -494,6 +498,10 @@ function deleteCustomCharacter(charId) {
   switchCharacter(activeCharacterId === charId ? PRESET_CHARACTERS[0].id : activeCharacterId);
 }
 
+function formatCharacterReply(text) {
+  return text.replace(/\r\n?/g, '\n').split('\n').filter(line => line.trim()).join('\n').trim();
+}
+
 function appendMessageToDOM(msg, char) {
   const row = document.createElement('div');
   row.className = 'message-row ' + msg.sender;
@@ -513,7 +521,7 @@ function appendMessageToDOM(msg, char) {
   content.className = 'message-content';
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-  bubble.textContent = msg.text;
+  bubble.textContent = msg.sender === 'bot' ? formatCharacterReply(msg.text) : msg.text;
   const time = document.createElement('span');
   time.className = 'message-time';
   time.textContent = msg.timestamp || '';
@@ -633,12 +641,12 @@ function buildSystemPrompt(char) {
     '\n本轮顺着对方正在聊的事接话。变化措辞和节奏，直接输出角色说的话，不复述这些规则。';
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const memory = ROLE_MEMORY.prompt(roleMemories[char.id] || ROLE_MEMORY.normalize(null), playerProfile, latest, previousVisits[char.id]);
-  const lengthRule = replyLength === 'short' && !/长文|长一点|多写|详细|完整|故事|展开/.test(latest) ? '本轮一到两句自然接话，优先快而贴切；用户明确要故事、长文时仍要完整。' : replyLength === 'long' ? '本轮认真长聊，按对方需要展开具体细节，可分自然段。对方指定篇幅时尽量满足，尽量有结尾；没有指定篇幅时按内容自然决定，不硬凑字数，不套清单。' : '普通闲聊可短到一句或两三句；要故事、长文、解释时完整展开。只发表情也要懂得接情绪，可用文字和少量贴切表情回应。';
+  const lengthRule = replyLength === 'short' && !/长文|长一点|多写|详细|完整|故事|展开/.test(latest) ? '本轮一到两句自然接话，优先快而贴切；用户明确要故事、长文时仍要完整。' : replyLength === 'long' ? '本轮认真长聊，按对方需要展开具体细节，可换行但不留空白行。对方指定篇幅时尽量满足，尽量有结尾；没有指定篇幅时按内容自然决定，不硬凑字数，不套清单。' : '普通闲聊可短到一句或两三句；要故事、长文、解释时完整展开。只发表情也要懂得接情绪，可用文字和少量贴切表情回应。';
   const lastBot = (chatHistories[char.id] || []).filter(msg => msg.sender === 'bot').at(-1)?.text || '';
   const preferences = roleMemories[char.id]?.preferences.join(' ') || '';
   const noQuestion = /(?:不要|别|少|不用).{0,16}(?:追问|反问|问号|问题)/.test(preferences) || /[？?]\s*$/.test(lastBot) && !/[？?]\s*$/.test(latest);
   const styleRule = '\n当前聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label + '。\n' + ROLE_CHAT_STYLES[chatStyle].rules.join('\n');
-  return (base + styleRule + '\n' + lengthRule + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
+  return (base + styleRule + '\n' + lengthRule + '\n回复排版紧凑，必要时使用单次换行，段落之间不插入空白行。' + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
 }
 
 function buildRequestMessages(char) {
@@ -692,7 +700,7 @@ async function requestCharacterReply(char) {
           job.text = (job.text + delta).slice(0, CHAT_LIMITS.reply);
           if (activeCharacterId !== char.id) return;
           const bubble = messagesDiv.querySelector('[data-message-id="stream_' + char.id + '"] .message-bubble');
-          if (bubble) {bubble.textContent = job.text; scrollToBottom();}
+          if (bubble) {bubble.textContent = formatCharacterReply(job.text); scrollToBottom();}
           else renderMessages();
         });
         break;
@@ -703,7 +711,7 @@ async function requestCharacterReply(char) {
     }
     if (!text.trim()) throw new Error('没有收到回复，请重试。');
     if (pendingReplies.get(char.id) !== job || !chatHistories[char.id]) return;
-    chatHistories[char.id].push({id: makeId(), sender: 'bot', text: text.trim().slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()});
+    chatHistories[char.id].push({id: makeId(), sender: 'bot', text: formatCharacterReply(text).slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()});
     previousVisits[char.id] = '';
     saveDataToStorage();
   } catch (error) {
@@ -803,21 +811,60 @@ function renderAvatarPicker() {
   selectFormAvatar(selectedFormAvatar);
 }
 
-function openModal() {
+function openModal(charId = '') {
+  const char = characters.find(item => item.id === charId && !item.isPreset);
+  editingCharacterId = char?.id || '';
+  createRoleForm.reset();
+  byId('createRoleTitle').textContent = char ? '编辑角色' : '创建新角色';
+  byId('createRoleSubmitBtn').textContent = char ? '保存修改' : '创建角色';
+  (byId('createRoleStatus') || byId('roleAvatarStatus')).textContent = '';
+  const fields = {roleName: 'name', roleTag: 'tag', roleGreeting: 'greeting', rolePersonality: 'personality', roleGender: 'gender', roleAge: 'age', roleVoice: 'voice', roleInterests: 'interests', roleRelationship: 'relationship'};
+  if (char) Object.entries(fields).forEach(([id, key]) => {byId(id).value = char[key] ?? '';});
+  selectFormAvatar(char?.avatar || DEFAULT_AVATAR);
   openDialog('createModalOverlay');
 }
 
 function closeModal() {
   closeDialog('createModalOverlay');
   createRoleForm.reset();
+  editingCharacterId = '';
   selectFormAvatar(PRESET_CHARACTERS[0].avatar);
+}
+
+function commitCustomCharacters(incoming, targetId = '') {
+  const target = targetId ? characters.find(char => char.id === targetId && !char.isPreset) : null;
+  if (targetId && !target) throw new Error('这个自定义角色已不存在，请重新选择。');
+  if (targetId && incoming.length !== 1) throw new Error('修改角色时请只填写一个角色。');
+  if (targetId && pendingReplies.has(targetId)) throw new Error('角色正在回复，等回复完成后再保存修改。');
+  const roles = target ? [{...incoming[0], id: targetId, isPreset: false}] : incoming;
+  const ids = new Set(target ? characters.filter(char => char.id !== targetId).map(char => char.id) : characters.map(char => char.id));
+  roles.forEach(char => {
+    if (!char) throw new Error('请补全角色姓名和性格。');
+    if (ids.has(char.id)) throw new Error('角色已经存在。请在“操作角色”中选择它，再保存修改。');
+    ids.add(char.id);
+  });
+  const previous = {characters, activeCharacterId, chatHistories, roleMemories};
+  characters = target ? characters.map(char => char.id === targetId ? roles[0] : char) : characters.concat(roles);
+  chatHistories = Object.assign(Object.create(null), chatHistories);
+  roleMemories = Object.assign(Object.create(null), roleMemories);
+  switchCharacter(roles[0].id, false);
+  if (!saveDataToStorage()) {
+    characters = previous.characters;
+    chatHistories = previous.chatHistories;
+    roleMemories = previous.roleMemories;
+    switchCharacter(previous.activeCharacterId, false);
+    saveDataToStorage();
+    throw new Error('空间不足，角色未保存，请先备份并释放浏览器空间。');
+  }
 }
 
 function handleCreateRole(event) {
   event.preventDefault();
   if (roleAvatarBusy) return;
+  const existing = characters.find(char => char.id === editingCharacterId && !char.isPreset);
   const char = normalizeCustomCharacter({
-    id: 'custom_' + makeId(),
+    ...existing,
+    id: editingCharacterId || 'custom_' + makeId(),
     name: byId('roleName').value, tag: byId('roleTag').value,
     greeting: byId('roleGreeting').value, personality: byId('rolePersonality').value,
     gender: byId('roleGender').value, age: byId('roleAge').value,
@@ -826,10 +873,12 @@ function handleCreateRole(event) {
     avatar: selectedFormAvatar
   });
   if (!char) return;
-  characters.push(char);
-  chatHistories[char.id] = [{id: makeId(), sender: 'bot', text: char.greeting, timestamp: getCurrentTime()}];
-  closeModal();
-  switchCharacter(char.id);
+  try {
+    commitCustomCharacters([char], editingCharacterId);
+    closeModal();
+  } catch (error) {
+    (byId('createRoleStatus') || byId('roleAvatarStatus')).textContent = error.message;
+  }
 }
 
 async function readAlbumAvatar(file) {
@@ -991,6 +1040,17 @@ function openRoleDetails() {
   [char.tag + ' · ' + char.age + '岁', '聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label, char.isPreset ? char.personality.split('。')[0] + '。' : char.personality, char.background, char.interests ? '爱好：' + char.interests : ''].filter(Boolean).forEach(text => {
     const p = document.createElement('p'); p.textContent = text; box.appendChild(p);
   });
+  if (!char.isPreset) {
+    const actions = document.createElement('div');
+    actions.className = 'role-edit-actions';
+    [['编辑角色', () => openModal(char.id)], ['编辑代码', () => openRoleCodeEditor(char.id)]].forEach(([label, edit]) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'btn btn-outline'; button.textContent = label;
+      button.addEventListener('click', () => {closeDialog('roleDetailsOverlay'); edit();});
+      actions.appendChild(button);
+    });
+    box.appendChild(actions);
+  }
   openDialog('roleDetailsOverlay');
 }
 

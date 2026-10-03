@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261003-logo1">
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="preconnect" href="https://afzcohtnljnmucrkgcaz.supabase.co" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20261003-mature1">
+  <link rel="stylesheet" href="styles.css?v=20261003-roles1">
 </head>
 <body>
   <div class="app-container">
@@ -131,15 +131,17 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleCodeTitle">
       <div class="modal-header"><h2 id="roleCodeTitle">角色代码</h2><button class="icon-btn" id="closeRoleCodeBtn" type="button" aria-label="关闭角色代码">&times;</button></div>
       <form id="roleCodeForm" class="modal-body">
+        <div id="roleCodeTargetControls" class="form-group"></div>
         <div class="role-code-toolbar">
           <button class="btn btn-primary" id="chooseRoleCodeFileBtn" type="button">上传文件</button>
           <button class="btn btn-outline" id="useRoleCodeTemplateBtn" type="button">使用模板</button>
+          <button class="btn btn-outline" id="clearRoleCodeBtn" type="button">清空代码</button>
           <a class="template-link" href="roles/new-role.role.json" download>下载模板</a>
           <input type="file" id="roleCodeUpload" accept=".json,.js,application/json,text/javascript" hidden>
         </div>
         <div class="form-group">
           <label for="roleCodeEditor">编写或粘贴角色代码</label>
-          <textarea class="role-code-editor" id="roleCodeEditor" rows="12" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" placeholder="粘贴 JSON、export default 或 module.exports 角色数据" required></textarea>
+          <textarea class="role-code-editor" id="roleCodeEditor" rows="10" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="soft" placeholder="先清空代码，再粘贴 JSON、export default 或 module.exports 角色数据" required></textarea>
         </div>
         <p class="form-hint" id="roleCodeEditorStatus" role="alert"></p>
         <div class="modal-footer">
@@ -253,6 +255,7 @@
           <textarea id="roleRelationship" rows="2" placeholder="例如：像熟悉的朋友，记得我说过的话；需要安静时不追问" maxlength="300"></textarea>
         </div>
 
+        <p class="form-hint form-span-full" id="createRoleStatus" role="alert"></p>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
           <button type="submit" class="btn btn-primary" id="createRoleSubmitBtn">创建角色</button>
@@ -264,7 +267,7 @@
   <script src="config/app.js?v=20261003-7" defer></script>
   <script src="roles.js?v=20261003-mature2" defer></script>
   <script src="memory.js?v=20261003-6" defer></script>
-  <script src="role-code.js?v=20261003-7" defer></script>
-  <script src="app.js?v=20261003-mature2" defer></script>
+  <script src="role-code.js?v=20261003-roles1" defer></script>
+  <script src="app.js?v=20261003-roles1" defer></script>
 </body>
 </html>
