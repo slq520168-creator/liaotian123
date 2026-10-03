@@ -66,6 +66,17 @@ assert.equal(parse(String.raw`{name:'阿晴', personality:'\u6210\u719f\n\x41\u{
 assert.equal(parse('{ roles: [' + literal + ',' + literal.replace('阿晴', '知远') + ',], }').length, 2);
 assert.equal(parse(fs.readFileSync(new URL('../roles/new-role.role.json', import.meta.url), 'utf8')).length, 1);
 assert.equal(parse(fs.readFileSync(new URL('../roles/preset-roles.json', import.meta.url), 'utf8')).length, 12);
+const chinese = parse("{姓名:'阿晴',年龄:'28岁',性别:'女',性格:'成熟坦率',头像:'assets/avatars/xuzhixia-portrait.jpg',开场白:'下午好',说话风格:'自然利落'}")[0];
+assert.deepEqual({name: chinese.name, age: chinese.age, gender: chinese.gender, personality: chinese.personality, avatar: chinese.avatar, greeting: chinese.greeting, voice: chinese.voice}, {name:'阿晴', age:28, gender:'female', personality:'成熟坦率', avatar:'assets/avatars/xuzhixia-portrait.jpg', greeting:'下午好', voice:'自然利落'});
+const card = parse('{spec:"chara_card_v2",data:{name:"阿晴",description:"成年书店店员，认真倾听",first_mes:"你好",scenario:"旧城区书店",age:28}}')[0];
+assert.equal(card.personality, '成年书店店员，认真倾听');
+assert.equal(card.greeting, '你好');
+assert.equal(card.background, '旧城区书店');
+assert.equal(parse('{characters:[' + literal + ']}').length, 1);
+assert.equal(parse('{character:' + literal + '}')[0].name, '阿晴');
+assert.equal(parse('{role:' + literal + '}')[0].name, '阿晴');
+assert.throws(() => parse('{姓名:"小雨",性格:"开朗",年龄:"17岁"}'), /18到100/);
+assert.equal(parse('{name:"阿晴",姓名:"其他名字",personality:"直接设定",description:"备用设定"}')[0].personality, '直接设定');
 
 const broken = "{\n name: '阿晴'\n personality: '成熟坦率'\n}";
 assert.throws(() => parse(broken), error => /第3行，第2列：字段之间缺少逗号/.test(error.message) && error.position === broken.indexOf('personality'));

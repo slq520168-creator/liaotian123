@@ -173,14 +173,39 @@ function parseRoleData(source) {
   return result;
 }
 
+function canonicalRoleData(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  // Common character-card exports keep the editable fields under data.
+  const data = value.data && typeof value.data === 'object' && !Array.isArray(value.data) ? value.data : value;
+  const role = {...data};
+  const aliases = {
+    name: ['姓名', '名字', '角色名', '角色名称'], personality: ['性格', '人设', '角色设定', 'description', 'persona'],
+    age: ['年龄'], gender: ['性别'], avatar: ['头像'], tag: ['标签'],
+    greeting: ['开场白', '问候语', 'first_mes'], voice: ['说话风格', '语气'],
+    interests: ['兴趣', '爱好'], relationship: ['相处方式', '关系'],
+    background: ['背景', '背景故事', 'scenario'], quickReplies: ['快捷回复']
+  };
+  for (const [key, alternatives] of Object.entries(aliases)) {
+    if (role[key] !== undefined) continue;
+    const alias = alternatives.find(name => Object.hasOwn(data, name));
+    if (alias) role[key] = data[alias];
+  }
+  const gender = typeof role.gender === 'string' ? role.gender.trim().toLowerCase() : role.gender;
+  if (['女', '女性', '成年女性', 'female'].includes(gender)) role.gender = 'female';
+  else if (['男', '男性', '成年男性', 'male'].includes(gender)) role.gender = 'male';
+  if (typeof role.age === 'string' && /^\d+\s*岁$/.test(role.age.trim())) role.age = Number(role.age.trim().replace(/\s*岁$/, ''));
+  return role;
+}
+
 function parseRoleCode(source, targetId = '') {
   const value = parseRoleData(source);
-  const list = Array.isArray(value) ? value : value && Array.isArray(value.roles) ? value.roles : [value];
+  const list = Array.isArray(value) ? value : Array.isArray(value?.roles) ? value.roles : Array.isArray(value?.characters) ? value.characters : [value?.character || value?.role || value];
   if (!list.length || list.length > 24) throw new Error('一次可添加1到24个角色。');
   const existing = targetId ? characters.find(char => char.id === targetId && !char.isPreset) : null;
   if (targetId && !existing) throw new Error('这个自定义角色已不存在，请重新选择。');
   if (targetId && list.length !== 1) throw new Error('修改角色时请只填写一个角色。');
-  return list.map((item, index) => {
+  return list.map((raw, index) => {
+    const item = canonicalRoleData(raw);
     const label = list.length > 1 ? '第' + (index + 1) + '个角色：' : '';
     if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(label + '请用 { ... } 填写角色配置。');
     if (typeof item.name !== 'string' || !item.name.trim()) throw new Error(label + '缺少角色姓名，请填写 name: "角色姓名"。');
@@ -260,7 +285,7 @@ function renderRoleCodeControls() {
     byId('roleCodeEditor').focus();
   };
   byId('roleCodeEditor').wrap = 'soft';
-  byId('roleCodeEditor').placeholder = "填写角色数据，例如 { name: '小雨', personality: '成熟坦率，喜欢读书' }；也支持 JSON 和 JS 对象";
+  byId('roleCodeEditor').placeholder = "例如 { 姓名: '小雨', 性格: '成熟坦率，喜欢读书' }；也支持 name/personality、JSON 和 JS 对象";
 }
 
 function useRoleCodeTemplate() {

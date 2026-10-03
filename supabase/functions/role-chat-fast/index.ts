@@ -31,20 +31,6 @@ function lastUser(messages:any[]){
   const row=[...(Array.isArray(messages)?messages:[])].reverse().find((m:any)=>m?.role==="user");
   return String(row?.content||"");
 }
-function matureButSafe(text:string){
-  const t=String(text||"");
-  const mature=/(成年人|成人话题|恋爱|暧昧|亲密关系|身体感受|性健康|避孕|边界|欲望|情侣|伴侣|约会|接吻|亲吻|想你|抱抱)/i.test(t);
-  const risky=/(未成年|儿童|小孩|幼女|幼男|强迫|非自愿|迷奸|rape|minor|child|兽交|乱伦)/i.test(t);
-  return mature&&!risky;
-}
-function refusalLike(text:string){
-  return /(我不能|无法帮助|无法协助|不能参与|不能继续|不适合讨论|不能聊|不能提供|can't help|cannot help|can't assist|cannot assist|can't engage|cannot engage|not able to help|sexual content policy|色情内容|露骨内容)/i.test(String(text||""));
-}
-async function acceptNatural(result:Promise<{text:string,provider:string}>,messages:any[]){
-  const out=await result;
-  if(matureButSafe(lastUser(messages))&&refusalLike(out?.text||""))throw new Error("over_refusal_"+out.provider);
-  return out;
-}
 async function vireonix(messages:any[],maxTokens=180){
   const ctrl=new AbortController();
   const timer=setTimeout(()=>ctrl.abort(),7000);
@@ -184,9 +170,8 @@ async function* readUpstream(response:Response):AsyncGenerator<{delta?:string,do
 function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal){
   const encoder=new TextEncoder();
   const aborters:AbortController[]=[];
-  const sessions:{controller:AbortController,close:()=>void,iterator:AsyncGenerator}[]=[];
   let closed=false;
-  const stop=()=>{closed=true;aborters.forEach(controller=>controller.abort());sessions.forEach(session=>session.close());};
+  const stop=()=>{closed=true;aborters.forEach(controller=>controller.abort());};
   const stream=new ReadableStream({
     async start(output){
       const started=Date.now();
@@ -194,49 +179,52 @@ function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal
       const onAbort=()=>{stop();try{output.close();}catch{}};
       requestSignal.addEventListener("abort",onAbort,{once:true});
       if(requestSignal.aborted){onAbort();return;}
-      const open=async(provider:typeof STREAM_PROVIDERS[number])=>{
+      // Keep the HTTP stream alive while racing complete, genuine model replies.
+      // A first token alone must not cancel a provider that can finish successfully.
+      const heartbeat=setInterval(()=>{if(!closed)output.enqueue(encoder.encode(": waiting\n\n"));},5000);
+      const failures:{provider:string,reason:string}[]=[];
+      const generate=async(provider:typeof STREAM_PROVIDERS[number])=>{
         const controller=new AbortController();aborters.push(controller);
-        const firstTimer=setTimeout(()=>controller.abort(),9000);
-        const wholeTimer=setTimeout(()=>controller.abort(),maxTokens>1400?90000:32000);
+        let timeout=false;
+        const expire=()=>{timeout=true;controller.abort();};
+        const firstTimer=setTimeout(expire,12000);
+        const wholeTimer=setTimeout(expire,maxTokens>1400?90000:17000);
         const close=()=>{clearTimeout(firstTimer);clearTimeout(wholeTimer);controller.abort();};
         try{
           const response=await fetch(provider.url,{method:"POST",headers:{"content-type":"application/json",...(provider.auth?{authorization:provider.auth}:{})},body:JSON.stringify({model:provider.model,messages,temperature:.85,max_tokens:maxTokens,stream:true}),signal:controller.signal});
-          if(!response.ok)throw new Error(provider.name+"_"+response.status);
-          const iterator=readUpstream(response);
-          let prefix="";
-          // 首批真实内容才参赛；空心跳、角色字段、错误不会成为赢家。
-          while(!prefix){
-            const next=await iterator.next();
-            if(next.done||next.value.done&&!next.value.delta)throw new Error("empty_stream");
-            if(next.value.delta)prefix+=next.value.delta;
+          if(!response.ok)throw new Error("http_"+response.status);
+          let text="",complete=false,limited=false;
+          for await(const event of readUpstream(response)){
+            if(closed)throw new Error("cancelled");
+            if(event.delta){
+              clearTimeout(firstTimer);
+              text+=event.delta;
+              if(text.length>30000)throw new Error("reply_too_large");
+            }
+            if(event.done){complete=true;limited=event.limited===true;break;}
           }
-          if(matureButSafe(lastUser(messages))&&refusalLike(prefix))throw new Error("over_refusal");
-          clearTimeout(firstTimer);
-          sessions.push({controller,iterator,close});
-          return {provider:provider.name,controller,iterator,prefix,close};
-        }catch(error){close();throw error;}
+          if(!complete)throw new Error("stream_incomplete");
+          if(!text.trim())throw new Error("empty_reply");
+          // Return upstream boundary/safety replies as genuine responses too.
+          return {provider:provider.name,text,limited};
+        }catch(error){
+          const message=String((error as Error)?.message||"");
+          const reason=timeout?"timeout":/^http_\d{3}$|^(?:stream_incomplete|empty_reply|empty_stream|upstream_error|reply_too_large|stream_frame_too_large)$/.test(message)?message:"network_or_format";
+          if(!closed)failures.push({provider:provider.name,reason});
+          throw new Error(reason);
+        }finally{close();}
       };
       try{
-        const winner=await Promise.any(STREAM_PROVIDERS.map(open));
-        if(closed){winner.close();await winner.iterator.return();return;}
-        aborters.filter(controller=>controller!==winner.controller).forEach(controller=>controller.abort());
-        sessions.filter(session=>session.controller!==winner.controller).forEach(session=>{session.close();session.iterator.return().catch(()=>{});});
-        console.log("role_chat_first_content",winner.provider,"ms",Date.now()-started);
-        if(winner.prefix.length>30000)throw new Error("reply_too_large");
-        send({delta:winner.prefix});
-        let complete=false,total=winner.prefix.length;
-        try{
-          for await(const event of winner.iterator){
-            if(closed)break;
-            if(event.delta){total+=event.delta.length;if(total>30000)throw new Error("reply_too_large");send({delta:event.delta});}
-            if(event.done){complete=true;send({done:true,limited:event.limited===true});break;}
-          }
-          if(!complete&&!closed)throw new Error("stream_incomplete");
-        }finally{winner.close();}
+        const winner=await Promise.any(STREAM_PROVIDERS.map(generate));
+        if(closed)return;
+        send({delta:winner.text});
+        send({done:true,limited:winner.limited});
+        console.log("role_chat_complete",JSON.stringify({provider:winner.provider,ms:Date.now()-started,chars:winner.text.length,limited:winner.limited}));
       }catch(error){
         if(!closed)send({error:"reply_unavailable"});
-        console.warn("role_chat_stream_failed",String(error).slice(0,160));
+        if(!closed)console.warn("role_chat_failed",JSON.stringify({ms:Date.now()-started,providers:failures}));
       }finally{
+        clearInterval(heartbeat);
         requestSignal.removeEventListener("abort",onAbort);
         if(!closed){stop();output.close();}
       }
@@ -264,11 +252,11 @@ Deno.serve(async(req:Request)=>{
     try{
       const started=Date.now();
       const winner=await Promise.any([
-        acceptNatural(cehpoint(messages,maxTokens),messages),
-        acceptNatural(pollinations(messages,maxTokens),messages),
-        ...(body?.client==="liaotian123"?[]:[acceptNatural(pollinationsText(messages),messages)]),
-        acceptNatural(vireonix(messages,maxTokens),messages),
-        acceptNatural(faucet(messages,maxTokens),messages)
+        cehpoint(messages,maxTokens),
+        pollinations(messages,maxTokens),
+        ...(body?.client==="liaotian123"?[]:[pollinationsText(messages)]),
+        vireonix(messages,maxTokens),
+        faucet(messages,maxTokens)
       ]);
       console.log("role_chat_provider",winner.provider,"ms",Date.now()-started);
       return json(winner);

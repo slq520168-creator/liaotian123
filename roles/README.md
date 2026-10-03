@@ -20,6 +20,8 @@
 
 name和personality必填。未写id会自动生成，未写标签、开场和年龄会使用默认值。推荐保存独立id，方便避免重复添加。
 
+也可写中文字段，例如`{姓名:'小雨',性格:'成熟坦率',年龄:'26岁',性别:'女'}`。支持头像、标签、开场白、说话风格、兴趣、相处方式和背景等中文键。常见角色卡的data包装、description人设和first_mes开场白可识别；批量也可使用characters数组。
+
 完整模板：[new-role.role.json](new-role.role.json)。预设配置参考：[preset-roles.json](preset-roles.json)。网页“使用模板”每次生成不同id。
 
 ## 字段与容量

@@ -15,6 +15,10 @@ const DEFAULT_USER_AVATAR = 'assets/avatars/user.svg';
 const MAX_AVATAR_DATA_LENGTH = 180000;
 const REQUEST_TIMEOUT_MS = 40000;
 const LONG_REQUEST_TIMEOUT_MS = 100000;
+const SITE_VERSION = '20261003-reliable1';
+const UPDATE_COMPOSER_KEY = 'liaotian_update_composer';
+let lastSiteVersionCheck = 0;
+let checkingSiteVersion = false;
 let characters = [];
 let activeCharacterId = 'nuannuan';
 let chatHistories = Object.create(null);
@@ -254,10 +258,12 @@ function init() {
   byId('chatStyle').value = chatStyle;
   renderEmojiPicker();
   switchCharacter(activeCharacterId, false);
+  restoreUpdateComposer();
   updateViewportHeight();
   saveDataToStorage();
   warmReplyConnection();
-  document.addEventListener('visibilitychange', () => {if (!document.hidden) warmReplyConnection();});
+  checkSiteVersion();
+  document.addEventListener('visibilitychange', () => {if (!document.hidden) {warmReplyConnection(); checkSiteVersion();}});
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   window.addEventListener('resize', updateViewportHeight);
   if (window.visualViewport) {
@@ -266,6 +272,51 @@ function init() {
   }
   document.addEventListener('focusin', () => {requestAnimationFrame(updateViewportHeight); setTimeout(updateViewportHeight, 350);});
   document.addEventListener('focusout', () => {requestAnimationFrame(updateViewportHeight); setTimeout(updateViewportHeight, 350);});
+}
+
+function restoreUpdateComposer() {
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(UPDATE_COMPOSER_KEY) || 'null');
+    if (draft?.charId === activeCharacterId && typeof draft.text === 'string') {
+      userInput.value = draft.text.slice(0, CHAT_LIMITS.message);
+      updateComposer();
+      sessionStorage.removeItem(UPDATE_COMPOSER_KEY);
+    }
+  } catch (error) {}
+}
+
+async function checkSiteVersion() {
+  if (navigator.onLine === false || checkingSiteVersion || Date.now() - lastSiteVersionCheck < 30000) return;
+  checkingSiteVersion = true;
+  lastSiteVersionCheck = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch('version.json?check=' + Date.now(), {cache: 'no-store', credentials: 'omit', signal: controller.signal});
+    if (!response.ok) return;
+    const {version} = await response.json();
+    if (typeof version !== 'string' || !/^[a-z0-9_-]{1,80}$/i.test(version) || version === SITE_VERSION || byId('siteUpdateNotice')) return;
+    const notice = document.createElement('div');
+    notice.id = 'siteUpdateNotice'; notice.className = 'site-update'; notice.setAttribute('role', 'status');
+    const label = document.createElement('span'); label.textContent = '有新版可用';
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline'; button.textContent = '更新页面';
+    button.addEventListener('click', () => {
+      if (pendingReplies.size) {label.textContent = '等当前回复结束后再更新'; return;}
+      try {
+        sessionStorage.setItem(UPDATE_COMPOSER_KEY, JSON.stringify({charId: activeCharacterId, text: userInput.value}));
+        if (byId('roleCodeModalOverlay').classList.contains('active')) {
+          sessionStorage.setItem(ROLE_CODE_DRAFT_KEY, byId('roleCodeEditor').value);
+          sessionStorage.setItem(ROLE_CODE_TARGET_KEY, roleCodeEditingId);
+        }
+      } catch (error) {label.textContent = '草稿无法保存，请先复制输入内容'; return;}
+      const url = new URL(location.href); url.searchParams.set('v', version);
+      location.replace(url.href);
+    });
+    notice.append(label, button);
+    document.querySelector('.chat-main').prepend(notice);
+  } catch (error) {
+    // An unavailable update check must never block chatting or role editing.
+  } finally {clearTimeout(timer); checkingSiteVersion = false;}
 }
 
 function warmReplyConnection() {
@@ -597,7 +648,7 @@ function updateComposer() {
   sendBtn.disabled = busy || !userInput.value.trim();
   sendBtn.setAttribute('aria-label', busy ? '等待角色回复' : '发送消息');
   quickRepliesDiv.querySelectorAll('button').forEach(button => { button.disabled = busy; });
-  replyStatus.textContent = '';
+  replyStatus.textContent = busy ? pendingReplies.get(activeCharacterId)?.maxTokens > 1400 ? '正在生成长回复…' : '正在生成回复…' : '';
   userInput.placeholder = '给' + headerName.textContent + '发送消息…';
 }
 

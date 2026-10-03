@@ -522,6 +522,18 @@ body { position: fixed; inset: 0; }
   font-size: 0.75rem;
 }
 .reply-status:empty { display: none; }
+.site-update {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--primary-light, #fce4ec);
+  color: var(--text-primary, #4b303d);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.site-update .btn { padding: 5px 12px; font-size: 13px; white-space: nowrap; }
 
 .reply-error {
   display: flex;

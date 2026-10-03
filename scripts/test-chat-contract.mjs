@@ -4,12 +4,12 @@ import vm from 'node:vm';
 import { stripTypeScriptTypes } from 'node:module';
 
 // Execute the real handler against controlled upstreams. No network or account needed.
-const source = fs.readFileSync(new URL('../supabase/functions/role-chat-fast/index.ts', import.meta.url), 'utf8').replace(/^import[^\n]+\n/, '');
+const source = fs.readFileSync(process.env.LIAOTIAN_CHAT_SOURCE || new URL('../supabase/functions/role-chat-fast/index.ts', import.meta.url), 'utf8').replace(/^import[^\n]+\n/, '');
 let handler;
 const requests = [];
 const sandbox = {
   Response, Request, Headers, ReadableStream, TextEncoder, TextDecoder,
-  AbortController, setTimeout, clearTimeout,
+  AbortController, setTimeout, clearTimeout, setInterval, clearInterval,
   console: { log() {}, warn() {} },
   Deno: { serve(fn) { handler = fn; } },
   fetch: async (url, options) => {
@@ -67,4 +67,41 @@ try {
   assert.match(completed, /"done":true/);
   assert.doesNotMatch(completed, /"error"/);
 } finally {clearTimeout(deadline);}
-console.log('聊天契约通过：连接检查、文本JSON、旧入口兼容、长文与人设末尾、上下文预算、超限拒绝、完成后关闭。');
+// The fastest provider emits a token then loses the connection. A slower complete
+// response must win, without exposing or storing the incomplete prefix.
+const diagnostics = [];
+sandbox.console.log = (...args) => diagnostics.push(args.join(' '));
+sandbox.console.warn = (...args) => diagnostics.push(args.join(' '));
+const signals = [];
+sandbox.fetch = async (url, options) => {
+  signals.push(options.signal);
+  if (url.includes('cehpoint')) return new Response('data: {"choices":[{"delta":{"content":"不能保存的半段"}}]}\n\n', {headers: {'content-type': 'text/event-stream'}});
+  if (url.includes('vireonix')) {
+    await new Promise(resolve => setTimeout(resolve, 8));
+    return new Response(JSON.stringify({choices: [{message: {content: '慢一点但完整的真实答复'}, finish_reason: 'stop'}]}), {headers: {'content-type': 'application/json'}});
+  }
+  return new Response('{"error":"busy"}', {status: 429});
+};
+const failover = await post({client: 'liaotian123', stream: true, messages: [{role: 'system', content: '私密人设测试标记'}, {role: 'user', content: '普通测试消息标记'}]}).then(r => r.text());
+assert.match(failover, /慢一点但完整的真实答复/);
+assert.match(failover, /"done":true/);
+assert.doesNotMatch(failover, /不能保存的半段|"error"/);
+assert(signals.every(signal => signal.aborted), '回复完成后取消其他请求');
+assert(diagnostics.some(line => line.startsWith('role_chat_complete ')));
+assert(diagnostics.every(line => !/私密人设测试标记|普通测试消息标记|慢一点但完整的真实答复/.test(line)), '诊断不包含人设或聊天正文');
+
+// An upstream boundary response is real model content, not a transport failure.
+sandbox.fetch = async () => new Response(JSON.stringify({choices: [{message: {content: '我不能替你决定，但可以陪你认真讨论相处边界。'}, finish_reason: 'stop'}]}), {headers: {'content-type': 'application/json'}});
+const boundary = await post({client: 'liaotian123', stream: true, messages: [{role: 'system', content: '自然聊天'}, {role: 'user', content: '我们都是成年人，聊聊恋爱中的边界。'}]}).then(r => r.text());
+assert.match(boundary, /我不能替你决定/);
+assert.match(boundary, /"done":true/);
+
+// All paths fail: emit a retryable error only, with safe provider diagnostics.
+diagnostics.length = 0;
+sandbox.fetch = async (url) => url.includes('cehpoint') ? new Response('data: {"choices":[{"delta":{"content":"半句"}}]}\n\n', {headers: {'content-type': 'text/event-stream'}}) : new Response('busy', {status: 503});
+const unavailable = await post({client: 'liaotian123', stream: true, messages: [{role: 'system', content: '私密人设测试标记'}, {role: 'user', content: '普通测试消息标记'}]}).then(r => r.text());
+assert.match(unavailable, /"error":"reply_unavailable"/);
+assert.doesNotMatch(unavailable, /"delta"|"done":true/);
+assert(diagnostics.some(line => /role_chat_failed/.test(line) && /stream_incomplete/.test(line) && /http_503/.test(line)));
+assert(diagnostics.every(line => !/私密人设测试标记|普通测试消息标记|半句/.test(line)));
+console.log('聊天契约通过：容量、旧入口、连接检查、完成后结束、首段断流切换完整线路、真实边界答复、全部失败诊断不含聊天正文。');
