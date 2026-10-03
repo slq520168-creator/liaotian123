@@ -219,7 +219,32 @@ function restoreInterfaceFocus(previous) {
   (visible && previous.isConnected ? previous : byId('roleDetailsBtn')).focus({preventScroll: true});
 }
 
+function renderChatStyleControl() {
+  let group = byId('chatStyleControls');
+  if (!group) {
+    group = document.createElement('div');
+    group.id = 'chatStyleControls';
+    group.className = 'chat-tool-group';
+    document.querySelector('.chat-tools').insertBefore(group, byId('emojiBtn').nextSibling);
+  }
+  group.replaceChildren();
+  const label = document.createElement('label');
+  label.htmlFor = 'chatStyle';
+  label.textContent = '风格';
+  const select = document.createElement('select');
+  select.id = 'chatStyle';
+  select.setAttribute('aria-label', '聊天风格');
+  Object.entries(ROLE_CHAT_STYLES).forEach(([value, style]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = style.label;
+    select.appendChild(option);
+  });
+  group.append(label, select);
+}
+
 function init() {
+  renderChatStyleControl();
   loadDataFromStorage();
   setupEventListeners();
   renderAvatarPicker();
