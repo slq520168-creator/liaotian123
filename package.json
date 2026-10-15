@@ -1,0 +1,11 @@
+{
+  "name": "juese-static",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "4.151.0"
+  },
+  "scripts": {
+    "cf:check": "wrangler deploy --dry-run",
+    "cf:deploy": "wrangler deploy"
+  }
+}
