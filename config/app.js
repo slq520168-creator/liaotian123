@@ -4,7 +4,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
 });
 
 (() => {
-  const version='20261018-livevoice4';
+  const version='20261018-livevoice5';
   const hideUpdate=document.createElement('style');
   hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';
   document.head.appendChild(hideUpdate);
@@ -15,7 +15,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
     document.head.appendChild(link);
   }
   window.addEventListener('load',()=>{
-    for(const src of ['role-experience.js','role-voice-stage.js']){
+    for(const src of ['role-experience.js','role-voice-stage.js','role-persistence.js']){
       const script=document.createElement('script');
       script.src=src+'?v='+version;
       script.async=false;
