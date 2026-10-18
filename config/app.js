@@ -4,7 +4,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
 });
 
 (() => {
-  const version='20261018-role3d1';
+  const version='20261018-role3d2';
   const link=document.createElement('link');
   link.rel='stylesheet';
   link.href='role-experience.css?v='+version;
