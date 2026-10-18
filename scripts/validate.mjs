@@ -8,7 +8,7 @@ function run(args) {
   const r = spawnSync(process.execPath, args, {stdio: 'inherit'});
   if (r.status !== 0) process.exit(r.status || 1);
 }
-for (const file of ['config/app.js', 'roles.js', 'memory.js', 'role-code.js', 'app.js']) run(['--check', file]);
+for (const file of ['config/app.js', 'roles.js', 'memory.js', 'role-code.js', 'role-code-compat.js', 'role-persistence.js', 'app.js']) run(['--check', file]);
 for (const file of ['roles/new-role.role.json', 'roles/preset-roles.json']) JSON.parse(fs.readFileSync(file, 'utf8'));
 function checkRef(file, target) {
   if (!target || /^(?:https?:|data:|mailto:|#)/.test(target)) return;
