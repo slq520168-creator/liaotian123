@@ -4,18 +4,18 @@ window.LIAOTIAN_CONFIG = Object.freeze({
 });
 
 (() => {
-  const version='20261018-custom1';
+  const version='20261018-compact1';
   const hideUpdate=document.createElement('style');
   hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';
   document.head.appendChild(hideUpdate);
-  for(const href of ['role-experience.css','role-voice-stage.css']){
+  for(const href of ['role-experience.css','role-voice-stage.css','chat-compact-ui.css']){
     const link=document.createElement('link');
     link.rel='stylesheet';
     link.href=href+'?v='+version;
     document.head.appendChild(link);
   }
   window.addEventListener('load',()=>{
-    for(const src of ['role-experience.js','role-voice-stage.js','role-code-compat.js','role-persistence.js']){
+    for(const src of ['role-experience.js','role-voice-stage.js','role-code-compat.js','role-persistence.js','chat-compact-ui.js']){
       const script=document.createElement('script');
       script.src=src+'?v='+version;
       script.async=false;
