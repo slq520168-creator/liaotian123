@@ -1,0 +1,299 @@
+/* 角色展示增强：只改变预设角色展示、角色详情、表情面板和角色代码面板。 */
+#presetCharacterList{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  perspective:900px;
+  margin-bottom:18px;
+}
+#presetCharacterList .character-card{
+  min-width:0;
+  height:172px;
+  margin:0;
+  border:0;
+  border-radius:20px;
+  overflow:visible;
+  background:transparent;
+  transform-style:preserve-3d;
+  cursor:pointer;
+}
+#presetCharacterList .character-card:hover,
+#presetCharacterList .character-card.active{background:transparent;border-color:transparent}
+#presetCharacterList .character-choice.role-3d-choice{
+  --role-a:#c85f8d;
+  --role-b:#7b3f71;
+  --rx:0deg;
+  --ry:0deg;
+  position:relative;
+  display:block;
+  width:100%;
+  height:100%;
+  padding:0;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--role-a) 36%,#fff 18%);
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 76% 18%,color-mix(in srgb,var(--role-a) 42%,transparent),transparent 38%),
+    linear-gradient(145deg,color-mix(in srgb,var(--role-b) 42%,#2b2032),#17121d 72%);
+  box-shadow:0 13px 28px rgba(60,25,47,.18),inset 0 1px rgba(255,255,255,.18);
+  transform:rotateX(var(--rx)) rotateY(var(--ry)) translateZ(0);
+  transform-style:preserve-3d;
+  transition:transform .22s cubic-bezier(.2,.75,.2,1),box-shadow .22s ease,border-color .22s ease;
+  will-change:transform;
+  touch-action:pan-y;
+  isolation:isolate;
+}
+#presetCharacterList .character-choice.role-3d-choice::before{
+  content:"";
+  position:absolute;
+  inset:-22% -35% 38% -20%;
+  z-index:1;
+  border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--role-a) 70%,#fff 8%),transparent 66%);
+  opacity:.34;
+  filter:blur(10px);
+  transform:translateZ(6px);
+  pointer-events:none;
+}
+#presetCharacterList .character-choice.role-3d-choice::after{
+  content:"";
+  position:absolute;
+  inset:-35% -85%;
+  z-index:5;
+  background:linear-gradient(108deg,transparent 39%,rgba(255,255,255,.27) 49%,transparent 59%);
+  transform:translateX(-34%) rotate(8deg) translateZ(70px);
+  animation:roleCardShine 5.4s ease-in-out infinite;
+  pointer-events:none;
+}
+#presetCharacterList .role-3d-avatar{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  width:100%!important;
+  height:100%!important;
+  min-width:100%!important;
+  border-radius:20px!important;
+  object-fit:cover!important;
+  object-position:center 18%;
+  background:#2a202a;
+  box-shadow:none!important;
+  transform:translateZ(34px) scale(1.055);
+  transform-origin:50% 72%;
+  filter:saturate(1.04) contrast(1.02);
+  animation:rolePortraitAlive 6.8s ease-in-out infinite;
+  pointer-events:none;
+}
+#presetCharacterList .role-3d-choice .info{
+  position:absolute;
+  z-index:6;
+  left:8px;
+  right:8px;
+  bottom:8px;
+  min-width:0;
+  padding:8px 9px 7px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:13px;
+  background:linear-gradient(180deg,rgba(26,20,30,.46),rgba(23,15,25,.74));
+  box-shadow:0 7px 20px rgba(0,0,0,.18);
+  backdrop-filter:blur(8px) saturate(1.14);
+  -webkit-backdrop-filter:blur(8px) saturate(1.14);
+  transform:translateZ(58px);
+  pointer-events:none;
+}
+#presetCharacterList .role-3d-choice .name{
+  color:#fff;
+  font-size:14px;
+  line-height:1.15;
+  font-weight:850;
+  text-shadow:0 1px 5px rgba(0,0,0,.45);
+}
+#presetCharacterList .role-3d-choice .tag{
+  display:block;
+  margin-top:4px;
+  color:rgba(255,255,255,.78);
+  font-size:9.5px;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#presetCharacterList .character-card.active .role-3d-choice{
+  border-color:color-mix(in srgb,var(--role-a) 76%,#fff 20%);
+  box-shadow:0 18px 34px color-mix(in srgb,var(--role-a) 27%,transparent),0 0 0 2px color-mix(in srgb,var(--role-a) 31%,transparent);
+  transform:rotateX(var(--rx)) rotateY(var(--ry)) translateY(-3px) scale(1.018);
+}
+#presetCharacterList .character-card.active .role-3d-choice .info::after{
+  content:"聊天中";
+  position:absolute;
+  right:7px;
+  top:7px;
+  padding:2px 5px;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--role-a) 82%,#fff 7%);
+  color:#fff;
+  font-size:7px;
+  font-weight:800;
+  letter-spacing:.03em;
+}
+#presetCharacterList .role-3d-choice.is-pressed{
+  transition-duration:.08s;
+  transform:rotateX(var(--rx)) rotateY(var(--ry)) scale(.978);
+}
+
+/* 当前角色和聊天头像轻量“活着”的视觉反馈，不使用重型 WebGL。 */
+#headerAvatar{
+  transform-origin:50% 72%;
+  animation:headerAvatarAlive 5.8s ease-in-out infinite;
+  box-shadow:0 5px 16px rgba(133,61,95,.18);
+}
+.message-row.bot .message-avatar{
+  transition:transform .22s ease,filter .22s ease;
+}
+.message-row.bot.role-expression-happy .message-avatar{transform:translateY(-2px) rotate(-2deg) scale(1.04);filter:saturate(1.08)}
+.message-row.bot.role-expression-soft .message-avatar{transform:scale(1.025);filter:saturate(.96) brightness(1.025)}
+.typing-row .message-avatar{animation:avatarThinking 1.25s ease-in-out infinite}
+.role-expression-badge{
+  position:absolute;
+  left:25px;
+  top:-7px;
+  z-index:4;
+  min-width:22px;
+  height:22px;
+  padding:0 4px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(63,29,45,.18);
+  font-size:13px;
+  pointer-events:none;
+  animation:expressionPop .35s cubic-bezier(.2,.8,.2,1) both;
+}
+.message-row.bot{position:relative}
+
+/* 角色详情也使用立体人物舞台。 */
+.role-detail-stage{
+  --role-a:#b95b83;
+  --role-b:#6f405e;
+  position:relative;
+  height:270px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  border-radius:24px;
+  perspective:900px;
+  background:
+    radial-gradient(circle at 70% 22%,color-mix(in srgb,var(--role-a) 46%,transparent),transparent 36%),
+    linear-gradient(150deg,color-mix(in srgb,var(--role-b) 45%,#372634),#1b151d 72%);
+  box-shadow:inset 0 1px rgba(255,255,255,.18),0 16px 32px rgba(70,34,52,.18);
+}
+.role-detail-stage::after{
+  content:"";
+  position:absolute;
+  width:190px;
+  height:42px;
+  bottom:18px;
+  border-radius:50%;
+  background:rgba(0,0,0,.29);
+  filter:blur(15px);
+  transform:rotateX(68deg);
+}
+.role-details-content .role-detail-stage img{
+  position:relative;
+  z-index:2;
+  width:min(72%,220px)!important;
+  height:238px!important;
+  margin-top:16px;
+  border-radius:22px!important;
+  object-fit:cover;
+  object-position:center 18%;
+  box-shadow:0 18px 32px rgba(0,0,0,.24);
+  transform:translateZ(58px);
+  animation:roleDetailAlive 6s ease-in-out infinite;
+}
+
+/* 表情面板：更适合手机，一次可直接发送常用表情。 */
+.emoji-picker.role-emoji-panel{
+  padding:9px 10px;
+  border:1px solid var(--border-color);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--bg-card) 94%,#fff 6%);
+  box-shadow:0 10px 24px rgba(78,37,58,.12);
+}
+.role-emoji-group{display:contents}
+.role-emoji-label{
+  flex:0 0 100%;
+  padding:3px 2px 1px;
+  color:var(--text-muted);
+  font-size:10px;
+  font-weight:700;
+}
+.emoji-picker.role-emoji-panel button{
+  width:39px;
+  height:39px;
+  min-width:39px;
+  min-height:39px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border:1px solid color-mix(in srgb,var(--border-color) 72%,transparent);
+  background:var(--bg-card);
+  font-size:22px;
+  transition:transform .12s ease,background .12s ease;
+}
+.emoji-picker.role-emoji-panel button:active{transform:scale(.88);background:var(--primary-light)}
+
+/* 角色代码：保留编辑能力，但把手机操作简化成“粘贴/上传/生成”。 */
+#roleCodeModalOverlay .modal{max-width:760px}
+.role-code-helper{
+  padding:10px 12px;
+  border:1px solid color-mix(in srgb,var(--primary-color) 22%,var(--border-color));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--primary-light) 42%,var(--bg-card));
+  color:var(--text-muted);
+  font-size:12px;
+  line-height:1.55;
+}
+#pasteRoleCodeBtn{order:-1}
+.role-code-toolbar{gap:7px}
+.role-code-toolbar .btn{min-height:38px}
+#roleCodeEditor{font-size:13px;line-height:1.48}
+
+@keyframes rolePortraitAlive{
+  0%,100%{transform:translateZ(34px) translateY(0) scale(1.055)}
+  45%{transform:translateZ(38px) translateY(-3px) scale(1.068)}
+  55%{transform:translateZ(38px) translateY(-3px) scale(1.068)}
+}
+@keyframes roleCardShine{
+  0%,58%{transform:translateX(-34%) rotate(8deg) translateZ(70px);opacity:0}
+  68%{opacity:.75}
+  80%,100%{transform:translateX(34%) rotate(8deg) translateZ(70px);opacity:0}
+}
+@keyframes headerAvatarAlive{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1.4px) scale(1.025)}}
+@keyframes avatarThinking{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2px) scale(1.035)}}
+@keyframes expressionPop{0%{opacity:0;transform:translateY(5px) scale(.5)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes roleDetailAlive{0%,100%{transform:translateZ(58px) translateY(0) rotateY(-1deg)}50%{transform:translateZ(66px) translateY(-4px) rotateY(1.2deg)}}
+
+@media (max-width:767px){
+  #presetCharacterList{gap:10px}
+  #presetCharacterList .character-card{height:166px}
+  #presetCharacterList .role-3d-choice .name{font-size:13px}
+  #presetCharacterList .role-3d-choice .tag{font-size:9px}
+  .role-detail-stage{height:245px}
+  .role-details-content .role-detail-stage img{height:216px!important}
+  #roleCodeModalOverlay .modal-body{padding-bottom:max(16px,env(safe-area-inset-bottom))}
+  .role-code-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  .role-code-toolbar .btn,.role-code-toolbar .template-link{width:100%;margin:0!important;text-align:center}
+}
+@media (max-width:350px){
+  #presetCharacterList{grid-template-columns:1fr}
+  #presetCharacterList .character-card{height:198px}
+}
+@media (prefers-reduced-motion:reduce){
+  #presetCharacterList .role-3d-avatar,
+  #presetCharacterList .role-3d-choice::after,
+  #headerAvatar,
+  .typing-row .message-avatar,
+  .role-details-content .role-detail-stage img{animation:none!important}
+  #presetCharacterList .role-3d-choice{transition:none!important}
+}
