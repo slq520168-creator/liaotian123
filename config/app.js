@@ -4,7 +4,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
 });
 
 (() => {
-  const version='20261018-livevoice1';
+  const version='20261018-livevoice2';
   const hideUpdate=document.createElement('style');
   hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';
   document.head.appendChild(hideUpdate);
