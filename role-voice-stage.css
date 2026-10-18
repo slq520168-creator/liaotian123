@@ -5,7 +5,8 @@
 .chat-main.role-live-enabled .messages-container,
 .chat-main.role-live-enabled .input-container{position:relative;z-index:2}
 .chat-main.role-live-enabled .messages-container{padding-left:20px!important;padding-right:20px!important;background:transparent}
-.chat-main.role-live-enabled .message-row.bot>.message-avatar{display:none!important}
+/* 保留聊天消息里的角色小头像；只移除独立左侧人物卡。 */
+.chat-main.role-live-enabled .message-row.bot>.message-avatar{display:block!important;flex:0 0 auto}
 .chat-main.role-live-enabled .message-row.bot{padding-left:0!important;margin-left:0!important;max-width:86%!important}
 .chat-main.role-live-enabled .message-row.user{max-width:86%}
 
