@@ -1,0 +1,60 @@
+/* 输入区精简：移除预设快捷话题，只保留一行紧凑工具。 */
+.quick-replies{display:none!important}
+.chat-tools{
+  flex-wrap:nowrap!important;
+  align-items:center;
+  gap:5px!important;
+  row-gap:0!important;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  margin-bottom:6px!important;
+  white-space:nowrap;
+}
+.chat-tools::-webkit-scrollbar{display:none}
+.chat-tools .chat-tool-group{flex:0 0 auto;gap:4px}
+.chat-tools .tool-btn,
+.chat-tools select{
+  min-height:30px!important;
+  height:30px!important;
+  padding:3px 6px!important;
+  font-size:11px!important;
+}
+.chat-tools label{font-size:10px;white-space:nowrap}
+.role-voice-controls{
+  order:0!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center!important;
+  gap:4px!important;
+  padding-top:0!important;
+  border-top:0!important;
+}
+.role-voice-controls label{font-size:10px!important}
+.role-voice-select{
+  width:88px!important;
+  min-width:72px!important;
+  max-width:88px!important;
+  height:30px!important;
+  min-height:30px!important;
+  padding:2px 5px!important;
+  font-size:11px!important;
+  border-radius:8px!important;
+}
+.role-voice-btn,.role-mic-btn{
+  min-height:30px!important;
+  height:30px!important;
+  padding:3px 7px!important;
+  font-size:11px!important;
+}
+@media (max-width:520px){
+  .chat-tools{gap:4px!important}
+  .chat-tools .tool-btn,.chat-tools select{font-size:10px!important;padding-inline:5px!important}
+  .chat-tools label{font-size:9px}
+  .role-voice-controls{gap:3px!important}
+  .role-voice-controls label{display:none}
+  .role-voice-select{width:72px!important;min-width:64px!important;max-width:72px!important;font-size:10px!important}
+  .role-voice-btn,.role-mic-btn{padding-inline:5px!important;font-size:10px!important}
+}
