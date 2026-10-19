@@ -15,7 +15,7 @@ const DEFAULT_USER_AVATAR = 'assets/avatars/user.svg';
 const MAX_AVATAR_DATA_LENGTH = 180000;
 const REQUEST_TIMEOUT_MS = 40000;
 const LONG_REQUEST_TIMEOUT_MS = 100000;
-const SITE_VERSION = '20261003-reliable1';
+const SITE_VERSION = '20261020-freeze1';
 const UPDATE_COMPOSER_KEY = 'liaotian_update_composer';
 let lastSiteVersionCheck = 0;
 let checkingSiteVersion = false;
@@ -648,7 +648,7 @@ function updateComposer() {
   sendBtn.disabled = busy || !userInput.value.trim();
   sendBtn.setAttribute('aria-label', busy ? '等待角色回复' : '发送消息');
   quickRepliesDiv.querySelectorAll('button').forEach(button => { button.disabled = busy; });
-  replyStatus.textContent = busy ? pendingReplies.get(activeCharacterId)?.maxTokens > 1400 ? '正在生成长回复…' : '正在生成回复…' : '';
+  replyStatus.textContent = '';
   userInput.placeholder = '给' + headerName.textContent + '发送消息…';
 }
 

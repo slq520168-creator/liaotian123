@@ -134,7 +134,7 @@
     if(saved&&[...voiceSelect.options].some(option=>option.value===saved))voiceSelect.value=saved;
     if(voiceButton){
       voiceButton.classList.toggle('active',voiceAuto);
-      voiceButton.textContent=voiceAuto?'🔊 语音开':'🔇 语音关';
+      voiceButton.textContent=voiceAuto?'🔊开':'🔇关';
       voiceButton.setAttribute('aria-pressed',String(voiceAuto));
     }
   }
