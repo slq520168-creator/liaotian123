@@ -54,16 +54,31 @@
     return registry;
   }
 
+  function versionedUrl(url, version = '') {
+    const clean = String(url || MANIFEST_URL);
+    if (!version) return clean;
+    const glue = clean.includes('?') ? '&' : '?';
+    return `${clean}${glue}v=${encodeURIComponent(version)}`;
+  }
+
   async function loadManifest(options = {}) {
     const fetchImpl = options.fetchImpl || (typeof fetch === 'function' ? fetch.bind(globalThis) : null);
     const registry = options.registry || (typeof window !== 'undefined' ? (window.LIAOTIAN_HUMAN_ASSETS ||= {}) : {});
-    const url = options.url || MANIFEST_URL;
+    const buildVersion = options.buildVersion || (typeof window !== 'undefined' ? window.LIAOTIAN_BUILD_VERSION || '' : '');
+    const url = versionedUrl(options.url || MANIFEST_URL, buildVersion);
     if (typeof fetchImpl !== 'function') throw new Error('当前环境不支持真人资产 manifest 加载');
-    const response = await fetchImpl(url, {cache: 'no-cache', credentials: 'same-origin'});
+    const response = await fetchImpl(url, {cache: buildVersion ? 'force-cache' : 'no-cache', credentials: 'same-origin'});
     if (!response?.ok) throw new Error(`真人资产 manifest 加载失败 (${response?.status || 0})`);
     const manifest = sanitizeManifest(await response.json());
     replaceRegistry(registry, manifest.characters);
-    return Object.freeze({ok: true, manifest, registry});
+    return Object.freeze({ok: true, manifest, registry, url});
+  }
+
+  async function waitForCompressionSupport() {
+    if (typeof window === 'undefined') return null;
+    const pending = window.__ROLE_MESHOPT_PATCH_READY;
+    if (!pending || typeof pending.then !== 'function') return null;
+    try { return await pending; } catch (error) { return null; }
   }
 
   function boot() {
@@ -71,7 +86,8 @@
     window.LIAOTIAN_HUMAN_ASSETS ||= {};
     if (window.__ROLE_HUMAN_MANIFEST_PROMISE) return window.__ROLE_HUMAN_MANIFEST_PROMISE;
     const ready = loadManifest({registry: window.LIAOTIAN_HUMAN_ASSETS})
-      .then(result => {
+      .then(async result => {
+        await waitForCompressionSupport();
         window.dispatchEvent(new CustomEvent('humanmanifestready', {detail: {count: Object.keys(result.manifest.characters).length}}));
         requestAnimationFrame(() => window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());
         return result;
@@ -84,7 +100,7 @@
     return ready;
   }
 
-  const core = {MANIFEST_URL, TIERS, sanitizeEntry, sanitizeManifest, replaceRegistry, loadManifest, boot};
+  const core = {MANIFEST_URL, TIERS, sanitizeEntry, sanitizeManifest, replaceRegistry, versionedUrl, loadManifest, waitForCompressionSupport, boot};
   if (typeof window !== 'undefined') {
     const ready = boot();
     window.RoleHumanManifest = Object.freeze({...core, ready});
