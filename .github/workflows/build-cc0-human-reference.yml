@@ -7,6 +7,7 @@ on:
       - '.github/workflows/build-cc0-human-reference.yml'
       - 'scripts/validate-human-file.mjs'
       - 'scripts/report-human-file.mjs'
+      - 'role-meshopt-loader.js'
 
 permissions:
   contents: write
@@ -22,7 +23,7 @@ env:
   HUMAN_SOURCE_LICENSE: CC0
   HUMAN_SOURCE_BYTES: '36815920'
   GLTF_TRANSFORM_VERSION: 4.5.1
-  HUMAN_COMPRESSION: quantize
+  HUMAN_COMPRESSION: meshopt
   HUMAN_TEXTURE_COMPRESSION: webp
 
 jobs:
@@ -44,7 +45,7 @@ jobs:
           curl --fail --location --retry 3 --retry-delay 2 "$URL" --output /tmp/mpfb-source.glb
           ACTUAL="$(stat -c%s /tmp/mpfb-source.glb)"
           test "$ACTUAL" = "$HUMAN_SOURCE_BYTES" || { echo "Pinned source size mismatch: $ACTUAL"; exit 1; }
-      - name: Optimize until mobile full-body contract passes
+      - name: Meshopt-compress until mobile full-body contract passes
         shell: bash
         run: |
           set -euo pipefail
@@ -53,7 +54,7 @@ jobs:
             rm -f /tmp/mpfb-optimized.glb
             npx --yes @gltf-transform/cli@${GLTF_TRANSFORM_VERSION} optimize \
               /tmp/mpfb-source.glb /tmp/mpfb-optimized.glb \
-              --compress quantize \
+              --compress meshopt \
               --texture-compress webp \
               --texture-size "$SIZE" \
               --instance false \
@@ -66,7 +67,7 @@ jobs:
               break
             fi
           done
-          test -n "$SELECTED" || { echo 'No optimized candidate passed the production human contract.'; exit 1; }
+          test -n "$SELECTED" || { echo 'Meshopt candidates still exceed the production contract; split head/body instead of weakening the limit.'; exit 1; }
           echo "HUMAN_TEXTURE_SIZE=$SELECTED" >> "$GITHUB_ENV"
           mkdir -p assets/humans
           cp /tmp/mpfb-optimized.glb assets/humans/reference-mpfb.glb
