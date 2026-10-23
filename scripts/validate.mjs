@@ -37,7 +37,7 @@ for(const token of [
 ]) if(!presetPreviewSource.includes(token)) throw new Error(`3D预设运行时缺少: ${token}`);
 if(/esm\.sh/.test(presetPreviewSource)) throw new Error('3D预设禁止继续依赖 esm.sh');
 const buildSource=fs.readFileSync(path.join(root,'scripts/build-cloudflare.mjs'),'utf8');
-for(const token of ['node_modules/three/build/three.module.js','meshopt_decoder.mjs','vendor/three','vendor/meshoptimizer']){
+for(const token of ['build/three.module.js','meshopt_decoder.mjs','vendor/three','vendor/meshoptimizer']){
   if(!buildSource.includes(token)) throw new Error(`Cloudflare构建缺少自托管3D运行时: ${token}`);
 }
 
