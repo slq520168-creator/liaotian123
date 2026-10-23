@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const STORAGE_PREFIX = 'liaotian_chat_mode_';
+  const STORAGE_PREFIX = 'liaotian_chat_mode_v2_';
   const MODES = Object.freeze(['text', '3d']);
   const ACTIONS = Object.freeze(['自然站立','放松呼吸','专注交流','轻微转身']);
 
@@ -9,7 +9,26 @@
     return Boolean(char && !char.isPreset && /^custom_[a-z0-9_-]+$/i.test(String(char.id || '')));
   }
 
+  function manifestAsset(char) {
+    if (!char?.id || typeof window === 'undefined') return null;
+    const tiers = window.LIAOTIAN_HUMAN_ASSETS?.[char.id];
+    if (!tiers || typeof tiers !== 'object') return null;
+    const asset = tiers.full || tiers.upper || tiers.portrait || null;
+    return asset && typeof asset === 'object' && asset.url ? asset : null;
+  }
+
+  function attachManifestAsset(char) {
+    if (!char?.isPreset) return null;
+    const asset = manifestAsset(char);
+    if (!asset) return null;
+    char.humanAsset = asset;
+    char.humanAssetStatus = 'production';
+    return asset;
+  }
+
   function isProductionReady(char) {
+    if (!char?.id) return false;
+    if (char.isPreset) return Boolean(attachManifestAsset(char));
     if (!isCustomCharacter(char)) return false;
     const asset = char.humanAsset || char.model3d || char.model3D;
     return Boolean(asset && char.humanAssetStatus === 'production');
@@ -19,11 +38,20 @@
     return MODES.includes(value) ? value : 'text';
   }
 
+  function defaultMode(char) {
+    return char?.isPreset && isProductionReady(char) ? '3d' : 'text';
+  }
+
   function storedMode(char, storage = null) {
     if (!char?.id || !isProductionReady(char)) return 'text';
     const store = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
-    if (!store?.getItem) return 'text';
-    try { return normalizeMode(store.getItem(STORAGE_PREFIX + char.id)); } catch (error) { return 'text'; }
+    if (!store?.getItem) return defaultMode(char);
+    try {
+      const value = store.getItem(STORAGE_PREFIX + char.id);
+      return value == null ? defaultMode(char) : normalizeMode(value);
+    } catch (error) {
+      return defaultMode(char);
+    }
   }
 
   function saveMode(char, mode, storage = null) {
@@ -88,7 +116,7 @@
     const hint = document.createElement('p');
     hint.id = 'ordinaryChatHint';
     hint.className = 'form-hint role-ordinary-chat-hint';
-    hint.textContent = '不创建角色也可以直接选择现有角色普通聊天；自建角色完成后，正式3D资产可用时可切换3D聊天。';
+    hint.textContent = '已有正式3D资产的角色会直接进入3D聊天；也可以随时切换回普通文字聊天。';
     create.insertAdjacentElement('afterend', hint);
   }
 
@@ -123,6 +151,7 @@
           this.clearModel?.();
           return Promise.resolve(false);
         }
+        attachManifestAsset(char);
         return currentSync.apply(this, args);
       };
       syncWrapped.__chatModeGate = true;
@@ -157,7 +186,12 @@
     const base = switchCharacter;
     const wrapped = function(...args) {
       const result = base.apply(this, args);
-      requestAnimationFrame(updateButton);
+      requestAnimationFrame(() => {
+        const char = activeCharacter();
+        attachManifestAsset(char);
+        updateButton();
+        window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
+      });
       return result;
     };
     wrapped.__chatModeUi = true;
@@ -186,6 +220,8 @@
       let attempts = 0;
       const retry = () => {
         if (patchRenderer()) {
+          const char = activeCharacter();
+          attachManifestAsset(char);
           window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
           updateButton();
           return;
@@ -195,9 +231,12 @@
       retry();
     }
     patchSwitchCharacter();
+    attachManifestAsset(activeCharacter());
     updateButton();
     requestAnimationFrame(() => window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());
     window.addEventListener('humanmanifestready', () => setTimeout(() => {
+      const char = activeCharacter();
+      attachManifestAsset(char);
       updateButton();
       window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
     }, 0));
@@ -205,9 +244,10 @@
   }
 
   const api = Object.freeze({
-    STORAGE_PREFIX, MODES, ACTIONS, isCustomCharacter, isProductionReady, normalizeMode,
-    storedMode, saveMode, recipeFor, safeActionTransform, shouldRender3D,
-    ensureButton, updateButton, patchRenderer, patchSwitchCharacter, boot
+    STORAGE_PREFIX, MODES, ACTIONS, isCustomCharacter, manifestAsset, attachManifestAsset,
+    isProductionReady, normalizeMode, defaultMode, storedMode, saveMode, recipeFor,
+    safeActionTransform, shouldRender3D, ensureButton, updateButton, patchRenderer,
+    patchSwitchCharacter, boot
   });
   if (typeof window !== 'undefined') {
     window.RoleChatMode = api;
