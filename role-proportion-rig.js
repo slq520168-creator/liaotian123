@@ -14,6 +14,18 @@
     '胖': 1.03,
     '健壮': 1.075
   });
+  // Rest-pose-preserving identity fallback. These are deliberately small scale changes,
+  // never Euler rotations. Dedicated identity morphs take precedence when a complete
+  // production asset becomes available.
+  const FACE_SCALE = Object.freeze({
+    '自然耐看': Object.freeze({x:1,y:1,z:1}),
+    '圆脸': Object.freeze({x:1.045,y:.985,z:1.025}),
+    '鹅蛋脸': Object.freeze({x:.99,y:1.025,z:1}),
+    '方脸': Object.freeze({x:1.04,y:.995,z:1.015}),
+    '长脸': Object.freeze({x:.97,y:1.045,z:.995}),
+    '成熟脸': Object.freeze({x:1.01,y:1.015,z:1}),
+    '甜美脸': Object.freeze({x:1.025,y:.995,z:1.015})
+  });
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
 
@@ -52,8 +64,10 @@
     const legScale = clamp(1 + delta * 1.08, .76, 1.37);
     const torsoScale = clamp(1 + delta * .82, .82, 1.28);
     const body = String(recipe.body || '匀称');
+    const face = String(recipe.face || '自然耐看');
     const shoulderScale = SHOULDER_FACTOR[body] || 1;
-    return Object.freeze({heightCm: height, ratio, legScale, torsoScale, shoulderScale});
+    const headScale = FACE_SCALE[face] || FACE_SCALE['自然耐看'];
+    return Object.freeze({heightCm: height, ratio, legScale, torsoScale, shoulderScale, headScale});
   }
 
   function snapshotBone(node) {
@@ -135,13 +149,20 @@
         const base = this.base[name];
         bone.position.x = base.position.x * plan.shoulderScale;
       }
+      const head = this.bones.Head;
+      const headBase = this.base.Head;
+      if (head?.scale && headBase) {
+        head.scale.x = headBase.scale.x * plan.headScale.x;
+        head.scale.y = headBase.scale.y * plan.headScale.y;
+        head.scale.z = headBase.scale.z * plan.headScale.z;
+      }
       refreshSkeleton(this.root);
       return Object.freeze({applied:true, plan});
     }
   }
 
   const api = Object.freeze({
-    REQUIRED, LEG_BONES, TORSO_BONES, SHOULDER_FACTOR,
+    REQUIRED, LEG_BONES, TORSO_BONES, SHOULDER_FACTOR, FACE_SCALE,
     walk, collectBones, supportScore, proportionPlan, snapshotBone, restoreBone, refreshSkeleton, ProportionRigAdapter
   });
   if (typeof window !== 'undefined') window.RoleProportionRig = api;

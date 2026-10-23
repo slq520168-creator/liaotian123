@@ -1,19 +1,13 @@
 (() => {
   'use strict';
 
-  const POSE = Object.freeze({
-    LeftArm: {z: -1.08, x: 0.08},
-    RightArm: {z: 1.08, x: 0.08},
-    LeftForeArm: {z: -0.10, y: -0.08},
-    RightForeArm: {z: 0.10, y: 0.08},
-    LeftHand: {z: -0.05},
-    RightHand: {z: 0.05},
-    Spine: {x: -0.015},
-    Spine1: {x: 0.025},
-    Spine2: {x: 0.02},
-    Neck: {x: -0.015},
-    Head: {x: 0.015}
-  });
+  // Safety shim only. The previous implementation added hard-coded Euler rotations
+  // to MPFB arm/forearm/hand bones without validating the model bind/rest pose.
+  // That produced raised arms, crossed hands and T-pose-like failures on production.
+  // Keep this file inert so old cached loaders cannot re-enable the unsafe behavior.
+  const ENABLED = false;
+  const DISABLED_REASON = 'unverified-bind-rest-pose';
+  const POSE = Object.freeze({});
 
   function findBone(root, name) {
     let found = null;
@@ -23,53 +17,19 @@
     return found;
   }
 
-  function applyNaturalPose(root) {
-    if (!root) return false;
-    let applied = 0;
-    for (const [name, rotation] of Object.entries(POSE)) {
-      const bone = findBone(root, name);
-      if (!bone?.rotation) continue;
-      for (const [axis, value] of Object.entries(rotation)) bone.rotation[axis] += value;
-      applied++;
-    }
-    root.updateMatrixWorld?.(true);
-    return applied >= 6;
-  }
-
-  function patchRenderer(api = null) {
-    const rendererApi = api || (typeof window !== 'undefined' ? window.RoleHumanRenderer : null);
-    const proto = rendererApi?.HumanRenderer?.prototype;
-    if (!proto?.loadCharacter || proto.loadCharacter.__naturalPose) return false;
-    const base = proto.loadCharacter;
-    const wrapped = async function(...args) {
-      const ok = await base.apply(this, args);
-      if (ok && this.root) {
-        applyNaturalPose(this.root);
-        this.frameModel?.(this.root, 'portrait');
-        this.resize?.();
-      }
-      return ok;
-    };
-    wrapped.__naturalPose = true;
-    proto.loadCharacter = wrapped;
-    return true;
-  }
-
-  function boot() {
-    if (patchRenderer()) return true;
-    let attempts = 0;
-    const retry = () => {
-      if (patchRenderer()) return;
-      if (++attempts < 60) setTimeout(retry, 80);
-    };
-    retry();
+  function applyNaturalPose() {
     return false;
   }
 
-  const api = Object.freeze({POSE, findBone, applyNaturalPose, patchRenderer, boot});
-  if (typeof window !== 'undefined') {
-    window.RoleNaturalPose = api;
-    boot();
+  function patchRenderer() {
+    return false;
   }
+
+  function boot() {
+    return false;
+  }
+
+  const api = Object.freeze({ENABLED, DISABLED_REASON, POSE, findBone, applyNaturalPose, patchRenderer, boot});
+  if (typeof window !== 'undefined') window.RoleNaturalPose = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

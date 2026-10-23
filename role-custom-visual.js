@@ -2,17 +2,34 @@
   'use strict';
 
   const DEFAULT_AVATAR = 'assets/avatars/nuannuan-portrait.jpg';
-  const CUSTOM_HUMAN_ASSET = Object.freeze({
-    url: 'assets/humans/reference-mpfb.glb',
-    scale: 1,
-    y: 0,
-    rotationY: 0,
-    framing: 'portrait',
-    minMorphTargets: 52
+  const LEGACY_FALLBACK_URL = 'assets/humans/reference-mpfb.glb';
+  const LOCAL_REFERENCE_FALLBACK = Object.freeze({
+    id:'reference-mpfb', status:'reference-fallback', complete:false,
+    descriptor:Object.freeze({url:LEGACY_FALLBACK_URL,scale:1,y:0,rotationY:0,framing:'portrait',minMorphTargets:52})
   });
+  const CUSTOM_HUMAN_ASSET = LOCAL_REFERENCE_FALLBACK.descriptor;
 
   function isCustomCharacter(char) {
     return Boolean(char && /^custom_[a-z0-9_-]+$/i.test(String(char.id || '')));
+  }
+
+  function capabilityApi() {
+    if (typeof window !== 'undefined' && window.RoleHumanAssetCapability) return window.RoleHumanAssetCapability;
+    if (typeof require === 'function') {
+      try { return require('./role-human-asset-capability.js'); } catch (error) {}
+    }
+    return null;
+  }
+
+  function configuredCandidates() {
+    if (typeof window === 'undefined') return [];
+    return Array.isArray(window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES) ? window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES : [];
+  }
+
+  function customHumanSelection(candidates = null) {
+    const api = capabilityApi();
+    if (!api?.selectCustomAsset) return LOCAL_REFERENCE_FALLBACK;
+    return api.selectCustomAsset(candidates === null ? configuredCandidates() : candidates);
   }
 
   function stableHue(value) {
@@ -24,19 +41,24 @@
     return ((hash >>> 0) % 300) + 20;
   }
 
-  function customHumanAsset() {
-    return {...CUSTOM_HUMAN_ASSET};
+  function customHumanAsset(candidates = null) {
+    return {...customHumanSelection(candidates).descriptor};
   }
 
   function isLegacyFallbackAsset(asset) {
     if (!asset || typeof asset !== 'object') return false;
     const url = String(asset.url || asset.src || asset.model || '');
-    return url === CUSTOM_HUMAN_ASSET.url;
+    return url === LEGACY_FALLBACK_URL;
   }
 
-  function decorateCharacter(char) {
+  function decorateCharacter(char, candidates = null) {
     if (!isCustomCharacter(char)) return false;
-    if (!char.humanAsset || isLegacyFallbackAsset(char.humanAsset)) char.humanAsset = customHumanAsset();
+    const selection = customHumanSelection(candidates);
+    // Never promote an arbitrary or incomplete model. Until a candidate passes the
+    // complete capability contract, custom roles stay on the explicit reference fallback.
+    char.humanAsset = {...selection.descriptor};
+    char.humanAssetStatus = selection.complete ? 'production' : 'reference-fallback';
+    char.humanAssetId = selection.id || 'reference-mpfb';
     return true;
   }
 
@@ -199,8 +221,9 @@
   }
 
   const api = Object.freeze({
-    DEFAULT_AVATAR, CUSTOM_HUMAN_ASSET, isCustomCharacter, stableHue, customHumanAsset, isLegacyFallbackAsset,
-    decorateCharacter, generatedAvatar, needsGeneratedAvatar, ensureCustomAvatar, applyRoleTheme,
+    DEFAULT_AVATAR, LEGACY_FALLBACK_URL, CUSTOM_HUMAN_ASSET, isCustomCharacter, capabilityApi, configuredCandidates,
+    customHumanSelection, stableHue, customHumanAsset, isLegacyFallbackAsset, decorateCharacter,
+    generatedAvatar, needsGeneratedAvatar, ensureCustomAvatar, applyRoleTheme,
     injectThemeStyles, installSwitchWrapper, installCreateFormBridge, decorateExistingCharacters, boot
   });
 

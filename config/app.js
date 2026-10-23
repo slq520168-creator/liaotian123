@@ -3,9 +3,10 @@ window.LIAOTIAN_CONFIG = Object.freeze({
   chatApiUrl: 'https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast'
 });
 window.LIAOTIAN_HUMAN_ASSETS = window.LIAOTIAN_HUMAN_ASSETS || {};
+window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES || [];
 
 (() => {
-  const version='20261023-human-visible5';
+  const version='20261023-human-contract1';
   window.LIAOTIAN_BUILD_VERSION=version;
   const hideUpdate=document.createElement('style');
   hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';
@@ -17,7 +18,7 @@ window.LIAOTIAN_HUMAN_ASSETS = window.LIAOTIAN_HUMAN_ASSETS || {};
     document.head.appendChild(link);
   }
   window.addEventListener('load',()=>{
-    for(const src of ['role-experience.js','role-presence.js','role-visual-recipe.js','role-face-rig.js','role-direct-viseme-rig.js','role-render-loop.js','role-body-rig.js','role-proportion-rig.js','role-appearance-rig.js','role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-renderer.js','role-fullscreen-stage.js','role-render-recipe-bridge.js','role-voice-stage.js','role-code-compat.js','role-persistence.js','role-builder.js','role-custom-visual.js']){
+    for(const src of ['role-experience.js','role-presence.js','role-visual-recipe.js','role-face-rig.js','role-direct-viseme-rig.js','role-render-loop.js','role-body-rig.js','role-proportion-rig.js','role-appearance-rig.js','role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-fullscreen-stage.js','role-render-recipe-bridge.js','role-voice-stage.js','role-code-compat.js','role-persistence.js','role-builder.js','role-custom-visual.js']){
       const script=document.createElement('script');
       script.src=src+'?v='+version;
       script.async=false;

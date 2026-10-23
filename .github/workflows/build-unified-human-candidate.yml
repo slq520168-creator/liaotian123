@@ -61,7 +61,7 @@ jobs:
           grep -q 'ARKIT_TARGET_NAMES' /tmp/cc/blender/build_base.py
           grep -q 'META_VISEME_NAMES' /tmp/cc/blender/build_base.py
 
-      - name: Build unified candidate GLB
+      - name: Build unified candidate GLB and modular appearance assets
         working-directory: /tmp/cc
         shell: bash
         env:
@@ -69,10 +69,16 @@ jobs:
         run: |
           set -euo pipefail
           /tmp/blender/blender -b --python blender/build_base.py -- output/base_body.glb 2>&1 | tee /tmp/candidate-build.log
-          test -s output/base_body.glb
-          test -s output/hair_long01.glb
-          test -s output/clothing_dress.glb
-          test -s output/clothing_jeans.glb
+          for f in \
+            output/base_body.glb output/base_body.joints.json output/asset_licenses.json \
+            output/hair.json output/hair_short02.glb output/hair_bob02.glb output/hair_long01.glb \
+            output/hair_ponytail01.glb output/hair_braid01.glb output/hair_short04.glb \
+            output/hair_bob01.glb output/hair_afro01.glb \
+            output/clothing.json output/clothing_dress.glb output/clothing_jeans.glb \
+            output/clothing_tshirt.glb output/clothing_hoodie.glb output/clothing_jacket.glb \
+            output/clothing_skirt.glb output/clothing_shorts.glb output/clothing_shoes.glb; do
+            test -s "$f"
+          done
 
       - name: Enforce unified human contract
         working-directory: /tmp/cc
@@ -89,18 +95,34 @@ jobs:
           const baseRequired=['gender_female','gender_male','weight_min','weight_max','muscle_min','muscle_max','height_short','height_tall','face_nose_width_decr','face_nose_width_incr','face_jaw_width_decr','face_jaw_width_incr','face_eye_size_decr','face_eye_size_incr','face_lips_decr','face_lips_incr'];
           const missingArkit=arkit.filter(n=>!names.has(n)),missingVisemes=visemes.filter(n=>!names.has(n)),missingBase=baseRequired.filter(n=>!names.has(n));
           const nodeNames=(g.nodes||[]).map(n=>String(n.name||'').toLowerCase()), bones=['pelvis','spine_01','spine_02','spine_03','neck_01','head','upperarm_l','upperarm_r','thigh_l','thigh_r'],missingBones=bones.filter(n=>!nodeNames.includes(n));
-          const report={source:{characterCreator:process.env.CHARACTER_CREATOR_SHA,extraTargets:process.env.EXTRA_TARGETS_SHA,mpfb:process.env.MPFB_VERSION,blender:process.env.BLENDER_VERSION},bytes:b.length,meshes:(g.meshes||[]).length,skins:(g.skins||[]).length,morphTargetNameCount:names.size,arkitCount:arkit.length-missingArkit.length,visemeCount:visemes.length-missingVisemes.length,missingArkit,missingVisemes,missingBase,missingBones,addons:{hairLong:fs.statSync('output/hair_long01.glb').size,dress:fs.statSync('output/clothing_dress.glb').size,jeans:fs.statSync('output/clothing_jeans.glb').size}};
+          const hair=['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
+          const clothing=['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
+          const sizes=list=>Object.fromEntries(list.map(id=>[id,fs.statSync(`output/${list===hair?'hair':'clothing'}_${id}.glb`).size]));
+          const licenses=JSON.parse(fs.readFileSync('output/asset_licenses.json','utf8'));
+          const report={
+            source:{characterCreator:process.env.CHARACTER_CREATOR_SHA,extraTargets:process.env.EXTRA_TARGETS_SHA,mpfb:process.env.MPFB_VERSION,blender:process.env.BLENDER_VERSION},
+            bytes:b.length,meshes:(g.meshes||[]).length,skins:(g.skins||[]).length,morphTargetNameCount:names.size,
+            arkitCount:arkit.length-missingArkit.length,visemeCount:visemes.length-missingVisemes.length,
+            missingArkit,missingVisemes,missingBase,missingBones,
+            modules:{hair:sizes(hair),clothing:sizes(clothing)},
+            licenseInventory:Boolean(licenses && typeof licenses==='object'),
+            mobile:{validated:false,reason:'requires optimized production bundle plus real-device FPS/memory validation before promotion'}
+          };
           console.log(JSON.stringify(report,null,2));
-          if(missingArkit.length||missingVisemes.length||missingBase.length||missingBones.length||(g.skins||[]).length<1||names.size<150) throw new Error('unified human contract failed');
+          if(missingArkit.length||missingVisemes.length||missingBase.length||missingBones.length||(g.skins||[]).length<1||names.size<150||!report.licenseInventory) throw new Error('unified human contract failed');
           NODE
 
-      - name: Collect validated candidate
+      - name: Collect validated candidate without promoting it to production
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p candidate
-          for f in base_body.glb base_body.joints.json hair_long01.glb hair_ponytail01.glb clothing_dress.glb clothing_jeans.glb hair.json clothing.json unified-human-report.json asset_licenses.json; do
-            test ! -f "/tmp/cc/output/$f" || cp "/tmp/cc/output/$f" candidate/
+          for f in \
+            base_body.glb base_body.joints.json hair.json clothing.json unified-human-report.json asset_licenses.json \
+            hair_short02.glb hair_bob02.glb hair_long01.glb hair_ponytail01.glb hair_braid01.glb hair_short04.glb hair_bob01.glb hair_afro01.glb \
+            clothing_dress.glb clothing_jeans.glb clothing_tshirt.glb clothing_hoodie.glb clothing_jacket.glb clothing_skirt.glb clothing_shorts.glb clothing_shoes.glb; do
+            test -s "/tmp/cc/output/$f"
+            cp "/tmp/cc/output/$f" candidate/
           done
           cp /tmp/candidate-build.log candidate/build.log
 

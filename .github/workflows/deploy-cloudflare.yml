@@ -66,6 +66,9 @@ jobs:
           config="$(curl -fsSL --retry 6 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}")"
           grep -Fq "$expected_build" <<< "$config"
           curl -fsSL --retry 6 --retry-all-errors "$base/role-human-renderer.js?smoke=${GITHUB_SHA}" | grep -q 'class HumanRenderer'
-          curl -fsSL --retry 6 --retry-all-errors "$base/role-custom-visual.js?smoke=${GITHUB_SHA}" | grep -q 'CUSTOM_HUMAN_ASSET'
+          curl -fsSL --retry 6 --retry-all-errors "$base/role-human-asset-capability.js?smoke=${GITHUB_SHA}" | grep -q 'REQUIRED_CAPABILITIES'
+          curl -fsSL --retry 6 --retry-all-errors "$base/role-natural-pose.js?smoke=${GITHUB_SHA}" | grep -q "const ENABLED = false"
+          curl -fsSL --retry 6 --retry-all-errors "$base/role-custom-visual.js?smoke=${GITHUB_SHA}" | grep -q 'reference-fallback'
           curl -fsSL --retry 6 --retry-all-errors "$base/assets/humans/manifest.json?smoke=${GITHUB_SHA}" | grep -q '"nuannuan"'
           curl -fsSLI --retry 6 --retry-all-errors "$base/assets/humans/reference-mpfb.glb?smoke=${GITHUB_SHA}" | grep -Eq '^HTTP/[0-9.]+ 200'
+          curl -fsSLI --retry 6 --retry-all-errors "$base/assets/humans/reference-vitruvian-morph.glb?smoke=${GITHUB_SHA}" | grep -Eq '^HTTP/[0-9.]+ 200'

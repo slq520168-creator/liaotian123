@@ -14,6 +14,7 @@ const runtimeJs=[
   'role-meshopt-support.js',
   'role-human-manifest.js',
   'role-asset-policy.js',
+  'role-human-asset-capability.js',
   'role-human-renderer.js',
   'role-natural-pose.js',
   'role-fullscreen-stage.js',
