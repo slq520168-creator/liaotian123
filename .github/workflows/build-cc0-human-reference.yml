@@ -1,0 +1,109 @@
+name: Build CC0 human reference
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-cc0-human-reference.yml'
+      - 'scripts/validate-human-file.mjs'
+      - 'scripts/report-human-file.mjs'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cc0-human-reference-main
+  cancel-in-progress: false
+
+env:
+  HUMAN_SOURCE_REPO: met4citizen/TalkingHead
+  HUMAN_SOURCE_COMMIT: 91796631b569ec70aeba1e43f6fa1987e5e4115c
+  HUMAN_SOURCE_PATH: avatars/mpfb.glb
+  HUMAN_SOURCE_LICENSE: CC0
+  HUMAN_SOURCE_BYTES: '36815920'
+  GLTF_TRANSFORM_VERSION: 4.5.1
+  HUMAN_COMPRESSION: quantize
+  HUMAN_TEXTURE_COMPRESSION: webp
+
+jobs:
+  build-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Download pinned CC0 MPFB source
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://raw.githubusercontent.com/${HUMAN_SOURCE_REPO}/${HUMAN_SOURCE_COMMIT}/${HUMAN_SOURCE_PATH}"
+          curl --fail --location --retry 3 --retry-delay 2 "$URL" --output /tmp/mpfb-source.glb
+          ACTUAL="$(stat -c%s /tmp/mpfb-source.glb)"
+          test "$ACTUAL" = "$HUMAN_SOURCE_BYTES" || { echo "Pinned source size mismatch: $ACTUAL"; exit 1; }
+      - name: Optimize until mobile full-body contract passes
+        shell: bash
+        run: |
+          set -euo pipefail
+          SELECTED=""
+          for SIZE in 1024 768 512; do
+            rm -f /tmp/mpfb-optimized.glb
+            npx --yes @gltf-transform/cli@${GLTF_TRANSFORM_VERSION} optimize \
+              /tmp/mpfb-source.glb /tmp/mpfb-optimized.glb \
+              --compress quantize \
+              --texture-compress webp \
+              --texture-size "$SIZE" \
+              --instance false \
+              --palette false \
+              --simplify false \
+              --flatten false \
+              --join false
+            if node scripts/validate-human-file.mjs /tmp/mpfb-optimized.glb full CC0 false; then
+              SELECTED="$SIZE"
+              break
+            fi
+          done
+          test -n "$SELECTED" || { echo 'No optimized candidate passed the production human contract.'; exit 1; }
+          echo "HUMAN_TEXTURE_SIZE=$SELECTED" >> "$GITHUB_ENV"
+          mkdir -p assets/humans
+          cp /tmp/mpfb-optimized.glb assets/humans/reference-mpfb.glb
+      - name: Write reproducible source and inspection report
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/report-human-file.mjs assets/humans/reference-mpfb.glb > assets/humans/reference-mpfb.report.json
+          cat > assets/humans/reference-mpfb.NOTICE.txt <<NOTICE
+          CC0 reference human asset
+          Source repository: ${HUMAN_SOURCE_REPO}
+          Source commit: ${HUMAN_SOURCE_COMMIT}
+          Source path: ${HUMAN_SOURCE_PATH}
+          Source license: ${HUMAN_SOURCE_LICENSE}
+          Optimizer: @gltf-transform/cli ${GLTF_TRANSFORM_VERSION}
+          Geometry compression: ${HUMAN_COMPRESSION}
+          Texture compression: ${HUMAN_TEXTURE_COMPRESSION}
+          Maximum texture dimension: ${HUMAN_TEXTURE_SIZE}px
+          This reference file is not automatically assigned to any site character.
+          NOTICE
+      - name: Validate repository with generated reference
+        run: |
+          npm test
+          node scripts/validate.mjs
+          node scripts/validate-human-file.mjs assets/humans/reference-mpfb.glb full CC0 false
+      - name: Commit validated reference to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'main changed during asset build; refusing to overwrite concurrent work.'; exit 1; }
+          git add assets/humans/reference-mpfb.glb assets/humans/reference-mpfb.report.json assets/humans/reference-mpfb.NOTICE.txt
+          if git diff --cached --quiet; then
+            echo 'Reference asset already matches the pinned source and build settings.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add optimized CC0 MPFB reference human'
+          git push origin HEAD:main
