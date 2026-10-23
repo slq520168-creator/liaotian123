@@ -5,7 +5,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
 window.LIAOTIAN_HUMAN_ASSETS = window.LIAOTIAN_HUMAN_ASSETS || {};
 
 (() => {
-  const version='20261023-human9';
+  const version='20261023-human-visible1';
   window.LIAOTIAN_BUILD_VERSION=version;
   const hideUpdate=document.createElement('style');
   hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';

@@ -1,4 +1,28 @@
 {
   "version": 1,
-  "characters": {}
+  "characters": {
+    "nuannuan": {
+      "portrait": {
+        "url": "assets/humans/reference-mpfb.glb",
+        "license": "CC0",
+        "source": "met4citizen/TalkingHead@91796631b569ec70aeba1e43f6fa1987e5e4115c:avatars/mpfb.glb",
+        "customizableBody": false,
+        "framing": "portrait"
+      },
+      "upper": {
+        "url": "assets/humans/reference-mpfb.glb",
+        "license": "CC0",
+        "source": "met4citizen/TalkingHead@91796631b569ec70aeba1e43f6fa1987e5e4115c:avatars/mpfb.glb",
+        "customizableBody": false,
+        "framing": "portrait"
+      },
+      "full": {
+        "url": "assets/humans/reference-mpfb.glb",
+        "license": "CC0",
+        "source": "met4citizen/TalkingHead@91796631b569ec70aeba1e43f6fa1987e5e4115c:avatars/mpfb.glb",
+        "customizableBody": false,
+        "framing": "full"
+      }
+    }
+  }
 }
