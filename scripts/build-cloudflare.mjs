@@ -15,6 +15,7 @@ const runtimeJs=[
   'role-human-manifest.js',
   'role-asset-policy.js',
   'role-human-renderer.js',
+  'role-fullscreen-stage.js',
   'role-render-recipe-bridge.js',
   'role-voice-stage.js',
   'role-code-compat.js',
