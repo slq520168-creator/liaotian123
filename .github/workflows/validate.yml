@@ -12,5 +12,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Check website, documentation and chat contract
+      - name: Run unit tests
+        run: npm test
+      - name: Check website, documentation, human assets and chat contract
         run: node scripts/validate.mjs
