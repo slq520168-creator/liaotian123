@@ -1,0 +1,13 @@
+CC0 structural Vitruvian morph reference — not assigned to any site character
+Base topology repository: ibrews/VitruvianGodot
+Base topology commit: bdecdcd537b4031fdd0fb299b7e4f93f084fffa0
+Base topology path: blender_prep/vitruvian_rigged.blend
+Morph repository: Upliner/CharMorph-Vitruvian
+Morph commit: c252d1fc7f00ba59d87b66b3d32fa3471fc6ee44
+Morph map sha256: 573a3c59a461e2681b2e938c2561e9529f287a8d0bd1a87e1541ebbff6af6561
+Character/morph license: CC0 1.0 / public domain
+Blender: 4.5.15 LTS
+Optimizer: @gltf-transform/cli 4.5.1
+Geometry compression: meshopt
+This reference proves exact-topology ARKit, speech, body morphs and skinning together.
+It intentionally contains no production hairstyle/outfit and is not in assets/humans/manifest.json.
