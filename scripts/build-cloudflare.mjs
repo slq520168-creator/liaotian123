@@ -15,14 +15,16 @@ await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
 for(const name of staticEntries) await cp(new URL(name,root),new URL(name,out),{recursive:true});
 
-// Self-host the exact 3D runtime. Production Safari must never depend on a
-// third-party ESM CDN just to render a preset card.
+// Self-host the complete Three.js ESM graph used by the preset cards. three.module.js
+// imports three.core.js relatively, so both files must ship together on Safari/iOS.
 const threeSource=new URL('node_modules/three/',root);
 const threeOut=new URL('vendor/three/',out);
 await mkdir(new URL('build/',threeOut),{recursive:true});
 await mkdir(new URL('examples/jsm/loaders/',threeOut),{recursive:true});
 await mkdir(new URL('examples/jsm/utils/',threeOut),{recursive:true});
-await cp(new URL('build/three.module.js',threeSource),new URL('build/three.module.js',threeOut));
+for(const name of ['three.module.js','three.core.js']){
+  await cp(new URL(`build/${name}`,threeSource),new URL(`build/${name}`,threeOut));
+}
 await cp(new URL('LICENSE',threeSource),new URL('LICENSE',threeOut));
 
 async function copyThreeAddon(path){
@@ -46,6 +48,7 @@ const referencedRuntime=[...configSource.matchAll(/['"](role-[a-z0-9-]+\.js)['"]
 for(const name of referencedRuntime) await access(new URL(name,out));
 for(const path of [
   'vendor/three/build/three.module.js',
+  'vendor/three/build/three.core.js',
   'vendor/three/examples/jsm/loaders/GLTFLoader.js',
   'vendor/three/examples/jsm/utils/BufferGeometryUtils.js',
   'vendor/three/examples/jsm/utils/SkeletonUtils.js',

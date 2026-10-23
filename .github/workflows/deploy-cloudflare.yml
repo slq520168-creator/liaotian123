@@ -125,9 +125,12 @@ jobs:
           if grep -Fq 'esm.sh' "$tmp/presets.js"; then echo 'Preset runtime still depends on esm.sh' >&2; exit 1; fi
 
           fetch_text 'vendor/three/build/three.module.js' 'three.js'
-          grep -Fq "REVISION = '186'" "$tmp/three.js"
+          grep -Fq "from './three.core.js'" "$tmp/three.js"
+          fetch_text 'vendor/three/build/three.core.js' 'three-core.js'
+          grep -Fq "REVISION = '186'" "$tmp/three-core.js"
           fetch_text 'vendor/three/examples/jsm/loaders/GLTFLoader.js' 'gltf-loader.js'
           grep -Fq 'class GLTFLoader' "$tmp/gltf-loader.js"
+          grep -Fq "../../../build/three.module.js" "$tmp/gltf-loader.js"
           fetch_text 'vendor/three/examples/jsm/utils/SkeletonUtils.js' 'skeleton-utils.js'
           grep -Fq 'function clone' "$tmp/skeleton-utils.js"
           fetch_text 'vendor/meshoptimizer/meshopt_decoder.mjs' 'meshopt.mjs'

@@ -24,5 +24,7 @@ jobs:
           node scripts/validate.mjs
           npm run cf:build
           test -s dist/vendor/three/build/three.module.js
+          test -s dist/vendor/three/build/three.core.js
           test -s dist/vendor/three/examples/jsm/loaders/GLTFLoader.js
           test -s dist/vendor/meshoptimizer/meshopt_decoder.mjs
+          grep -Fq "REVISION = '186'" dist/vendor/three/build/three.core.js
