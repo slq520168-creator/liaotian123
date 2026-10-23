@@ -13,7 +13,7 @@ function run(args) {
 for (const file of [
   'config/app.js', 'roles.js', 'memory.js', 'role-code.js', 'role-experience.js',
   'role-presence.js', 'role-visual-recipe.js', 'role-face-rig.js', 'role-render-loop.js', 'role-body-rig.js',
-  'role-asset-policy.js', 'role-human-renderer.js', 'role-render-recipe-bridge.js', 'role-voice-stage.js',
+  'role-human-manifest.js', 'role-asset-policy.js', 'role-human-renderer.js', 'role-render-recipe-bridge.js', 'role-voice-stage.js',
   'role-code-compat.js', 'role-persistence.js', 'role-builder.js', 'app.js'
 ]) run(['--check', file]);
 for (const file of ['roles/new-role.role.json', 'roles/preset-roles.json']) JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -55,4 +55,4 @@ run(['--disable-warning=ExperimentalWarning', 'scripts/test-chat-contract.mjs'])
 run(['scripts/test-chat-transport.mjs']);
 run(['scripts/test-role-code.mjs']);
 run(['scripts/test-site-update.mjs']);
-console.log('检查通过：网页脚本、3D真人资产合同、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
+console.log('检查通过：网页脚本、3D真人资产合同、运行时manifest、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
