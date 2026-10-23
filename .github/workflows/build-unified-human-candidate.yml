@@ -97,19 +97,74 @@ jobs:
           const nodeNames=(g.nodes||[]).map(n=>String(n.name||'').toLowerCase()), bones=['pelvis','spine_01','spine_02','spine_03','neck_01','head','upperarm_l','upperarm_r','thigh_l','thigh_r'],missingBones=bones.filter(n=>!nodeNames.includes(n));
           const hair=['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
           const clothing=['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
-          const sizes=list=>Object.fromEntries(list.map(id=>[id,fs.statSync(`output/${list===hair?'hair':'clothing'}_${id}.glb`).size]));
+          const sizes=(kind,list)=>Object.fromEntries(list.map(id=>[id,fs.statSync(`output/${kind}_${id}.glb`).size]));
           const licenses=JSON.parse(fs.readFileSync('output/asset_licenses.json','utf8'));
           const report={
             source:{characterCreator:process.env.CHARACTER_CREATOR_SHA,extraTargets:process.env.EXTRA_TARGETS_SHA,mpfb:process.env.MPFB_VERSION,blender:process.env.BLENDER_VERSION},
             bytes:b.length,meshes:(g.meshes||[]).length,skins:(g.skins||[]).length,morphTargetNameCount:names.size,
             arkitCount:arkit.length-missingArkit.length,visemeCount:visemes.length-missingVisemes.length,
             missingArkit,missingVisemes,missingBase,missingBones,
-            modules:{hair:sizes(hair),clothing:sizes(clothing)},
+            modules:{hair:sizes('hair',hair),clothing:sizes('clothing',clothing)},
             licenseInventory:Boolean(licenses && typeof licenses==='object'),
             mobile:{validated:false,reason:'requires optimized production bundle plus real-device FPS/memory validation before promotion'}
           };
           console.log(JSON.stringify(report,null,2));
           if(missingArkit.length||missingVisemes.length||missingBase.length||missingBones.length||(g.skins||[]).length<1||names.size<150||!report.licenseInventory) throw new Error('unified human contract failed');
+          NODE
+
+      - name: Validate modular skeleton/morph compatibility and static mobile budget
+        working-directory: /tmp/cc
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const MiB=1024*1024;
+          const hair=['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
+          const clothing=['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
+          function glb(path){
+            const b=fs.readFileSync(path); if(b.toString('ascii',0,4)!=='glTF')throw new Error(`not GLB: ${path}`);
+            let off=12,json=null; while(off+8<=b.length){const len=b.readUInt32LE(off),type=b.readUInt32LE(off+4);off+=8;if(type===0x4E4F534A){json=JSON.parse(b.subarray(off,off+len).toString('utf8').replace(/\u0000+$/,''));break;}off+=len;}
+            if(!json)throw new Error(`missing JSON chunk: ${path}`); return {json,bytes:b.length};
+          }
+          const norm=s=>String(s||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+          const targets=g=>{const out=new Set();for(const m of g.meshes||[]){for(const n of m?.extras?.targetNames||[])out.add(String(n));for(const p of m.primitives||[])for(const n of p?.extras?.targetNames||[])out.add(String(n));}return out;};
+          const joints=g=>{const out=new Set();for(const skin of g.skins||[])for(const i of skin.joints||[]){const n=g.nodes?.[i]?.name;if(n)out.add(norm(n));}return out;};
+          const base=glb('output/base_body.glb'), baseJoints=joints(base.json);
+          if(baseJoints.size<20)throw new Error(`base skeleton too small: ${baseJoints.size}`);
+          const bodyRequired=['gender_female','gender_male','weight_min','weight_max','height_short','height_tall'];
+          const hairFaceRequired=['face_forehead_decr','face_forehead_incr','face_ear_size_decr','face_ear_size_incr'];
+          function inspect(kind,id){
+            const path=`output/${kind}_${id}.glb`, item=glb(path), js=joints(item.json), ts=targets(item.json);
+            if(!(item.json.skins||[]).length)throw new Error(`${path}: no skin`);
+            const missingBones=[...js].filter(n=>!baseJoints.has(n));
+            if(missingBones.length)throw new Error(`${path}: bones not in base skeleton: ${missingBones.slice(0,12).join(',')}`);
+            const required=kind==='hair'?[...bodyRequired,...hairFaceRequired]:bodyRequired;
+            const missingMorphs=required.filter(n=>!ts.has(n));
+            if(missingMorphs.length)throw new Error(`${path}: missing shared morphs: ${missingMorphs.join(',')}`);
+            return {id,bytes:item.bytes,skins:(item.json.skins||[]).length,joints:js.size,morphTargets:ts.size};
+          }
+          const hairReport=hair.map(id=>inspect('hair',id));
+          const clothingReport=clothing.map(id=>inspect('clothing',id));
+          const largestHair=Math.max(...hairReport.map(x=>x.bytes));
+          const largestClothing=Math.max(...clothingReport.map(x=>x.bytes));
+          const worstInitial=base.bytes+largestHair+largestClothing;
+          const budget={baseMax:14*MiB,moduleMax:6*MiB,worstInitialMax:22*MiB,baseBytes:base.bytes,largestHairBytes:largestHair,largestClothingBytes:largestClothing,worstInitialBytes:worstInitial};
+          const staticBudgetPassed=base.bytes<=budget.baseMax&&largestHair<=budget.moduleMax&&largestClothing<=budget.moduleMax&&worstInitial<=budget.worstInitialMax;
+          const report=JSON.parse(fs.readFileSync('output/unified-human-report.json','utf8'));
+          report.modularCompatibility={passed:true,hair:hairReport,clothing:clothingReport};
+          report.mobile={...report.mobile,staticBudgetPassed,budget};
+          fs.writeFileSync('output/unified-human-report.json',JSON.stringify(report,null,2)+'\n');
+          const manifest={
+            schema:1,status:'candidate-only',license:'CC0',source:report.source,
+            base:{url:'base_body.glb',bytes:base.bytes},
+            modules:{hair:Object.fromEntries(hairReport.map(x=>[x.id,{url:`hair_${x.id}.glb`,bytes:x.bytes}])),clothing:Object.fromEntries(clothingReport.map(x=>[x.id,{url:`clothing_${x.id}.glb`,bytes:x.bytes}]))},
+            capabilities:{skeleton:true,body:true,faceIdentity:true,expressions:true,visemes:true,hair:true,clothing:true,mobile:false},
+            mobile:{validated:false,staticBudgetPassed,budget,reason:'static payload budget is not a substitute for real iPhone/Android FPS and memory validation'}
+          };
+          fs.writeFileSync('output/unified-human-manifest.json',JSON.stringify(manifest,null,2)+'\n');
+          console.log(JSON.stringify({modularCompatibility:true,staticBudgetPassed,budget},null,2));
+          if(!staticBudgetPassed)throw new Error('candidate exceeds static mobile payload budget; optimize before promotion');
           NODE
 
       - name: Collect validated candidate without promoting it to production
@@ -118,7 +173,7 @@ jobs:
           set -euo pipefail
           mkdir -p candidate
           for f in \
-            base_body.glb base_body.joints.json hair.json clothing.json unified-human-report.json asset_licenses.json \
+            base_body.glb base_body.joints.json hair.json clothing.json unified-human-report.json unified-human-manifest.json asset_licenses.json \
             hair_short02.glb hair_bob02.glb hair_long01.glb hair_ponytail01.glb hair_braid01.glb hair_short04.glb hair_bob01.glb hair_afro01.glb \
             clothing_dress.glb clothing_jeans.glb clothing_tshirt.glb clothing_hoodie.glb clothing_jacket.glb clothing_skirt.glb clothing_shorts.glb clothing_shoes.glb; do
             test -s "/tmp/cc/output/$f"
@@ -131,4 +186,4 @@ jobs:
           name: unified-cc0-human-candidate
           path: candidate/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
