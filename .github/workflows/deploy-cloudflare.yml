@@ -66,25 +66,55 @@ jobs:
           trap 'rm -rf "$tmp"' EXIT
           expected_build="$(node -e "const s=require('fs').readFileSync('config/app.js','utf8');const m=s.match(/const version='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1])")"
 
+          wait_for_build() {
+            local attempt
+            for attempt in $(seq 1 30); do
+              echo "Waiting for production build $expected_build ($attempt/30)"
+              if curl -fsSL --retry 3 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}-$attempt" -o "$tmp/config.js" \
+                && test -s "$tmp/config.js" \
+                && grep -Fq "$expected_build" "$tmp/config.js"; then
+                echo "Production build is live: $expected_build"
+                return 0
+              fi
+              sleep 2
+            done
+            echo "Production never switched to build $expected_build" >&2
+            cat "$tmp/config.js" >&2 || true
+            return 1
+          }
+
           fetch_text() {
             local path="$1"
             local out="$2"
-            echo "Fetching $path"
-            curl -fsSL --retry 8 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}" -o "$tmp/$out"
-            test -s "$tmp/$out"
-            echo "Fetched $path ($(wc -c < "$tmp/$out") bytes)"
+            local attempt
+            for attempt in $(seq 1 10); do
+              echo "Fetching $path ($attempt/10)"
+              if curl -fsSL --retry 3 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}-$attempt" -o "$tmp/$out" && test -s "$tmp/$out"; then
+                echo "Fetched $path ($(wc -c < "$tmp/$out") bytes)"
+                return 0
+              fi
+              sleep 1
+            done
+            echo "Failed to fetch $path from production" >&2
+            return 1
           }
 
           verify_http_200() {
             local path="$1"
-            local code
-            code="$(curl -sS -L -o /dev/null -w '%{http_code}' --retry 8 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}")"
-            test "$code" = '200'
-            echo "Verified $path HTTP $code"
+            local attempt code
+            for attempt in $(seq 1 10); do
+              code="$(curl -sS -L -o /dev/null -w '%{http_code}' --retry 3 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}-$attempt" || true)"
+              if [ "$code" = '200' ]; then
+                echo "Verified $path HTTP $code"
+                return 0
+              fi
+              sleep 1
+            done
+            echo "Production asset $path did not return HTTP 200" >&2
+            return 1
           }
 
-          fetch_text 'config/app.js' 'config.js'
-          grep -Fq "$expected_build" "$tmp/config.js"
+          wait_for_build
 
           fetch_text 'role-creator-animated-presets.js' 'presets.js'
           grep -Fq 'vendor/three/build/three.module.js' "$tmp/presets.js"
@@ -98,6 +128,8 @@ jobs:
           grep -Fq "REVISION = '186'" "$tmp/three.js"
           fetch_text 'vendor/three/examples/jsm/loaders/GLTFLoader.js' 'gltf-loader.js'
           grep -Fq 'class GLTFLoader' "$tmp/gltf-loader.js"
+          fetch_text 'vendor/three/examples/jsm/utils/SkeletonUtils.js' 'skeleton-utils.js'
+          grep -Fq 'function clone' "$tmp/skeleton-utils.js"
           fetch_text 'vendor/meshoptimizer/meshopt_decoder.mjs' 'meshopt.mjs'
           grep -Fq 'MeshoptDecoder' "$tmp/meshopt.mjs"
 
