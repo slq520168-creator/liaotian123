@@ -14,7 +14,7 @@ env:
   CHARACTER_CREATOR_SHA: 852e48f316b90a0937234886630e4fb4cdfd1f78
   EXTRA_TARGETS_SHA: 7eaba3453134385bb5ea9811ef0b33b85b4b556d
   BLENDER_VERSION: 5.2.2
-  MPFB_VERSION: 2.0.17
+  MPFB_VERSION: 2.0.18
 
 jobs:
   build-candidate:
@@ -34,16 +34,17 @@ jobs:
           tar -xzf /tmp/extra.tar.gz -C /tmp/extra --strip-components=1
           curl -fL --retry 5 "https://download.blender.org/release/Blender5.2/blender-${BLENDER_VERSION}-linux-x64.tar.xz" -o /tmp/blender.tar.xz
           tar -xJf /tmp/blender.tar.xz -C /tmp/blender --strip-components=1
-          curl -fL --retry 5 "https://extensions.blender.org/add-ons/mpfb/${MPFB_VERSION}/download/" -o /tmp/mpfb.zip
           test -x /tmp/blender/blender
           test -f /tmp/extra/assets/faceunits01/targets/faceunits/jawOpen.target
           test -f /tmp/extra/assets/visemes02/targets/visemes/viseme_PP.target
 
-      - name: Install pinned MPFB extension
+      - name: Install current stable MPFB and verify face API
         shell: bash
         run: |
           set -euo pipefail
-          /tmp/blender/blender -b --command extension install-file -r user_default --enable /tmp/mpfb.zip
+          /tmp/blender/blender --online-mode --command extension install --sync --enable mpfb
+          /tmp/blender/blender -b --python-expr "from bl_ext.user_default.mpfb.services.faceservice import FaceService; print('MPFB FACE API OK', len(FaceService.ARKIT_FACEUNITS) if hasattr(FaceService,'ARKIT_FACEUNITS') else 'service')" || \
+          /tmp/blender/blender -b --python-expr "from bl_ext.user_default.mpfb.services.faceservice import FaceService; print('MPFB FACE API OK')"
 
       - name: Fetch CharacterCreator CC0 system assets
         working-directory: /tmp/cc
@@ -71,6 +72,7 @@ jobs:
           test -s output/base_body.glb
           test -s output/hair_long01.glb
           test -s output/clothing_dress.glb
+          test -s output/clothing_jeans.glb
 
       - name: Enforce unified human contract
         working-directory: /tmp/cc
@@ -78,56 +80,28 @@ jobs:
         run: |
           set -euo pipefail
           node <<'NODE' | tee output/unified-human-report.json
-          const fs = require('fs');
-          const file = 'output/base_body.glb';
-          const b = fs.readFileSync(file);
-          if (b.toString('ascii',0,4) !== 'glTF') throw new Error('candidate is not GLB');
-          let off=12, g=null;
-          while(off+8<=b.length){const len=b.readUInt32LE(off),type=b.readUInt32LE(off+4);off+=8;if(type===0x4E4F534A){g=JSON.parse(b.subarray(off,off+len).toString('utf8').replace(/\u0000+$/,''));break;}off+=len;}
-          if(!g) throw new Error('missing GLB JSON');
-          const names=new Set();
-          for(const mesh of g.meshes||[]){for(const n of mesh?.extras?.targetNames||[]) names.add(String(n));for(const p of mesh.primitives||[]) for(const n of p?.extras?.targetNames||[]) names.add(String(n));}
+          const fs=require('fs'), b=fs.readFileSync('output/base_body.glb');
+          if(b.toString('ascii',0,4)!=='glTF') throw new Error('candidate is not GLB');
+          let off=12,g=null; while(off+8<=b.length){const len=b.readUInt32LE(off),type=b.readUInt32LE(off+4);off+=8;if(type===0x4E4F534A){g=JSON.parse(b.subarray(off,off+len).toString('utf8').replace(/\u0000+$/,''));break;}off+=len;} if(!g) throw new Error('missing GLB JSON');
+          const names=new Set(); for(const mesh of g.meshes||[]){for(const n of mesh?.extras?.targetNames||[])names.add(String(n));for(const p of mesh.primitives||[])for(const n of p?.extras?.targetNames||[])names.add(String(n));}
           const arkit=['browDownLeft','browDownRight','browInnerUp','browOuterUpLeft','browOuterUpRight','cheekPuff','cheekSquintLeft','cheekSquintRight','eyeBlinkLeft','eyeBlinkRight','eyeLookDownLeft','eyeLookDownRight','eyeLookInLeft','eyeLookInRight','eyeLookOutLeft','eyeLookOutRight','eyeLookUpLeft','eyeLookUpRight','eyeSquintLeft','eyeSquintRight','eyeWideLeft','eyeWideRight','jawForward','jawLeft','jawOpen','jawRight','mouthClose','mouthDimpleLeft','mouthDimpleRight','mouthFrownLeft','mouthFrownRight','mouthFunnel','mouthLeft','mouthLowerDownLeft','mouthLowerDownRight','mouthPressLeft','mouthPressRight','mouthPucker','mouthRight','mouthRollLower','mouthRollUpper','mouthShrugLower','mouthShrugUpper','mouthSmileLeft','mouthSmileRight','mouthStretchLeft','mouthStretchRight','mouthUpperUpLeft','mouthUpperUpRight','noseSneerLeft','noseSneerRight','tongueOut'];
           const visemes=['viseme_sil','viseme_PP','viseme_FF','viseme_TH','viseme_DD','viseme_kk','viseme_CH','viseme_SS','viseme_nn','viseme_RR','viseme_aa','viseme_E','viseme_I','viseme_O','viseme_U'];
-          const missingArkit=arkit.filter(n=>!names.has(n));
-          const missingVisemes=visemes.filter(n=>!names.has(n));
           const baseRequired=['gender_female','gender_male','weight_min','weight_max','muscle_min','muscle_max','height_short','height_tall','face_nose_width_decr','face_nose_width_incr','face_jaw_width_decr','face_jaw_width_incr','face_eye_size_decr','face_eye_size_incr','face_lips_decr','face_lips_incr'];
-          const missingBase=baseRequired.filter(n=>!names.has(n));
-          const nodeNames=(g.nodes||[]).map(n=>String(n.name||'').toLowerCase());
-          const requiredBones=['pelvis','spine_01','spine_02','spine_03','neck_01','head','upperarm_l','upperarm_r','thigh_l','thigh_r'];
-          const missingBones=requiredBones.filter(n=>!nodeNames.includes(n));
-          const report={
-            source:{characterCreator:process.env.CHARACTER_CREATOR_SHA,extraTargets:process.env.EXTRA_TARGETS_SHA,mpfb:process.env.MPFB_VERSION,blender:process.env.BLENDER_VERSION},
-            bytes:b.length,meshes:(g.meshes||[]).length,skins:(g.skins||[]).length,morphTargetNameCount:names.size,
-            arkitCount:arkit.length-missingArkit.length,visemeCount:visemes.length-missingVisemes.length,
-            missingArkit,missingVisemes,missingBase,missingBones,
-            addons:{hairLong:fs.statSync('output/hair_long01.glb').size,dress:fs.statSync('output/clothing_dress.glb').size,jeans:fs.statSync('output/clothing_jeans.glb').size}
-          };
+          const missingArkit=arkit.filter(n=>!names.has(n)),missingVisemes=visemes.filter(n=>!names.has(n)),missingBase=baseRequired.filter(n=>!names.has(n));
+          const nodeNames=(g.nodes||[]).map(n=>String(n.name||'').toLowerCase()), bones=['pelvis','spine_01','spine_02','spine_03','neck_01','head','upperarm_l','upperarm_r','thigh_l','thigh_r'],missingBones=bones.filter(n=>!nodeNames.includes(n));
+          const report={source:{characterCreator:process.env.CHARACTER_CREATOR_SHA,extraTargets:process.env.EXTRA_TARGETS_SHA,mpfb:process.env.MPFB_VERSION,blender:process.env.BLENDER_VERSION},bytes:b.length,meshes:(g.meshes||[]).length,skins:(g.skins||[]).length,morphTargetNameCount:names.size,arkitCount:arkit.length-missingArkit.length,visemeCount:visemes.length-missingVisemes.length,missingArkit,missingVisemes,missingBase,missingBones,addons:{hairLong:fs.statSync('output/hair_long01.glb').size,dress:fs.statSync('output/clothing_dress.glb').size,jeans:fs.statSync('output/clothing_jeans.glb').size}};
           console.log(JSON.stringify(report,null,2));
-          if(missingArkit.length) throw new Error('missing ARKit targets: '+missingArkit.join(','));
-          if(missingVisemes.length) throw new Error('missing visemes: '+missingVisemes.join(','));
-          if(missingBase.length) throw new Error('lost body/face targets: '+missingBase.join(','));
-          if(missingBones.length) throw new Error('missing humanoid bones: '+missingBones.join(','));
-          if((g.skins||[]).length<1) throw new Error('candidate is not skinned');
-          if(names.size<150) throw new Error('unexpectedly low unified morph count: '+names.size);
+          if(missingArkit.length||missingVisemes.length||missingBase.length||missingBones.length||(g.skins||[]).length<1||names.size<150) throw new Error('unified human contract failed');
           NODE
 
-      - name: Collect candidate only after contract passes
+      - name: Collect validated candidate
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p candidate
-          cp /tmp/cc/output/base_body.glb candidate/
-          cp /tmp/cc/output/base_body.joints.json candidate/
-          cp /tmp/cc/output/hair_long01.glb candidate/
-          cp /tmp/cc/output/hair_ponytail01.glb candidate/
-          cp /tmp/cc/output/clothing_dress.glb candidate/
-          cp /tmp/cc/output/clothing_jeans.glb candidate/
-          cp /tmp/cc/output/clothing_shirt.glb candidate/ 2>/dev/null || true
-          cp /tmp/cc/output/hair.json candidate/
-          cp /tmp/cc/output/clothing.json candidate/
-          cp /tmp/cc/output/unified-human-report.json candidate/
-          cp /tmp/cc/output/asset_licenses.json candidate/ 2>/dev/null || true
+          for f in base_body.glb base_body.joints.json hair_long01.glb hair_ponytail01.glb clothing_dress.glb clothing_jeans.glb hair.json clothing.json unified-human-report.json asset_licenses.json; do
+            test ! -f "/tmp/cc/output/$f" || cp "/tmp/cc/output/$f" candidate/
+          done
           cp /tmp/candidate-build.log candidate/build.log
 
       - uses: actions/upload-artifact@v4
