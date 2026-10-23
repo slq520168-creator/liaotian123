@@ -19,7 +19,8 @@ const runtimeJs=[
   'role-voice-stage.js',
   'role-code-compat.js',
   'role-persistence.js',
-  'role-builder.js'
+  'role-builder.js',
+  'role-custom-visual.js'
 ];
 const staticEntries=[
   'index.html','app.js','memory.js','role-code.js','roles.js','styles.css',
