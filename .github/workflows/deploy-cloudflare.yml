@@ -55,3 +55,14 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Verify sirole.vip 3D runtime
+        if: steps.cloudflare-auth.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://sirole.vip'
+          curl -fsSL --retry 6 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}" | grep -q '20261023-human-visible1'
+          curl -fsSL --retry 6 --retry-all-errors "$base/role-human-renderer.js?smoke=${GITHUB_SHA}" | grep -q 'class HumanRenderer'
+          curl -fsSL --retry 6 --retry-all-errors "$base/assets/humans/manifest.json?smoke=${GITHUB_SHA}" | grep -q '"nuannuan"'
+          curl -fsSLI --retry 6 --retry-all-errors "$base/assets/humans/reference-mpfb.glb?smoke=${GITHUB_SHA}" | grep -Eq '^HTTP/[0-9.]+ 200'
