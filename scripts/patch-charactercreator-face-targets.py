@@ -9,6 +9,8 @@ from __future__ import annotations
 import pathlib
 import sys
 
+# Rebuild trigger: validate the latest unified skeleton/module runtime against fresh CC0 output.
+
 ARKIT = [
     'browDownLeft','browDownRight','browInnerUp','browOuterUpLeft','browOuterUpRight',
     'cheekPuff','cheekSquintLeft','cheekSquintRight','eyeBlinkLeft','eyeBlinkRight',
