@@ -24,7 +24,7 @@ function targetNames(mesh) {
   return (mesh?.extras?.targetNames || []).map(String);
 }
 
-function assertDefaultMorphsZero(gltf) {
+function assertDefaultMorphsZero(gltf, label = 'candidate') {
   const bad = [];
   for (const mesh of gltf.meshes || []) {
     const names = targetNames(mesh);
@@ -38,7 +38,7 @@ function assertDefaultMorphsZero(gltf) {
       if (Math.abs(value) > 1e-7) bad.push(`${mesh.name || '<mesh>'}:${names[i] || i}=${value}`);
     }
   }
-  if (bad.length) throw new Error(`candidate has non-zero default morph weights: ${bad.slice(0, 20).join(', ')}`);
+  if (bad.length) throw new Error(`${label} has non-zero default morph weights: ${bad.slice(0, 20).join(', ')}`);
 }
 
 const PRIMARY = [
@@ -54,6 +54,8 @@ const CORRECTIVE_PAIRS = [
 ];
 const CORRECTIVES = CORRECTIVE_PAIRS.flatMap(([a,b]) => a.flatMap(x => b.map(y => `corr_${x}__${y}`)));
 const REQUIRED_JOINT_MORPHS = [...PRIMARY, ...CORRECTIVES];
+const HAIR = ['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
+const CLOTHING = ['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
 
 function assertJointsContract(joints) {
   if (!joints || joints.version !== 1 || !joints.bones || !joints.morphs) throw new Error('invalid joints sidecar contract');
@@ -73,16 +75,47 @@ function assertJointsContract(joints) {
   }
 }
 
+function assertModuleDefaultsZero(root) {
+  const files = [
+    ...HAIR.map(id => `hair_${id}.glb`),
+    ...CLOTHING.map(id => `clothing_${id}.glb`)
+  ];
+  for (const file of files) {
+    const full = path.join(root, file);
+    if (!fs.existsSync(full) || fs.statSync(full).size <= 0) throw new Error(`missing unified module: ${file}`);
+    assertDefaultMorphsZero(readGlbJson(full), file);
+  }
+  return files.length;
+}
+
 function main(argv = process.argv.slice(2)) {
   const root = argv[0] || 'output';
   const glbPath = path.join(root, 'base_body.glb');
   const jointsPath = path.join(root, 'base_body.joints.json');
   const gltf = readGlbJson(glbPath);
   const joints = JSON.parse(fs.readFileSync(jointsPath, 'utf8'));
-  assertDefaultMorphsZero(gltf);
+  assertDefaultMorphsZero(gltf, 'base_body.glb');
   assertJointsContract(joints);
-  console.log(JSON.stringify({ok:true,defaultMorphsZero:true,jointMorphCount:Object.keys(joints.morphs).length,requiredJointMorphCount:REQUIRED_JOINT_MORPHS.length}, null, 2));
+  const moduleCount = assertModuleDefaultsZero(root);
+  console.log(JSON.stringify({
+    ok:true,
+    defaultMorphsZero:true,
+    moduleDefaultMorphsZero:true,
+    moduleCount,
+    jointMorphCount:Object.keys(joints.morphs).length,
+    requiredJointMorphCount:REQUIRED_JOINT_MORPHS.length
+  }, null, 2));
 }
 
 if (require.main === module) main();
-module.exports = {readGlbJson,assertDefaultMorphsZero,assertJointsContract,PRIMARY,CORRECTIVES,REQUIRED_JOINT_MORPHS};
+module.exports = {
+  readGlbJson,
+  assertDefaultMorphsZero,
+  assertJointsContract,
+  assertModuleDefaultsZero,
+  PRIMARY,
+  CORRECTIVES,
+  REQUIRED_JOINT_MORPHS,
+  HAIR,
+  CLOTHING
+};
