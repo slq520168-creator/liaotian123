@@ -62,13 +62,47 @@ jobs:
         run: |
           set -euo pipefail
           base='https://sirole.vip'
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
           expected_build="$(node -e "const s=require('fs').readFileSync('config/app.js','utf8');const m=s.match(/const version='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1])")"
-          config="$(curl -fsSL --retry 6 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}")"
-          grep -Fq "$expected_build" <<< "$config"
-          curl -fsSL --retry 6 --retry-all-errors "$base/role-human-renderer.js?smoke=${GITHUB_SHA}" | grep -q 'class HumanRenderer'
-          curl -fsSL --retry 6 --retry-all-errors "$base/role-human-asset-capability.js?smoke=${GITHUB_SHA}" | grep -q 'REQUIRED_CAPABILITIES'
-          curl -fsSL --retry 6 --retry-all-errors "$base/role-natural-pose.js?smoke=${GITHUB_SHA}" | grep -q "const ENABLED = false"
-          curl -fsSL --retry 6 --retry-all-errors "$base/role-custom-visual.js?smoke=${GITHUB_SHA}" | grep -q 'reference-fallback'
-          curl -fsSL --retry 6 --retry-all-errors "$base/assets/humans/manifest.json?smoke=${GITHUB_SHA}" | grep -q '"nuannuan"'
-          curl -fsSLI --retry 6 --retry-all-errors "$base/assets/humans/reference-mpfb.glb?smoke=${GITHUB_SHA}" | grep -Eq '^HTTP/[0-9.]+ 200'
-          curl -fsSLI --retry 6 --retry-all-errors "$base/assets/humans/reference-vitruvian-morph.glb?smoke=${GITHUB_SHA}" | grep -Eq '^HTTP/[0-9.]+ 200'
+
+          fetch_text() {
+            local path="$1"
+            local out="$2"
+            echo "Fetching $path"
+            curl -fsSL --retry 6 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}" -o "$tmp/$out"
+            test -s "$tmp/$out"
+            echo "Fetched $path ($(wc -c < "$tmp/$out") bytes)"
+          }
+
+          verify_http_200() {
+            local path="$1"
+            local code
+            echo "Checking $path"
+            code="$(curl -sS -L -o /dev/null -w '%{http_code}' --retry 6 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}")"
+            test "$code" = '200'
+            echo "Verified $path HTTP $code"
+          }
+
+          fetch_text 'config/app.js' 'config.js'
+          grep -Fq "$expected_build" "$tmp/config.js"
+          echo "Verified production build $expected_build"
+
+          fetch_text 'role-human-renderer.js' 'renderer.js'
+          grep -Fq 'class HumanRenderer' "$tmp/renderer.js"
+
+          fetch_text 'role-human-asset-capability.js' 'capability.js'
+          grep -Fq 'REQUIRED_CAPABILITIES' "$tmp/capability.js"
+
+          fetch_text 'role-natural-pose.js' 'pose.js'
+          grep -Fq 'const ENABLED = false' "$tmp/pose.js"
+
+          fetch_text 'role-custom-visual.js' 'custom-visual.js'
+          grep -Fq 'reference-fallback' "$tmp/custom-visual.js"
+
+          fetch_text 'assets/humans/manifest.json' 'manifest.json'
+          grep -Fq '"nuannuan"' "$tmp/manifest.json"
+
+          verify_http_200 'assets/humans/reference-mpfb.glb'
+          verify_http_200 'assets/humans/reference-vitruvian-morph.glb'
+          echo 'sirole.vip production 3D runtime verified'
