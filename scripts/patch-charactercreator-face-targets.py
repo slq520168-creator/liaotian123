@@ -87,6 +87,91 @@ def main() -> None:
     new_license = 'with open(os.path.join(out_dir, "asset_licenses.json"), "w", encoding="utf-8") as f:'
     text = replace_once(text, old_license, new_license, 'write license inventory with candidate output')
 
+    # The upstream exporter intentionally puts every morph target on every mesh.
+    # That is useful while fitting garments and hair in Blender, but wasteful on
+    # mobile GPUs.  Keep the full build during fitting, then prune only the glTF
+    # target references after export.  The binary accessors remain in the GLB,
+    # so this does not alter geometry generation or licenses; Three.js simply no
+    # longer instantiates irrelevant morph attributes at runtime.
+    prune_block = r'''
+
+def _cc_keep_runtime_morph(name, policy):
+    n = str(name or "")
+    structural = n.startswith(("gender_", "age_", "weight_", "muscle_", "height_", "proportions_", "corr_gender_", "corr_weight_"))
+    face = n.startswith("face_")
+    chest = n.startswith(("breast_", "bdet_", "dyn_", "corr_breast_"))
+    viseme = n.startswith("viseme_")
+    mouth = n.startswith(("mouth", "jaw")) or n == "tongueOut"
+    eye = n.startswith(("eye", "look_", "blink_"))
+    brow = n.startswith(("brow", "cheek", "noseSneer"))
+    if policy == "all":
+        return True
+    if policy == "hair":
+        return structural or face
+    if policy == "cloth":
+        return structural or chest
+    if policy == "eyes":
+        return structural or face or eye
+    if policy == "mouth":
+        return structural or face or viseme or mouth
+    if policy == "facecard":
+        return structural or face or eye or brow
+    return False
+
+
+def _cc_prune_runtime_morphs(path, mode):
+    g, binary = read_glb(path)
+    changed = False
+    summary = []
+    for mesh in g.get("meshes", []):
+        names = list((mesh.get("extras") or {}).get("targetNames") or [])
+        if not names:
+            continue
+        mesh_name = str(mesh.get("name") or "")
+        if mode == "base":
+            if mesh_name == "base":
+                policy = "all"
+            elif mesh_name == "Eyes":
+                policy = "eyes"
+            elif mesh_name in ("Teeth", "Tongue"):
+                policy = "mouth"
+            else:
+                policy = "facecard"
+        else:
+            policy = mode
+        keep = [i for i, name in enumerate(names) if _cc_keep_runtime_morph(name, policy)]
+        assert keep, "runtime morph pruning removed every target from %s" % mesh_name
+        if len(keep) == len(names):
+            summary.append((mesh_name, len(names), len(names), policy))
+            continue
+        for primitive in mesh.get("primitives", []):
+            targets = primitive.get("targets") or []
+            assert len(targets) == len(names), "%s: targetNames/targets mismatch" % mesh_name
+            primitive["targets"] = [targets[i] for i in keep]
+        if "weights" in mesh:
+            weights = mesh["weights"]
+            assert len(weights) == len(names), "%s: targetNames/weights mismatch" % mesh_name
+            mesh["weights"] = [weights[i] for i in keep]
+        mesh.setdefault("extras", {})["targetNames"] = [names[i] for i in keep]
+        changed = True
+        summary.append((mesh_name, len(names), len(keep), policy))
+    if changed:
+        write_glb(path, g, binary)
+    print("BUILD runtime morph prune", os.path.basename(path), summary)
+    return summary
+
+
+_cc_prune_runtime_morphs(args.out, "base")
+for _hid, _labels in HAIR_STYLES:
+    _hp = os.path.join(out_dir, "hair_%s.glb" % _hid)
+    if os.path.isfile(_hp):
+        _cc_prune_runtime_morphs(_hp, "hair")
+for _fn in sorted(os.listdir(out_dir)):
+    if _fn.startswith("clothing_") and _fn.endswith(".glb"):
+        _cc_prune_runtime_morphs(os.path.join(out_dir, _fn), "cloth")
+'''
+    text = replace_once(text, '\nif LICENSES:\n', prune_block + '\nif LICENSES:\n', 'inject mobile runtime morph pruning')
+
     # build_base.py may end the Blender process before the outer runpy wrapper
     # gets control again. Write the success marker from inside the build, only
     # after every GLB, skeleton sidecar, license inventory and .blend snapshot
@@ -96,7 +181,7 @@ def main() -> None:
     text = replace_once(text, old_done, new_done, 'write in-build success marker')
 
     path.write_text(text, encoding='utf-8')
-    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} license=output build_marker=inside file={path}')
+    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} license=output morph_prune=runtime build_marker=inside file={path}')
 
 
 if __name__ == '__main__':
