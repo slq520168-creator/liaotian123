@@ -62,7 +62,10 @@ jobs:
         run: |
           set -euo pipefail
           base='https://sirole.vip'
-          curl -fsSL --retry 6 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}" | grep -q '20261023-human-visible1'
+          expected_build="$(node -e "const s=require('fs').readFileSync('config/app.js','utf8');const m=s.match(/const version='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1])")"
+          config="$(curl -fsSL --retry 6 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}")"
+          grep -Fq "$expected_build" <<< "$config"
           curl -fsSL --retry 6 --retry-all-errors "$base/role-human-renderer.js?smoke=${GITHUB_SHA}" | grep -q 'class HumanRenderer'
+          curl -fsSL --retry 6 --retry-all-errors "$base/role-custom-visual.js?smoke=${GITHUB_SHA}" | grep -q 'CUSTOM_HUMAN_ASSET'
           curl -fsSL --retry 6 --retry-all-errors "$base/assets/humans/manifest.json?smoke=${GITHUB_SHA}" | grep -q '"nuannuan"'
           curl -fsSLI --retry 6 --retry-all-errors "$base/assets/humans/reference-mpfb.glb?smoke=${GITHUB_SHA}" | grep -Eq '^HTTP/[0-9.]+ 200'
