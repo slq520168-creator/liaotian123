@@ -38,13 +38,13 @@ jobs:
           test -f /tmp/extra/assets/faceunits01/targets/faceunits/jawOpen.target
           test -f /tmp/extra/assets/visemes02/targets/visemes/viseme_PP.target
 
-      - name: Install and explicitly activate MPFB
+      - name: Install and verify MPFB extension
         shell: bash
         run: |
           set -euo pipefail
           rm -f /tmp/mpfb-ready
           /tmp/blender/blender --online-mode --command extension install --sync --enable mpfb
-          /tmp/blender/blender -b --python-expr "import bpy,importlib,pathlib; print('MPFB ENABLE', bpy.ops.preferences.addon_enable(module='bl_ext.user_default.mpfb')); importlib.import_module('bl_ext.user_default.mpfb.services.humanservice'); pathlib.Path('/tmp/mpfb-ready').write_text('ok')"
+          /tmp/blender/blender -b --python-expr "import importlib,pathlib; m=importlib.import_module('bl_ext.blender_org.mpfb.services.humanservice'); print('MPFB HUMAN SERVICE', m.HumanService.__name__); pathlib.Path('/tmp/mpfb-ready').write_text('ok')"
           test -s /tmp/mpfb-ready
 
       - name: Fetch CharacterCreator CC0 system assets
@@ -73,14 +73,12 @@ jobs:
           mkdir -p output build/blend
           rm -f /tmp/cc-build-ready /tmp/candidate-build.log
           cat >/tmp/run-cc-build.py <<'PY'
-          import bpy
           import pathlib
           import runpy
           import sys
 
-          print('MPFB ENABLE FOR BUILD', bpy.ops.preferences.addon_enable(module='bl_ext.user_default.mpfb'))
-          from bl_ext.user_default.mpfb.services.humanservice import HumanService
-          print('MPFB HUMAN SERVICE', HumanService.__name__)
+          from bl_ext.blender_org.mpfb.services.humanservice import HumanService
+          print('MPFB HUMAN SERVICE FOR BUILD', HumanService.__name__)
           sys.argv = ['blender/build_base.py', '--', 'output/base_body.glb']
           runpy.run_path('blender/build_base.py', run_name='__main__')
           pathlib.Path('/tmp/cc-build-ready').write_text('ok')
