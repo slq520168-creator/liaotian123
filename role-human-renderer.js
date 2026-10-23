@@ -2,8 +2,15 @@
   'use strict';
 
   const THREE_VERSION = '0.186.1';
-  const THREE_MODULE = `https://esm.sh/three@${THREE_VERSION}`;
-  const GLTF_LOADER_MODULE = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/GLTFLoader.js`;
+  const MESHOPT_VERSION = '1.3.0';
+  const BUILD = typeof window !== 'undefined' ? (window.LIAOTIAN_BUILD_VERSION || '20261024-chat3d3') : 'test';
+  const localModule = path => {
+    if (typeof document === 'undefined') return path;
+    return new URL(`${path}${path.includes('?') ? '&' : '?'}v=${encodeURIComponent(BUILD)}`, document.baseURI).href;
+  };
+  const THREE_MODULE = localModule('vendor/three/build/three.module.js');
+  const GLTF_LOADER_MODULE = localModule('vendor/three/examples/jsm/loaders/GLTFLoader.js');
+  const MESHOPT_DECODER_MODULE = localModule('vendor/meshoptimizer/meshopt_decoder.mjs');
   const HEAD_NAME_RE = /(^|[^a-z])(head|face|neck)([^a-z]|$)/i;
 
   function finite(value, fallback = 0) {
@@ -42,7 +49,10 @@
 
   function assetForCharacter(char, registry = {}, options = {}) {
     if (!char?.id) return null;
-    const fromRegistry = registry?.[char.id];
+    const registered = registry?.[char.id];
+    const fromRegistry = registered && typeof registered === 'object'
+      ? (registered.full || registered.upper || registered.portrait || registered)
+      : registered;
     if (fromRegistry) return normalizeAssetDescriptor(fromRegistry, options);
     const local = char.humanAsset || char.model3d || char.model3D || null;
     return normalizeAssetDescriptor(local, options);
@@ -117,13 +127,23 @@
     });
   }
 
+  function decoderFromModule(module) {
+    return module?.MeshoptDecoder || module?.default?.MeshoptDecoder || module?.default || module || null;
+  }
+
   let modulePromise = null;
   async function loadThreeModules(importer = specifier => import(specifier)) {
     if (!modulePromise) {
       modulePromise = Promise.all([
         importer(THREE_MODULE),
-        importer(GLTF_LOADER_MODULE)
-      ]).then(([THREE, loaderModule]) => ({THREE, GLTFLoader: loaderModule.GLTFLoader})).catch(error => {
+        importer(GLTF_LOADER_MODULE),
+        importer(MESHOPT_DECODER_MODULE)
+      ]).then(async ([THREE, loaderModule, decoderModule]) => {
+        const MeshoptDecoder = decoderFromModule(decoderModule);
+        if (!loaderModule?.GLTFLoader || !MeshoptDecoder) throw new Error('本地3D引擎模块不完整');
+        if (MeshoptDecoder.ready && typeof MeshoptDecoder.ready.then === 'function') await MeshoptDecoder.ready;
+        return {THREE, GLTFLoader: loaderModule.GLTFLoader, MeshoptDecoder};
+      }).catch(error => {
         modulePromise = null;
         throw error;
       });
@@ -133,7 +153,7 @@
 
   class HumanRenderer {
     constructor(options = {}) {
-      this.registry = options.registry || (typeof window !== 'undefined' ? window.LIAOTIAN_HUMANS || {} : {});
+      this.registry = options.registry || (typeof window !== 'undefined' ? (window.LIAOTIAN_HUMAN_ASSETS || window.LIAOTIAN_HUMANS || {}) : {});
       this.container = options.container || null;
       this.stage = null;
       this.canvasHost = null;
@@ -288,6 +308,7 @@
         await this.ensureEngine();
         if (token !== this.loadToken) return false;
         const loader = new this.modules.GLTFLoader();
+        if (this.modules.MeshoptDecoder && typeof loader.setMeshoptDecoder === 'function') loader.setMeshoptDecoder(this.modules.MeshoptDecoder);
         const gltf = await loader.loadAsync(asset.url);
         if (token !== this.loadToken) {
           disposeObject(gltf.scene);
@@ -379,8 +400,10 @@
 
   const api = Object.freeze({
     THREE_VERSION,
+    MESHOPT_VERSION,
     THREE_MODULE,
     GLTF_LOADER_MODULE,
+    MESHOPT_DECODER_MODULE,
     safeAssetPath,
     normalizeAssetDescriptor,
     assetForCharacter,
@@ -389,6 +412,7 @@
     findBestFaceMesh,
     findHeadObject,
     disposeObject,
+    decoderFromModule,
     loadThreeModules,
     HumanRenderer
   });

@@ -3,8 +3,13 @@
 
   const THREE_VERSION = '0.186.1';
   const MESHOPT_VERSION = '1.3.0';
-  const GLTF_LOADER_MODULE = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/GLTFLoader.js`;
-  const MESHOPT_DECODER_MODULE = `https://esm.sh/meshoptimizer@${MESHOPT_VERSION}/decoder`;
+  const BUILD = typeof window !== 'undefined' ? (window.LIAOTIAN_BUILD_VERSION || '20261024-chat3d3') : 'test';
+  const localModule = path => {
+    if (typeof document === 'undefined') return path;
+    return new URL(`${path}${path.includes('?') ? '&' : '?'}v=${encodeURIComponent(BUILD)}`, document.baseURI).href;
+  };
+  const GLTF_LOADER_MODULE = localModule('vendor/three/examples/jsm/loaders/GLTFLoader.js');
+  const MESHOPT_DECODER_MODULE = localModule('vendor/meshoptimizer/meshopt_decoder.mjs');
 
   function decoderFromModule(module) {
     return module?.MeshoptDecoder || module?.default?.MeshoptDecoder || module?.default || module || null;

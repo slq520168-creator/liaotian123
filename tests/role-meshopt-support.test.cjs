@@ -2,11 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const support = require('../role-meshopt-support.js');
 
-test('meshopt support pins production decoder versions', () => {
+test('meshopt support pins production decoder versions and self-hosted modules', () => {
   assert.equal(support.THREE_VERSION, '0.186.1');
   assert.equal(support.MESHOPT_VERSION, '1.3.0');
-  assert.match(support.GLTF_LOADER_MODULE, /three@0\.186\.1/);
-  assert.match(support.MESHOPT_DECODER_MODULE, /meshoptimizer@1\.3\.0\/decoder/);
+  assert.match(support.GLTF_LOADER_MODULE, /^vendor\/three\/examples\/jsm\/loaders\/GLTFLoader\.js(?:\?|$)/);
+  assert.match(support.MESHOPT_DECODER_MODULE, /^vendor\/meshoptimizer\/meshopt_decoder\.mjs(?:\?|$)/);
+  assert.doesNotMatch(support.GLTF_LOADER_MODULE, /esm\.sh/);
+  assert.doesNotMatch(support.MESHOPT_DECODER_MODULE, /esm\.sh/);
 });
 
 test('decoder module normalization accepts named and default exports', () => {
