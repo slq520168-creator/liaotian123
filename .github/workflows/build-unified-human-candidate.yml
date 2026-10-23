@@ -38,13 +38,14 @@ jobs:
           test -f /tmp/extra/assets/faceunits01/targets/faceunits/jawOpen.target
           test -f /tmp/extra/assets/visemes02/targets/visemes/viseme_PP.target
 
-      - name: Install current stable MPFB and verify face API
+      - name: Install and explicitly activate MPFB
         shell: bash
         run: |
           set -euo pipefail
+          rm -f /tmp/mpfb-ready
           /tmp/blender/blender --online-mode --command extension install --sync --enable mpfb
-          /tmp/blender/blender -b --python-expr "from bl_ext.user_default.mpfb.services.faceservice import FaceService; print('MPFB FACE API OK', len(FaceService.ARKIT_FACEUNITS) if hasattr(FaceService,'ARKIT_FACEUNITS') else 'service')" || \
-          /tmp/blender/blender -b --python-expr "from bl_ext.user_default.mpfb.services.faceservice import FaceService; print('MPFB FACE API OK')"
+          /tmp/blender/blender -b --python-expr "import bpy,importlib,pathlib; print('MPFB ENABLE', bpy.ops.preferences.addon_enable(module='bl_ext.user_default.mpfb')); importlib.import_module('bl_ext.user_default.mpfb.services.humanservice'); pathlib.Path('/tmp/mpfb-ready').write_text('ok')"
+          test -s /tmp/mpfb-ready
 
       - name: Fetch CharacterCreator CC0 system assets
         working-directory: /tmp/cc
@@ -61,14 +62,33 @@ jobs:
           grep -q 'ARKIT_TARGET_NAMES' /tmp/cc/blender/build_base.py
           grep -q 'META_VISEME_NAMES' /tmp/cc/blender/build_base.py
 
-      - name: Build unified candidate GLB and modular appearance assets
+      - name: Build unified candidate from clean output
         working-directory: /tmp/cc
         shell: bash
         env:
           CC_EXTRA_TARGETS: /tmp/extra/assets
         run: |
           set -euo pipefail
-          /tmp/blender/blender -b --python blender/build_base.py -- output/base_body.glb 2>&1 | tee /tmp/candidate-build.log
+          rm -rf output build/blend
+          mkdir -p output build/blend
+          rm -f /tmp/cc-build-ready /tmp/candidate-build.log
+          cat >/tmp/run-cc-build.py <<'PY'
+          import bpy
+          import pathlib
+          import runpy
+          import sys
+
+          print('MPFB ENABLE FOR BUILD', bpy.ops.preferences.addon_enable(module='bl_ext.user_default.mpfb'))
+          from bl_ext.user_default.mpfb.services.humanservice import HumanService
+          print('MPFB HUMAN SERVICE', HumanService.__name__)
+          sys.argv = ['blender/build_base.py', '--', 'output/base_body.glb']
+          runpy.run_path('blender/build_base.py', run_name='__main__')
+          pathlib.Path('/tmp/cc-build-ready').write_text('ok')
+          PY
+          /tmp/blender/blender -b --python /tmp/run-cc-build.py 2>&1 | tee /tmp/candidate-build.log
+          test -s /tmp/cc-build-ready
+          ! grep -q '^Traceback (most recent call last):' /tmp/candidate-build.log
+          grep -q 'BUILD' /tmp/candidate-build.log
           for f in \
             output/base_body.glb output/base_body.joints.json output/asset_licenses.json \
             output/hair.json output/hair_short02.glb output/hair_bob02.glb output/hair_long01.glb \
@@ -99,19 +119,19 @@ jobs:
           const hair=['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
           const clothing=['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
           const sizes=(kind,list)=>Object.fromEntries(list.map(id=>[id,fs.statSync(`output/${kind}_${id}.glb`).size]));
-          const licenses=JSON.parse(fs.readFileSync('output/asset_licenses.json','utf8'));
+          let licenses=null,licenseError=''; try{licenses=JSON.parse(fs.readFileSync('output/asset_licenses.json','utf8'));}catch(error){licenseError=String(error?.message||error);}
           const report={
             source:{characterCreator:process.env.CHARACTER_CREATOR_SHA,extraTargets:process.env.EXTRA_TARGETS_SHA,mpfb:process.env.MPFB_VERSION,blender:process.env.BLENDER_VERSION},
             bytes:b.length,meshes:(g.meshes||[]).length,skins:(g.skins||[]).length,morphTargetNameCount:names.size,
             arkitCount:arkit.length-missingArkit.length,visemeCount:visemes.length-missingVisemes.length,
             missingArkit,missingVisemes,missingBase,missingBones,
-            diagnostics:{nodeNames:rawNodeNames.sort(),targetNames:[...names].sort()},
+            diagnostics:{nodeNames:rawNodeNames.sort(),targetNames:[...names].sort(),licenseError},
             modules:{hair:sizes('hair',hair),clothing:sizes('clothing',clothing)},
             licenseInventory:Boolean(licenses && typeof licenses==='object'),
             mobile:{validated:false,reason:'requires optimized production bundle plus real-device FPS/memory validation before promotion'}
           };
           fs.writeFileSync('output/unified-human-report.json',JSON.stringify(report,null,2)+'\n');
-          console.log(JSON.stringify({arkitCount:report.arkitCount,visemeCount:report.visemeCount,morphTargetNameCount:report.morphTargetNameCount,skins:report.skins,missingArkit,missingVisemes,missingBase,missingBones},null,2));
+          console.log(JSON.stringify({arkitCount:report.arkitCount,visemeCount:report.visemeCount,morphTargetNameCount:report.morphTargetNameCount,skins:report.skins,missingArkit,missingVisemes,missingBase,missingBones,licenseError},null,2));
           if(missingArkit.length||missingVisemes.length||missingBase.length||missingBones.length||(g.skins||[]).length<1||names.size<150||!report.licenseInventory) throw new Error('unified human contract failed');
           NODE
 
@@ -158,19 +178,13 @@ jobs:
           report.modularCompatibility={passed:true,hair:hairReport,clothing:clothingReport};
           report.mobile={...report.mobile,staticBudgetPassed,budget};
           fs.writeFileSync('output/unified-human-report.json',JSON.stringify(report,null,2)+'\n');
-          const manifest={
-            schema:1,status:'candidate-only',license:'CC0',source:report.source,
-            base:{url:'base_body.glb',bytes:base.bytes},
-            modules:{hair:Object.fromEntries(hairReport.map(x=>[x.id,{url:`hair_${x.id}.glb`,bytes:x.bytes}])),clothing:Object.fromEntries(clothingReport.map(x=>[x.id,{url:`clothing_${x.id}.glb`,bytes:x.bytes}]))},
-            capabilities:{skeleton:true,body:true,faceIdentity:true,expressions:true,visemes:true,hair:true,clothing:true,mobile:false},
-            mobile:{validated:false,staticBudgetPassed,budget,reason:'static payload budget is not a substitute for real iPhone/Android FPS and memory validation'}
-          };
+          const manifest={schema:1,status:'candidate-only',license:'CC0',source:report.source,base:{url:'base_body.glb',bytes:base.bytes},modules:{hair:Object.fromEntries(hairReport.map(x=>[x.id,{url:`hair_${x.id}.glb`,bytes:x.bytes}])),clothing:Object.fromEntries(clothingReport.map(x=>[x.id,{url:`clothing_${x.id}.glb`,bytes:x.bytes}]))},capabilities:{skeleton:true,body:true,faceIdentity:true,expressions:true,visemes:true,hair:true,clothing:true,mobile:false},mobile:{validated:false,staticBudgetPassed,budget,reason:'static payload budget is not a substitute for real iPhone/Android FPS and memory validation'}};
           fs.writeFileSync('output/unified-human-manifest.json',JSON.stringify(manifest,null,2)+'\n');
           console.log(JSON.stringify({modularCompatibility:true,staticBudgetPassed,budget},null,2));
           if(!staticBudgetPassed)throw new Error('candidate exceeds static mobile payload budget; optimize before promotion');
           NODE
 
-      - name: Upload diagnostics even when the contract fails
+      - name: Upload diagnostics even when the build or contract fails
         if: always()
         uses: actions/upload-artifact@v4
         with:
