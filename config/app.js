@@ -4,7 +4,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
 });
 
 (() => {
-  const version='20261023-render1';
+  const version='20261023-human1';
   const hideUpdate=document.createElement('style');
   hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';
   document.head.appendChild(hideUpdate);
@@ -15,7 +15,7 @@ window.LIAOTIAN_CONFIG = Object.freeze({
     document.head.appendChild(link);
   }
   window.addEventListener('load',()=>{
-    for(const src of ['role-experience.js','role-presence.js','role-face-rig.js','role-render-loop.js','role-voice-stage.js','role-code-compat.js','role-persistence.js','role-builder.js']){
+    for(const src of ['role-experience.js','role-presence.js','role-face-rig.js','role-render-loop.js','role-human-renderer.js','role-voice-stage.js','role-code-compat.js','role-persistence.js','role-builder.js']){
       const script=document.createElement('script');
       script.src=src+'?v='+version;
       script.async=false;
