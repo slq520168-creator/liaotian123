@@ -40,6 +40,21 @@ def main() -> None:
     path = pathlib.Path(sys.argv[1])
     text = path.read_text(encoding='utf-8')
 
+    # The pinned CharacterCreator build still imports MPFB from Blender's old
+    # user_default extension namespace. Blender 5.2 installs the verified MPFB
+    # package from the official repository under blender_org. Rewrite all MPFB
+    # imports before upstream code executes; otherwise the outer MPFB smoke test
+    # passes but the real CharacterCreator build fails as soon as build_base.py
+    # imports its own MPFB services.
+    old_namespace = 'bl_ext.user_default.mpfb'
+    new_namespace = 'bl_ext.blender_org.mpfb'
+    namespace_count = text.count(old_namespace)
+    if namespace_count < 1:
+        raise RuntimeError('MPFB namespace patch: legacy namespace not found in pinned CharacterCreator build')
+    text = text.replace(old_namespace, new_namespace)
+    if old_namespace in text:
+        raise RuntimeError('MPFB namespace patch incomplete')
+
     declaration = f'''\n# Added by liaotian123 candidate build: pinned CC0 extra-target packs.\nEXTRA_TARGET_ROOT = os.environ.get("CC_EXTRA_TARGETS", "")\nARKIT_TARGET_NAMES = {ARKIT!r}\nMETA_VISEME_NAMES = {VISEMES!r}\nif not EXTRA_TARGET_ROOT:\n    raise RuntimeError("CC_EXTRA_TARGETS must point at extra-targets/assets")\nARKIT_MORPHS = [(name, [os.path.join(EXTRA_TARGET_ROOT, "faceunits01", "targets", "faceunits", name + ".target")])\n                for name in ARKIT_TARGET_NAMES]\nMETA_VISEME_MORPHS = [(name, [os.path.join(EXTRA_TARGET_ROOT, "visemes02", "targets", "visemes", name + ".target")])\n                      for name in META_VISEME_NAMES]\n'''
     text = replace_once(
         text,
@@ -69,7 +84,7 @@ def main() -> None:
     text = replace_once(text, old_offs, new_offs, 'disable facial joint offsets')
 
     path.write_text(text, encoding='utf-8')
-    print(f'PATCH OK arkit={len(ARKIT)} visemes={len(VISEMES)} file={path}')
+    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} file={path}')
 
 
 if __name__ == '__main__':
