@@ -4,10 +4,8 @@
   function recipeForCharacter(char, recipeApi) {
     const api = recipeApi || (typeof window !== 'undefined' ? window.RoleVisualRecipe : null);
     if (!char) return null;
-    const recipe = api?.forCharacter ? api.forCharacter(char) : (char.visualRecipe || char.personality || null);
-    if (!recipe || typeof recipe !== 'object' || Array.isArray(recipe)) return recipe;
-    const identityKey = String(char.id || char.name || '').trim().slice(0, 80);
-    return Object.freeze({...recipe, identityKey});
+    if (api?.forCharacter) return api.forCharacter(char);
+    return char.visualRecipe || char.personality || null;
   }
 
   function ensureAppearanceRig(renderer, appearanceApi) {
@@ -33,13 +31,17 @@
     const recipe = recipeForCharacter(char, recipeApi);
     if (!recipe) return false;
     let applied = false;
+
     const proportionRig = ensureProportionRig(renderer, proportionApi);
     const proportions = proportionRig?.applySpec?.(recipe) || null;
     if (proportions?.applied) applied = true;
+
     if (renderer.bodyRig?.applySpec) applied = Boolean(renderer.bodyRig.applySpec(recipe)) || applied;
+
     const appearanceRig = ensureAppearanceRig(renderer, appearanceApi);
     const appearance = appearanceRig?.applySpec?.(recipe) || null;
     if (appearance?.applied) applied = true;
+
     renderer.visualRecipe = recipe;
     renderer.proportionResult = proportions;
     renderer.appearanceResult = appearance;
@@ -51,16 +53,22 @@
     const Renderer = window.RoleHumanRenderer?.HumanRenderer;
     const proto = Renderer?.prototype;
     if (!proto?.loadCharacter) return false;
+
     const currentClear = proto.clearModel;
     if (typeof currentClear === 'function' && !currentClear.__structuredRecipe) {
       const clearWrapped = function(...args) {
-        this.proportionRig?.reset?.(); this.proportionRig = null; this.proportionResult = null;
-        this.appearanceRig?.reset?.(); this.appearanceRig = null; this.appearanceResult = null;
+        this.proportionRig?.reset?.();
+        this.proportionRig = null;
+        this.proportionResult = null;
+        this.appearanceRig?.reset?.();
+        this.appearanceRig = null;
+        this.appearanceResult = null;
         return currentClear.apply(this, args);
       };
       clearWrapped.__structuredRecipe = true;
       proto.clearModel = clearWrapped;
     }
+
     const currentLoad = proto.loadCharacter;
     if (!currentLoad.__visualRecipe) {
       const wrapped = async function(char) {
@@ -71,6 +79,7 @@
       wrapped.__visualRecipe = true;
       proto.loadCharacter = wrapped;
     }
+
     requestAnimationFrame(() => window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());
     return true;
   }
@@ -80,7 +89,10 @@
     window.RoleRenderRecipeBridge = api;
     if (!install()) {
       let attempts = 0;
-      const retry = () => { if (install() || ++attempts > 50) return; setTimeout(retry, 80); };
+      const retry = () => {
+        if (install() || ++attempts > 50) return;
+        setTimeout(retry, 80);
+      };
       retry();
     }
   }
