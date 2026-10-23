@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/build-unified-human-candidate.yml'
       - 'scripts/patch-charactercreator-face-targets.py'
+      - 'scripts/validate-unified-human-candidate.cjs'
   workflow_dispatch:
 
 permissions:
@@ -99,6 +100,13 @@ jobs:
             output/clothing_skirt.glb output/clothing_shorts.glb output/clothing_shoes.glb; do
             test -s "$f"
           done
+
+      - name: Reject unsafe default morphs and incomplete joints sidecar
+        working-directory: /tmp/cc
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$GITHUB_WORKSPACE/scripts/validate-unified-human-candidate.cjs" output
 
       - name: Enforce unified human contract
         working-directory: /tmp/cc
