@@ -17,16 +17,33 @@
     return renderer.appearanceRig;
   }
 
-  function applyStructuredRecipe(renderer, char, recipeApi, appearanceApi) {
+  function ensureProportionRig(renderer, proportionApi) {
+    const api = proportionApi || (typeof window !== 'undefined' ? window.RoleProportionRig : null);
+    if (!renderer?.root || !api?.ProportionRigAdapter) return null;
+    if (renderer.proportionRig?.root === renderer.root) return renderer.proportionRig;
+    renderer.proportionRig?.reset?.();
+    renderer.proportionRig = new api.ProportionRigAdapter(renderer.root);
+    return renderer.proportionRig;
+  }
+
+  function applyStructuredRecipe(renderer, char, recipeApi, appearanceApi, proportionApi) {
     if (!renderer || !char) return false;
     const recipe = recipeForCharacter(char, recipeApi);
     if (!recipe) return false;
     let applied = false;
+
+    const proportionRig = ensureProportionRig(renderer, proportionApi);
+    const proportions = proportionRig?.applySpec?.(recipe) || null;
+    if (proportions?.applied) applied = true;
+
     if (renderer.bodyRig?.applySpec) applied = Boolean(renderer.bodyRig.applySpec(recipe)) || applied;
+
     const appearanceRig = ensureAppearanceRig(renderer, appearanceApi);
     const appearance = appearanceRig?.applySpec?.(recipe) || null;
     if (appearance?.applied) applied = true;
+
     renderer.visualRecipe = recipe;
+    renderer.proportionResult = proportions;
     renderer.appearanceResult = appearance;
     return applied;
   }
@@ -38,14 +55,17 @@
     if (!proto?.loadCharacter) return false;
 
     const currentClear = proto.clearModel;
-    if (typeof currentClear === 'function' && !currentClear.__appearanceRecipe) {
+    if (typeof currentClear === 'function' && !currentClear.__structuredRecipe) {
       const clearWrapped = function(...args) {
+        this.proportionRig?.reset?.();
+        this.proportionRig = null;
+        this.proportionResult = null;
         this.appearanceRig?.reset?.();
         this.appearanceRig = null;
         this.appearanceResult = null;
         return currentClear.apply(this, args);
       };
-      clearWrapped.__appearanceRecipe = true;
+      clearWrapped.__structuredRecipe = true;
       proto.clearModel = clearWrapped;
     }
 
@@ -53,7 +73,7 @@
     if (!currentLoad.__visualRecipe) {
       const wrapped = async function(char) {
         const ok = await currentLoad.call(this, char);
-        if (ok) applyStructuredRecipe(this, char, window.RoleVisualRecipe, window.RoleAppearanceRig);
+        if (ok) applyStructuredRecipe(this, char, window.RoleVisualRecipe, window.RoleAppearanceRig, window.RoleProportionRig);
         return ok;
       };
       wrapped.__visualRecipe = true;
@@ -64,7 +84,7 @@
     return true;
   }
 
-  const api = Object.freeze({recipeForCharacter, ensureAppearanceRig, applyStructuredRecipe, install});
+  const api = Object.freeze({recipeForCharacter, ensureAppearanceRig, ensureProportionRig, applyStructuredRecipe, install});
   if (typeof window !== 'undefined') {
     window.RoleRenderRecipeBridge = api;
     if (!install()) {

@@ -40,6 +40,22 @@ test('appearance adapter is replaced when renderer root changes', () => {
   assert.equal(resets,1); assert.equal(renderer.appearanceRig.root.id,'new');
 });
 
+test('real skeleton proportion adapter receives height/body recipe without replacing body morph rig', () => {
+  const calls=[];
+  class ProportionAdapter {
+    constructor(root){this.root=root;}
+    applySpec(recipe){calls.push(recipe);return {applied:true,plan:{height:recipe.height}};}
+  }
+  let bodyCalls=0;
+  const renderer={root:{id:'human'},bodyRig:{applySpec(){bodyCalls++;return false;}}};
+  const recipe={height:190,weight:180,body:'健壮'};
+  const ok=bridge.applyStructuredRecipe(renderer,{visualRecipe:recipe},{forCharacter:char=>char.visualRecipe},null,{ProportionRigAdapter:ProportionAdapter});
+  assert.equal(ok,true);
+  assert.equal(calls[0],recipe);
+  assert.equal(bodyCalls,1);
+  assert.equal(renderer.proportionResult.plan.height,190);
+});
+
 test('missing real geometry does not pretend recipe was applied', () => {
   class Adapter { constructor(root){this.root=root;} applySpec(){return {applied:false,face:false,skin:false,hair:false,outfit:false};} }
   const renderer={root:{}};
