@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "status": "candidate-only",
+  "license": "CC0",
+  "source": {
+    "characterCreator": "852e48f316b90a0937234886630e4fb4cdfd1f78",
+    "extraTargets": "7eaba3453134385bb5ea9811ef0b33b85b4b556d",
+    "mpfb": "2.0.18",
+    "blender": "5.2.2"
+  },
+  "base": {
+    "url": "base_body.glb",
+    "bytes": 9154140
+  },
+  "modules": {
+    "hair": {
+      "short02": {
+        "url": "hair_short02.glb",
+        "bytes": 1153348
+      },
+      "bob02": {
+        "url": "hair_bob02.glb",
+        "bytes": 1111692
+      },
+      "long01": {
+        "url": "hair_long01.glb",
+        "bytes": 1553904
+      },
+      "ponytail01": {
+        "url": "hair_ponytail01.glb",
+        "bytes": 1853148
+      },
+      "braid01": {
+        "url": "hair_braid01.glb",
+        "bytes": 1850748
+      },
+      "short04": {
+        "url": "hair_short04.glb",
+        "bytes": 1166356
+      },
+      "bob01": {
+        "url": "hair_bob01.glb",
+        "bytes": 1980612
+      },
+      "afro01": {
+        "url": "hair_afro01.glb",
+        "bytes": 2085540
+      }
+    },
+    "clothing": {
+      "dress": {
+        "url": "clothing_dress.glb",
+        "bytes": 750964
+      },
+      "jeans": {
+        "url": "clothing_jeans.glb",
+        "bytes": 434248
+      },
+      "tshirt": {
+        "url": "clothing_tshirt.glb",
+        "bytes": 396756
+      },
+      "hoodie": {
+        "url": "clothing_hoodie.glb",
+        "bytes": 695484
+      },
+      "jacket": {
+        "url": "clothing_jacket.glb",
+        "bytes": 868384
+      },
+      "skirt": {
+        "url": "clothing_skirt.glb",
+        "bytes": 209088
+      },
+      "shorts": {
+        "url": "clothing_shorts.glb",
+        "bytes": 250664
+      },
+      "shoes": {
+        "url": "clothing_shoes.glb",
+        "bytes": 856372
+      }
+    }
+  },
+  "capabilities": {
+    "skeleton": true,
+    "body": true,
+    "faceIdentity": true,
+    "expressions": true,
+    "visemes": true,
+    "hair": true,
+    "clothing": true,
+    "mobile": false
+  },
+  "mobile": {
+    "validated": false,
+    "staticBudgetPassed": true,
+    "budget": {
+      "baseMax": 14680064,
+      "moduleMax": 6291456,
+      "worstInitialMax": 23068672,
+      "baseBytes": 9154140,
+      "largestHairBytes": 2085540,
+      "largestClothingBytes": 868384,
+      "worstInitialBytes": 12108064
+    },
+    "reason": "static payload budget is not a substitute for real iPhone/Android FPS and memory validation"
+  }
+}
