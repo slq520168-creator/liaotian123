@@ -13,6 +13,14 @@
     'mouthUpperUpLeft','mouthUpperUpRight','noseSneerLeft','noseSneerRight','tongueOut'
   ]);
 
+  const EXPRESSION_PRESETS = Object.freeze({
+    '自然': Object.freeze({}),
+    '微笑': Object.freeze({mouthSmileLeft:.28,mouthSmileRight:.28,cheekSquintLeft:.05,cheekSquintRight:.05}),
+    '温柔': Object.freeze({mouthSmileLeft:.14,mouthSmileRight:.14,browInnerUp:.03,eyeSquintLeft:.018,eyeSquintRight:.018}),
+    '认真': Object.freeze({browDownLeft:.035,browDownRight:.035,eyeSquintLeft:.03,eyeSquintRight:.03}),
+    '俏皮': Object.freeze({mouthSmileLeft:.26,mouthSmileRight:.12,mouthDimpleLeft:.18,browOuterUpRight:.055})
+  });
+
   const CONTROLLED = new Set(ARKIT_52);
   const clamp01 = value => Math.max(0, Math.min(1, Number(value) || 0));
   const clampSigned = value => Math.max(-1, Math.min(1, Number(value) || 0));
@@ -111,12 +119,19 @@
     }
   }
 
+  function addExpressionPreset(out, preset) {
+    const weights = EXPRESSION_PRESETS[preset] || EXPRESSION_PRESETS['自然'];
+    for (const [name, amount] of Object.entries(weights)) add(out, name, amount);
+    return out;
+  }
+
   function weightsFromPresence(frame = {}) {
     const out = blankFace();
     addBlink(out, frame.blink);
     addGaze(out, frame.gazeX, frame.gazeY);
     addVisemes(out, frame.visemes);
     addStateMicroExpression(out, frame.state);
+    addExpressionPreset(out, frame.expressionPreset);
     return out;
   }
 
@@ -192,10 +207,12 @@
 
   const api = Object.freeze({
     ARKIT_52,
+    EXPRESSION_PRESETS,
     VISEME_MIX,
     blankFace,
     normalizeMorphName,
     buildMorphIndex,
+    addExpressionPreset,
     weightsFromPresence,
     applyWeights,
     applyHeadPose,
