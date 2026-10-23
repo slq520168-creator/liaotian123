@@ -83,8 +83,18 @@ def main() -> None:
     new_offs = '    if kind in ("expr", "dyn", "arkit", "viseme"):\n        offs = {}'
     text = replace_once(text, old_offs, new_offs, 'disable facial joint offsets')
 
+    # build_base.py can terminate Blender immediately after its final BUILD done
+    # line, so a marker written by the outer runpy wrapper is not reliable. Put
+    # the marker inside the pinned build itself, after every required output has
+    # been exported and the .blend snapshot has been saved. The workflow also
+    # starts from a clean output directory, so this cannot be satisfied by an
+    # upstream prebuilt file from an earlier run.
+    old_done = 'print("BUILD done", args.out)'
+    new_done = old_done + '\nwith open("/tmp/cc-build-ready", "w", encoding="utf-8") as _ready:\n    _ready.write("ok")'
+    text = replace_once(text, old_done, new_done, 'write in-build success marker')
+
     path.write_text(text, encoding='utf-8')
-    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} file={path}')
+    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} build_marker=inside file={path}')
 
 
 if __name__ == '__main__':
