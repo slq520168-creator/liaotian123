@@ -11,7 +11,7 @@
     "en": "Short"
    },
    "mesh": "Hair_short02",
-   "bytes": 1153348,
+   "bytes": 1153360,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/short02"
   },
@@ -23,7 +23,7 @@
     "en": "Bob"
    },
    "mesh": "Hair_bob02",
-   "bytes": 1111692,
+   "bytes": 1111672,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/bob02"
   },
@@ -35,7 +35,7 @@
     "en": "Long"
    },
    "mesh": "Hair_long01",
-   "bytes": 1553904,
+   "bytes": 1553900,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/long01"
   },
@@ -47,7 +47,7 @@
     "en": "Ponytail"
    },
    "mesh": "Hair_ponytail01",
-   "bytes": 1853148,
+   "bytes": 1853140,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/ponytail01"
   },
@@ -59,7 +59,7 @@
     "en": "Braid"
    },
    "mesh": "Hair_braid01",
-   "bytes": 1850748,
+   "bytes": 1850740,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/braid01"
   },
@@ -71,7 +71,7 @@
     "en": "Short, sleek"
    },
    "mesh": "Hair_short04",
-   "bytes": 1166356,
+   "bytes": 1166320,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/short04"
   },
@@ -83,7 +83,7 @@
     "en": "Bob, long"
    },
    "mesh": "Hair_bob01",
-   "bytes": 1980612,
+   "bytes": 1980596,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/bob01"
   },
@@ -95,7 +95,7 @@
     "en": "Afro"
    },
    "mesh": "Hair_afro01",
-   "bytes": 2085540,
+   "bytes": 2085584,
    "license": "CC0",
    "source": "MakeHuman system assets: hair/afro01"
   }

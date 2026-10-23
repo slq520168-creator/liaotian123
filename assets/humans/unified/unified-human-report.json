@@ -5,7 +5,7 @@
     "mpfb": "2.0.18",
     "blender": "5.2.2"
   },
-  "bytes": 9129404,
+  "bytes": 9130560,
   "meshes": 6,
   "skins": 1,
   "morphTargetNameCount": 159,
@@ -243,24 +243,24 @@
   },
   "modules": {
     "hair": {
-      "short02": 1149412,
-      "bob02": 1107756,
-      "long01": 1549968,
-      "ponytail01": 1849212,
-      "braid01": 1846812,
-      "short04": 1162420,
-      "bob01": 1976676,
-      "afro01": 2081604
+      "short02": 1149532,
+      "bob02": 1107844,
+      "long01": 1550072,
+      "ponytail01": 1849312,
+      "braid01": 1846912,
+      "short04": 1162492,
+      "bob01": 1976768,
+      "afro01": 2081756
     },
     "clothing": {
-      "dress": 747452,
-      "jeans": 430736,
-      "tshirt": 393244,
-      "hoodie": 691972,
-      "jacket": 864872,
-      "skirt": 205576,
-      "shorts": 247152,
-      "shoes": 852860
+      "dress": 747572,
+      "jeans": 430856,
+      "tshirt": 393364,
+      "hoodie": 692092,
+      "jacket": 864992,
+      "skirt": 205696,
+      "shorts": 247272,
+      "shoes": 852980
     }
   },
   "licenseInventory": true,
@@ -272,10 +272,10 @@
       "baseMax": 14680064,
       "moduleMax": 6291456,
       "worstInitialMax": 23068672,
-      "baseBytes": 9129404,
-      "largestHairBytes": 2081604,
-      "largestClothingBytes": 864872,
-      "worstInitialBytes": 12075880
+      "baseBytes": 9130560,
+      "largestHairBytes": 2081756,
+      "largestClothingBytes": 864992,
+      "worstInitialBytes": 12077308
     }
   },
   "modularCompatibility": {
@@ -283,56 +283,56 @@
     "hair": [
       {
         "id": "short02",
-        "bytes": 1149412,
+        "bytes": 1149532,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "bob02",
-        "bytes": 1107756,
+        "bytes": 1107844,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "long01",
-        "bytes": 1549968,
+        "bytes": 1550072,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "ponytail01",
-        "bytes": 1849212,
+        "bytes": 1849312,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "braid01",
-        "bytes": 1846812,
+        "bytes": 1846912,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "short04",
-        "bytes": 1162420,
+        "bytes": 1162492,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "bob01",
-        "bytes": 1976676,
+        "bytes": 1976768,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "afro01",
-        "bytes": 2081604,
+        "bytes": 2081756,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
@@ -341,56 +341,56 @@
     "clothing": [
       {
         "id": "dress",
-        "bytes": 747452,
+        "bytes": 747572,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60
       },
       {
         "id": "jeans",
-        "bytes": 430736,
+        "bytes": 430856,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60
       },
       {
         "id": "tshirt",
-        "bytes": 393244,
+        "bytes": 393364,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60
       },
       {
         "id": "hoodie",
-        "bytes": 691972,
+        "bytes": 692092,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60
       },
       {
         "id": "jacket",
-        "bytes": 864872,
+        "bytes": 864992,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60
       },
       {
         "id": "skirt",
-        "bytes": 205576,
+        "bytes": 205696,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60
       },
       {
         "id": "shorts",
-        "bytes": 247152,
+        "bytes": 247272,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60
       },
       {
         "id": "shoes",
-        "bytes": 852860,
+        "bytes": 852980,
         "skins": 1,
         "joints": 53,
         "morphTargets": 60

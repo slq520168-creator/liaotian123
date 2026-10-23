@@ -10,75 +10,75 @@
   },
   "base": {
     "url": "base_body.glb",
-    "bytes": 9129404
+    "bytes": 9130560
   },
   "modules": {
     "hair": {
       "short02": {
         "url": "hair_short02.glb",
-        "bytes": 1149412
+        "bytes": 1149532
       },
       "bob02": {
         "url": "hair_bob02.glb",
-        "bytes": 1107756
+        "bytes": 1107844
       },
       "long01": {
         "url": "hair_long01.glb",
-        "bytes": 1549968
+        "bytes": 1550072
       },
       "ponytail01": {
         "url": "hair_ponytail01.glb",
-        "bytes": 1849212
+        "bytes": 1849312
       },
       "braid01": {
         "url": "hair_braid01.glb",
-        "bytes": 1846812
+        "bytes": 1846912
       },
       "short04": {
         "url": "hair_short04.glb",
-        "bytes": 1162420
+        "bytes": 1162492
       },
       "bob01": {
         "url": "hair_bob01.glb",
-        "bytes": 1976676
+        "bytes": 1976768
       },
       "afro01": {
         "url": "hair_afro01.glb",
-        "bytes": 2081604
+        "bytes": 2081756
       }
     },
     "clothing": {
       "dress": {
         "url": "clothing_dress.glb",
-        "bytes": 747452
+        "bytes": 747572
       },
       "jeans": {
         "url": "clothing_jeans.glb",
-        "bytes": 430736
+        "bytes": 430856
       },
       "tshirt": {
         "url": "clothing_tshirt.glb",
-        "bytes": 393244
+        "bytes": 393364
       },
       "hoodie": {
         "url": "clothing_hoodie.glb",
-        "bytes": 691972
+        "bytes": 692092
       },
       "jacket": {
         "url": "clothing_jacket.glb",
-        "bytes": 864872
+        "bytes": 864992
       },
       "skirt": {
         "url": "clothing_skirt.glb",
-        "bytes": 205576
+        "bytes": 205696
       },
       "shorts": {
         "url": "clothing_shorts.glb",
-        "bytes": 247152
+        "bytes": 247272
       },
       "shoes": {
         "url": "clothing_shoes.glb",
-        "bytes": 852860
+        "bytes": 852980
       }
     }
   },
@@ -99,10 +99,10 @@
       "baseMax": 14680064,
       "moduleMax": 6291456,
       "worstInitialMax": 23068672,
-      "baseBytes": 9129404,
-      "largestHairBytes": 2081604,
-      "largestClothingBytes": 864872,
-      "worstInitialBytes": 12075880
+      "baseBytes": 9130560,
+      "largestHairBytes": 2081756,
+      "largestClothingBytes": 864992,
+      "worstInitialBytes": 12077308
     },
     "reason": "static payload budget is not a substitute for real iPhone/Android FPS and memory validation"
   }
