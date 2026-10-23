@@ -100,11 +100,11 @@ jobs:
           }
 
           wait_for_build
-          fetch_text 'vendor/three.module.js' "$tmp/three.module.js"
-          fetch_text 'vendor/three.core.js' "$tmp/three.core.js"
-          fetch_text 'vendor/GLTFLoader.js' "$tmp/GLTFLoader.js"
-          fetch_text 'vendor/SkeletonUtils.js' "$tmp/SkeletonUtils.js"
-          fetch_text 'vendor/meshopt_decoder.module.js' "$tmp/meshopt.js"
+          fetch_text 'vendor/three/build/three.module.js' "$tmp/three.module.js"
+          fetch_text 'vendor/three/build/three.core.js' "$tmp/three.core.js"
+          fetch_text 'vendor/three/examples/jsm/loaders/GLTFLoader.js' "$tmp/GLTFLoader.js"
+          fetch_text 'vendor/three/examples/jsm/utils/SkeletonUtils.js' "$tmp/SkeletonUtils.js"
+          fetch_text 'vendor/meshoptimizer/meshopt_decoder.mjs' "$tmp/meshopt.js"
           fetch_text 'assets/humans/reference-mpfb.glb' "$tmp/reference-mpfb.glb"
           fetch_text 'assets/humans/reference-vitruvian-morph.glb' "$tmp/reference-vitruvian-morph.glb"
 
