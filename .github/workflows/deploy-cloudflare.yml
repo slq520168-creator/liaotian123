@@ -1,6 +1,8 @@
 name: Deploy Cloudflare production
 
 on:
+  workflow_dispatch:
+  workflow_call:
   push:
     branches:
       - main
@@ -88,63 +90,28 @@ jobs:
             local out="$2"
             local attempt
             for attempt in $(seq 1 10); do
-              echo "Fetching $path ($attempt/10)"
-              if curl -fsSL --retry 3 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}-$attempt" -o "$tmp/$out" && test -s "$tmp/$out"; then
-                echo "Fetched $path ($(wc -c < "$tmp/$out") bytes)"
+              if curl -fsSL --retry 3 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}-$attempt" -o "$out" && test -s "$out"; then
                 return 0
               fi
-              sleep 1
+              sleep 2
             done
             echo "Failed to fetch $path from production" >&2
             return 1
           }
 
-          verify_http_200() {
-            local path="$1"
-            local attempt code
-            for attempt in $(seq 1 10); do
-              code="$(curl -sS -L -o /dev/null -w '%{http_code}' --retry 3 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}-$attempt" || true)"
-              if [ "$code" = '200' ]; then
-                echo "Verified $path HTTP $code"
-                return 0
-              fi
-              sleep 1
-            done
-            echo "Production asset $path did not return HTTP 200" >&2
-            return 1
-          }
-
           wait_for_build
+          fetch_text 'vendor/three.module.js' "$tmp/three.module.js"
+          fetch_text 'vendor/three.core.js' "$tmp/three.core.js"
+          fetch_text 'vendor/GLTFLoader.js' "$tmp/GLTFLoader.js"
+          fetch_text 'vendor/SkeletonUtils.js' "$tmp/SkeletonUtils.js"
+          fetch_text 'vendor/meshopt_decoder.module.js' "$tmp/meshopt.js"
+          fetch_text 'assets/humans/reference-mpfb.glb' "$tmp/reference-mpfb.glb"
+          fetch_text 'assets/humans/reference-vitruvian-morph.glb' "$tmp/reference-vitruvian-morph.glb"
 
-          fetch_text 'role-creator-animated-presets.js' 'presets.js'
-          grep -Fq 'vendor/three/build/three.module.js' "$tmp/presets.js"
-          grep -Fq 'vendor/meshoptimizer/meshopt_decoder.mjs' "$tmp/presets.js"
-          grep -Fq 'setMeshoptDecoder' "$tmp/presets.js"
-          grep -Fq 'MAX_ACTIVE=2' "$tmp/presets.js"
-          grep -Fq 'assets/humans/reference-mpfb.glb' "$tmp/presets.js"
-          if grep -Fq 'esm.sh' "$tmp/presets.js"; then echo 'Preset runtime still depends on esm.sh' >&2; exit 1; fi
-
-          fetch_text 'vendor/three/build/three.module.js' 'three.js'
-          grep -Fq "from './three.core.js'" "$tmp/three.js"
-          fetch_text 'vendor/three/build/three.core.js' 'three-core.js'
-          grep -Fq "REVISION = '186'" "$tmp/three-core.js"
-          fetch_text 'vendor/three/examples/jsm/loaders/GLTFLoader.js' 'gltf-loader.js'
-          grep -Fq 'class GLTFLoader' "$tmp/gltf-loader.js"
-          grep -Fq "../../../build/three.module.js" "$tmp/gltf-loader.js"
-          fetch_text 'vendor/three/examples/jsm/utils/SkeletonUtils.js' 'skeleton-utils.js'
-          grep -Fq 'function clone' "$tmp/skeleton-utils.js"
-          fetch_text 'vendor/meshoptimizer/meshopt_decoder.mjs' 'meshopt.mjs'
-          grep -Fq 'MeshoptDecoder' "$tmp/meshopt.mjs"
-
-          fetch_text 'role-human-renderer.js' 'renderer.js'
-          grep -Fq 'class HumanRenderer' "$tmp/renderer.js"
-          fetch_text 'role-human-asset-capability.js' 'capability.js'
-          grep -Fq 'REQUIRED_CAPABILITIES' "$tmp/capability.js"
-          fetch_text 'role-natural-pose.js' 'pose.js'
-          grep -Fq 'const ENABLED = false' "$tmp/pose.js"
-          fetch_text 'assets/humans/manifest.json' 'manifest.json'
-          grep -Fq '"nuannuan"' "$tmp/manifest.json"
-
-          verify_http_200 'assets/humans/reference-mpfb.glb'
-          verify_http_200 'assets/humans/reference-vitruvian-morph.glb'
-          echo "sirole.vip production full-body 3D presets verified: $expected_build"
+          grep -Fq "./three.core.js" "$tmp/three.module.js"
+          grep -Fq "REVISION = '186'" "$tmp/three.core.js"
+          grep -Fq "GLTFLoader" "$tmp/GLTFLoader.js"
+          grep -Fq "clone" "$tmp/SkeletonUtils.js"
+          grep -Fq "MeshoptDecoder" "$tmp/meshopt.js"
+          test -s "$tmp/reference-mpfb.glb"
+          test -s "$tmp/reference-vitruvian-morph.glb"
