@@ -7,7 +7,7 @@
     scale: 1,
     y: 0,
     rotationY: 0,
-    framing: 'full',
+    framing: 'portrait',
     minMorphTargets: 52
   });
 
@@ -28,9 +28,15 @@
     return {...CUSTOM_HUMAN_ASSET};
   }
 
+  function isLegacyFallbackAsset(asset) {
+    if (!asset || typeof asset !== 'object') return false;
+    const url = String(asset.url || asset.src || asset.model || '');
+    return url === CUSTOM_HUMAN_ASSET.url;
+  }
+
   function decorateCharacter(char) {
     if (!isCustomCharacter(char)) return false;
-    if (!char.humanAsset) char.humanAsset = customHumanAsset();
+    if (!char.humanAsset || isLegacyFallbackAsset(char.humanAsset)) char.humanAsset = customHumanAsset();
     return true;
   }
 
@@ -169,6 +175,7 @@
     let changed = 0;
     for (const char of characters) {
       if (!decorateCharacter(char)) continue;
+      changed++;
       if (ensureCustomAvatar(char)) changed++;
     }
     if (changed && typeof saveDataToStorage === 'function') saveDataToStorage();
@@ -192,7 +199,7 @@
   }
 
   const api = Object.freeze({
-    DEFAULT_AVATAR, CUSTOM_HUMAN_ASSET, isCustomCharacter, stableHue, customHumanAsset,
+    DEFAULT_AVATAR, CUSTOM_HUMAN_ASSET, isCustomCharacter, stableHue, customHumanAsset, isLegacyFallbackAsset,
     decorateCharacter, generatedAvatar, needsGeneratedAvatar, ensureCustomAvatar, applyRoleTheme,
     injectThemeStyles, installSwitchWrapper, installCreateFormBridge, decorateExistingCharacters, boot
   });

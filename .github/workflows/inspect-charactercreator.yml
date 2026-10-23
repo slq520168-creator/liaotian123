@@ -1,0 +1,77 @@
+name: Inspect next CC0 human base
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-charactercreator.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download pinned CC0 CharacterCreator assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha='852e48f316b90a0937234886630e4fb4cdfd1f78'
+          base="https://raw.githubusercontent.com/kblood/CharacterCreator/${sha}/output"
+          curl -fL --retry 4 "$base/base_body.glb" -o /tmp/base_body.glb
+          curl -fL --retry 4 "$base/hair_long01.glb" -o /tmp/hair_long01.glb
+          curl -fL --retry 4 "$base/clothing_dress.glb" -o /tmp/clothing_dress.glb
+          curl -fL --retry 4 "$base/clothing_jeans.glb" -o /tmp/clothing_jeans.glb
+          ls -lh /tmp/base_body.glb /tmp/hair_long01.glb /tmp/clothing_dress.glb /tmp/clothing_jeans.glb
+
+      - name: Inspect real GLB contract
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          function jsonChunk(path) {
+            const b = fs.readFileSync(path);
+            if (b.toString('ascii',0,4) !== 'glTF') throw new Error('not glb: '+path);
+            let off = 12;
+            while (off + 8 <= b.length) {
+              const len = b.readUInt32LE(off); const type = b.readUInt32LE(off+4); off += 8;
+              if (type === 0x4E4F534A) return JSON.parse(b.subarray(off, off+len).toString('utf8').replace(/\u0000+$/,''));
+              off += len;
+            }
+            throw new Error('missing JSON chunk: '+path);
+          }
+          const g = jsonChunk('/tmp/base_body.glb');
+          const names = new Set();
+          for (const mesh of g.meshes || []) {
+            for (const n of mesh?.extras?.targetNames || []) names.add(String(n));
+            for (const p of mesh.primitives || []) for (const n of p?.extras?.targetNames || []) names.add(String(n));
+          }
+          const arkit = ['eyeBlinkLeft','eyeBlinkRight','eyeLookDownLeft','eyeLookDownRight','eyeLookInLeft','eyeLookInRight','eyeLookOutLeft','eyeLookOutRight','eyeLookUpLeft','eyeLookUpRight','eyeSquintLeft','eyeSquintRight','eyeWideLeft','eyeWideRight','jawForward','jawLeft','jawRight','jawOpen','mouthClose','mouthFunnel','mouthPucker','mouthLeft','mouthRight','mouthSmileLeft','mouthSmileRight','mouthFrownLeft','mouthFrownRight','mouthDimpleLeft','mouthDimpleRight','mouthStretchLeft','mouthStretchRight','mouthRollLower','mouthRollUpper','mouthShrugLower','mouthShrugUpper','mouthPressLeft','mouthPressRight','mouthLowerDownLeft','mouthLowerDownRight','mouthUpperUpLeft','mouthUpperUpRight','browDownLeft','browDownRight','browInnerUp','browOuterUpLeft','browOuterUpRight','cheekPuff','cheekSquintLeft','cheekSquintRight','noseSneerLeft','noseSneerRight','tongueOut'];
+          const norm = s => String(s).replace(/[^a-z0-9]/gi,'').toLowerCase();
+          const byNorm = new Map([...names].map(n=>[norm(n),n]));
+          const foundArkit = arkit.filter(n=>byNorm.has(norm(n)));
+          const bodyHints = [...names].filter(n=>/(macro|body|weight|muscl|breast|chest|waist|hip|stomach|proportion|height|female|male|thin|fat|heavy)/i.test(n));
+          const nodeNames = (g.nodes || []).map(n=>n.name).filter(Boolean);
+          const requiredBones = ['Hips','Spine','Neck','Head','LeftArm','RightArm','LeftUpLeg','RightUpLeg'];
+          const boneCoverage = requiredBones.filter(n=>nodeNames.some(v=>String(v).toLowerCase().endsWith(n.toLowerCase())));
+          const report = {
+            source:'kblood/CharacterCreator@852e48f316b90a0937234886630e4fb4cdfd1f78',
+            bytes:fs.statSync('/tmp/base_body.glb').size,
+            meshes:(g.meshes||[]).length,
+            skins:(g.skins||[]).length,
+            animations:(g.animations||[]).map(a=>a.name||'(unnamed)'),
+            morphTargetNames:[...names],
+            morphTargetNameCount:names.size,
+            arkitCount:foundArkit.length,
+            foundArkit,
+            bodyMorphHints:bodyHints,
+            requiredBoneCoverage:boneCoverage,
+            nodeNameSample:nodeNames.slice(0,120),
+            addons:{
+              hairLongBytes:fs.statSync('/tmp/hair_long01.glb').size,
+              dressBytes:fs.statSync('/tmp/clothing_dress.glb').size,
+              jeansBytes:fs.statSync('/tmp/clothing_jeans.glb').size
+            }
+          };
+          console.log(JSON.stringify(report,null,2));
+          NODE
