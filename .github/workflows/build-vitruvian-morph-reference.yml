@@ -1,0 +1,155 @@
+name: Build CC0 Vitruvian morph reference
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-vitruvian-morph-reference.yml'
+      - 'scripts/blender/build-vitruvian-morph-reference.py'
+      - 'scripts/vitruvian-morph-map.json'
+      - 'scripts/validate-vitruvian-morph-map.mjs'
+      - 'scripts/validate-vitruvian-reference.mjs'
+      - 'scripts/human-glb-contract.mjs'
+      - 'scripts/report-human-file.mjs'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cc0-vitruvian-morph-reference-main
+  cancel-in-progress: false
+
+env:
+  VIT_SOURCE_REPO: ibrews/VitruvianGodot
+  VIT_SOURCE_COMMIT: bdecdcd537b4031fdd0fb299b7e4f93f084fffa0
+  VIT_SOURCE_PATH: blender_prep/vitruvian_rigged.blend
+  VIT_SOURCE_BYTES: '20572937'
+  MORPH_SOURCE_REPO: Upliner/CharMorph-Vitruvian
+  MORPH_SOURCE_COMMIT: c252d1fc7f00ba59d87b66b3d32fa3471fc6ee44
+  HUMAN_SOURCE_LICENSE: CC0
+  BLENDER_VERSION: 4.5.15
+  GLTF_TRANSFORM_VERSION: 4.5.1
+  HUMAN_COMPRESSION: meshopt
+
+jobs:
+  build-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical morph map
+        run: node scripts/validate-vitruvian-morph-map.mjs
+      - name: Download pinned CC0 Vitruvian topology and morph deltas
+        shell: bash
+        run: |
+          set -euo pipefail
+          BLEND_URL="https://raw.githubusercontent.com/${VIT_SOURCE_REPO}/${VIT_SOURCE_COMMIT}/${VIT_SOURCE_PATH}"
+          curl --fail --location --retry 3 --retry-delay 2 "$BLEND_URL" --output /tmp/vitruvian_rigged.blend
+          ACTUAL="$(stat -c%s /tmp/vitruvian_rigged.blend)"
+          test "$ACTUAL" = "$VIT_SOURCE_BYTES" || { echo "Pinned blend size mismatch: $ACTUAL"; exit 1; }
+          mkdir -p /tmp/vitruvian-morphs/L2 /tmp/vitruvian-morphs/L3
+          node scripts/validate-vitruvian-morph-map.mjs --sources > /tmp/vitruvian-sources.txt
+          while IFS= read -r SOURCE; do
+            test -n "$SOURCE" || continue
+            LEVEL="${SOURCE%%/*}"
+            MORPH="${SOURCE#*/}"
+            URL="https://raw.githubusercontent.com/${MORPH_SOURCE_REPO}/${MORPH_SOURCE_COMMIT}/morphs/${LEVEL}/${MORPH}.npz"
+            curl --fail --location --retry 3 --retry-delay 1 "$URL" --output "/tmp/vitruvian-morphs/${LEVEL}/${MORPH}.npz"
+            test -s "/tmp/vitruvian-morphs/${LEVEL}/${MORPH}.npz"
+          done < /tmp/vitruvian-sources.txt
+      - name: Install pinned Blender 4.5 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://download.blender.org/release/Blender4.5"
+          FILE="blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          curl --fail --location --retry 3 "$BASE/$FILE" --output "/tmp/$FILE"
+          curl --fail --location --retry 3 "$BASE/blender-${BLENDER_VERSION}.sha256" --output /tmp/blender.sha256
+          grep "${FILE}" /tmp/blender.sha256 > /tmp/blender-linux.sha256
+          (cd /tmp && sha256sum -c blender-linux.sha256)
+          tar -C /tmp -xf "/tmp/$FILE"
+          "/tmp/blender-${BLENDER_VERSION}-linux-x64/blender" --version | head -n 2
+      - name: Bake exact-topology body, ARKit and viseme shape keys
+        shell: bash
+        run: |
+          set -euo pipefail
+          "/tmp/blender-${BLENDER_VERSION}-linux-x64/blender" \
+            -b /tmp/vitruvian_rigged.blend \
+            --python scripts/blender/build-vitruvian-morph-reference.py \
+            -- \
+            --map "$GITHUB_WORKSPACE/scripts/vitruvian-morph-map.json" \
+            --morph-dir /tmp/vitruvian-morphs \
+            --output /tmp/reference-vitruvian-source.glb
+          test -s /tmp/reference-vitruvian-source.glb
+      - name: Meshopt-compress without simplifying morph geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes @gltf-transform/cli@${GLTF_TRANSFORM_VERSION} optimize \
+            /tmp/reference-vitruvian-source.glb /tmp/reference-vitruvian-morph.glb \
+            --compress meshopt \
+            --instance false \
+            --palette false \
+            --simplify false \
+            --flatten false \
+            --join false
+      - name: Enforce full structural human contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/validate-human-file.mjs /tmp/reference-vitruvian-morph.glb full CC0 true
+          node scripts/validate-vitruvian-reference.mjs /tmp/reference-vitruvian-morph.glb
+          mkdir -p assets/humans
+          cp /tmp/reference-vitruvian-morph.glb assets/humans/reference-vitruvian-morph.glb
+      - name: Write reproducible inspection report and notice
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HUMAN_SOURCE_REPO="${VIT_SOURCE_REPO} + ${MORPH_SOURCE_REPO}"
+          export HUMAN_SOURCE_COMMIT="${VIT_SOURCE_COMMIT} + ${MORPH_SOURCE_COMMIT}"
+          export HUMAN_SOURCE_PATH="${VIT_SOURCE_PATH} + selected morphs/L2,L3"
+          export GLTF_TRANSFORM_VERSION HUMAN_COMPRESSION HUMAN_SOURCE_LICENSE
+          node scripts/report-human-file.mjs assets/humans/reference-vitruvian-morph.glb > assets/humans/reference-vitruvian-morph.report.json
+          MAP_SHA="$(sha256sum scripts/vitruvian-morph-map.json | awk '{print $1}')"
+          cat > assets/humans/reference-vitruvian-morph.NOTICE.txt <<NOTICE
+          CC0 structural Vitruvian morph reference — not assigned to any site character
+          Base topology repository: ${VIT_SOURCE_REPO}
+          Base topology commit: ${VIT_SOURCE_COMMIT}
+          Base topology path: ${VIT_SOURCE_PATH}
+          Morph repository: ${MORPH_SOURCE_REPO}
+          Morph commit: ${MORPH_SOURCE_COMMIT}
+          Morph map sha256: ${MAP_SHA}
+          Character/morph license: CC0 1.0 / public domain
+          Blender: ${BLENDER_VERSION} LTS
+          Optimizer: @gltf-transform/cli ${GLTF_TRANSFORM_VERSION}
+          Geometry compression: ${HUMAN_COMPRESSION}
+          This reference proves exact-topology ARKit, speech, body morphs and skinning together.
+          It intentionally contains no production hairstyle/outfit and is not in assets/humans/manifest.json.
+          NOTICE
+      - name: Validate repository with generated reference
+        run: |
+          npm test
+          node scripts/validate.mjs
+          node scripts/validate-vitruvian-morph-map.mjs
+          node scripts/validate-vitruvian-reference.mjs assets/humans/reference-vitruvian-morph.glb
+      - name: Commit only a fully validated reference to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'main changed during asset build; refusing to overwrite concurrent work.'; exit 1; }
+          git add assets/humans/reference-vitruvian-morph.glb assets/humans/reference-vitruvian-morph.report.json assets/humans/reference-vitruvian-morph.NOTICE.txt
+          if git diff --cached --quiet; then
+            echo 'Vitruvian morph reference already matches pinned sources and mapping.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add validated CC0 Vitruvian morph reference'
+          git push origin HEAD:main
