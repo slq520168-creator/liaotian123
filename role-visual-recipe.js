@@ -2,6 +2,7 @@
   'use strict';
 
   const VERSION = 1;
+  const GENDERS = Object.freeze(['unspecified','male','female']);
   const OPTIONS = Object.freeze({
     body: Object.freeze(['偏瘦','匀称','微胖','丰满','胖','健壮']),
     face: Object.freeze(['自然耐看','圆脸','鹅蛋脸','方脸','长脸','成熟脸','甜美脸']),
@@ -16,6 +17,8 @@
 
   const DEFAULTS = Object.freeze({
     version: VERSION,
+    gender: 'unspecified',
+    age: 24,
     heightCm: 165,
     weightJin: 110,
     body: '匀称',
@@ -45,6 +48,8 @@
     const chats = cleanList(input.chat);
     return Object.freeze({
       version: VERSION,
+      gender: pick(input.gender, GENDERS, DEFAULTS.gender),
+      age: clampInt(input.age, 18, 100, DEFAULTS.age),
       heightCm: clampInt(input.heightCm ?? input.height, 130, 220, DEFAULTS.heightCm),
       weightJin: clampInt(input.weightJin ?? input.weight, 60, 500, DEFAULTS.weightJin),
       body: pick(input.body, OPTIONS.body, DEFAULTS.body),
@@ -65,6 +70,12 @@
   function lineValue(lines, prefix) {
     return (lines.find(line => line.startsWith(prefix)) || '').replace(prefix, '').replace(/。$/, '').trim();
   }
+  function parseIdentity(lines) {
+    const line = lineValue(lines, '身份：');
+    const gender = /(?:^|[，,])\s*男(?:性)?(?:[，,]|$)/.test(line) ? 'male' : /(?:^|[，,])\s*女(?:性)?(?:[，,]|$)/.test(line) ? 'female' : 'unspecified';
+    const age = Number(line.match(/(\d{1,3})\s*岁/)?.[1]) || undefined;
+    return {gender, age};
+  }
 
   function fromPersonality(text) {
     const value = String(text || '');
@@ -72,8 +83,10 @@
     if (!match) return null;
     const lines = match[1].split(/\r?\n/);
     const physical = lines.find(line => line.startsWith('外形：')) || '';
+    const identity = parseIdentity(lines);
     const find = list => list.find(item => physical.includes(item));
     return sanitize({
+      ...identity,
       heightCm: physical.match(/身高(\d+)cm/)?.[1],
       weightJin: physical.match(/体重(\d+)斤/)?.[1],
       body: find(OPTIONS.body),
@@ -91,10 +104,18 @@
     });
   }
 
+  function withCharacterIdentity(char, recipe) {
+    return sanitize({
+      ...(recipe || {}),
+      gender: GENDERS.includes(char?.gender) ? char.gender : recipe?.gender,
+      age: Number.isFinite(Number(char?.age)) ? Number(char.age) : recipe?.age
+    });
+  }
+
   function forCharacter(char) {
     if (!char || typeof char !== 'object') return sanitize();
-    if (char.visualRecipe && typeof char.visualRecipe === 'object') return sanitize(char.visualRecipe);
-    return fromPersonality(char.personality) || sanitize();
+    if (char.visualRecipe && typeof char.visualRecipe === 'object') return withCharacterIdentity(char, char.visualRecipe);
+    return withCharacterIdentity(char, fromPersonality(char.personality) || {});
   }
 
   function installNormalizer() {
@@ -104,8 +125,8 @@
       const char = base.call(this, value);
       if (!char) return char;
       const supplied = value?.visualRecipe && typeof value.visualRecipe === 'object' ? value.visualRecipe : null;
-      const parsed = supplied ? sanitize(supplied) : fromPersonality(char.personality);
-      if (parsed) char.visualRecipe = parsed;
+      const parsed = supplied ? sanitize(supplied) : (fromPersonality(char.personality) || sanitize());
+      char.visualRecipe = withCharacterIdentity(char, parsed);
       return char;
     };
     wrapped.__visualRecipe = true;
@@ -117,17 +138,18 @@
     if (typeof characters === 'undefined' || !Array.isArray(characters)) return 0;
     let changed = 0;
     for (const char of characters) {
-      if (!char || char.isPreset || char.visualRecipe) continue;
-      const parsed = fromPersonality(char.personality);
-      if (!parsed) continue;
-      char.visualRecipe = parsed;
+      if (!char || char.isPreset) continue;
+      const parsed = char.visualRecipe && typeof char.visualRecipe === 'object' ? char.visualRecipe : (fromPersonality(char.personality) || {});
+      const next = withCharacterIdentity(char, parsed);
+      if (JSON.stringify(char.visualRecipe || null) === JSON.stringify(next)) continue;
+      char.visualRecipe = next;
       changed++;
     }
     if (changed && typeof saveDataToStorage === 'function') saveDataToStorage();
     return changed;
   }
 
-  const api = Object.freeze({VERSION, OPTIONS, DEFAULTS, sanitize, fromPersonality, forCharacter, installNormalizer, migrateLoadedCharacters});
+  const api = Object.freeze({VERSION, GENDERS, OPTIONS, DEFAULTS, sanitize, parseIdentity, fromPersonality, withCharacterIdentity, forCharacter, installNormalizer, migrateLoadedCharacters});
   if (typeof window !== 'undefined') { window.RoleVisualRecipe = api; installNormalizer(); migrateLoadedCharacters(); }
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
