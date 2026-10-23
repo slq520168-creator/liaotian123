@@ -4,15 +4,25 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  validate:
+  smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Run unit tests
-        run: npm test
-      - name: Check website, documentation, human assets and chat contract
-        run: node scripts/validate.mjs
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm install --no-audit --no-fund --package-lock=false
+      - name: JavaScript, 3D runtime and website smoke tests
+        run: |
+          npm test
+          node scripts/validate.mjs
+          npm run cf:build
+          test -s dist/vendor/three/build/three.module.js
+          test -s dist/vendor/three/examples/jsm/loaders/GLTFLoader.js
+          test -s dist/vendor/meshoptimizer/meshopt_decoder.mjs

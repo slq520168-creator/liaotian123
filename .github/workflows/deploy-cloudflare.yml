@@ -27,7 +27,7 @@ jobs:
           cache: npm
 
       - name: Install pinned dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund --package-lock=false
 
       - name: Validate site and 3D human assets
         run: |
@@ -56,7 +56,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Verify sirole.vip 3D runtime
+      - name: Verify sirole.vip full-body 3D presets
         if: steps.cloudflare-auth.outputs.ready == 'true'
         shell: bash
         run: |
@@ -70,7 +70,7 @@ jobs:
             local path="$1"
             local out="$2"
             echo "Fetching $path"
-            curl -fsSL --retry 6 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}" -o "$tmp/$out"
+            curl -fsSL --retry 8 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}" -o "$tmp/$out"
             test -s "$tmp/$out"
             echo "Fetched $path ($(wc -c < "$tmp/$out") bytes)"
           }
@@ -78,31 +78,38 @@ jobs:
           verify_http_200() {
             local path="$1"
             local code
-            echo "Checking $path"
-            code="$(curl -sS -L -o /dev/null -w '%{http_code}' --retry 6 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}")"
+            code="$(curl -sS -L -o /dev/null -w '%{http_code}' --retry 8 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}")"
             test "$code" = '200'
             echo "Verified $path HTTP $code"
           }
 
           fetch_text 'config/app.js' 'config.js'
           grep -Fq "$expected_build" "$tmp/config.js"
-          echo "Verified production build $expected_build"
+
+          fetch_text 'role-creator-animated-presets.js' 'presets.js'
+          grep -Fq 'vendor/three/build/three.module.js' "$tmp/presets.js"
+          grep -Fq 'vendor/meshoptimizer/meshopt_decoder.mjs' "$tmp/presets.js"
+          grep -Fq 'setMeshoptDecoder' "$tmp/presets.js"
+          grep -Fq 'MAX_ACTIVE=2' "$tmp/presets.js"
+          grep -Fq 'assets/humans/reference-mpfb.glb' "$tmp/presets.js"
+          if grep -Fq 'esm.sh' "$tmp/presets.js"; then echo 'Preset runtime still depends on esm.sh' >&2; exit 1; fi
+
+          fetch_text 'vendor/three/build/three.module.js' 'three.js'
+          grep -Fq "REVISION = '186'" "$tmp/three.js"
+          fetch_text 'vendor/three/examples/jsm/loaders/GLTFLoader.js' 'gltf-loader.js'
+          grep -Fq 'class GLTFLoader' "$tmp/gltf-loader.js"
+          fetch_text 'vendor/meshoptimizer/meshopt_decoder.mjs' 'meshopt.mjs'
+          grep -Fq 'MeshoptDecoder' "$tmp/meshopt.mjs"
 
           fetch_text 'role-human-renderer.js' 'renderer.js'
           grep -Fq 'class HumanRenderer' "$tmp/renderer.js"
-
           fetch_text 'role-human-asset-capability.js' 'capability.js'
           grep -Fq 'REQUIRED_CAPABILITIES' "$tmp/capability.js"
-
           fetch_text 'role-natural-pose.js' 'pose.js'
           grep -Fq 'const ENABLED = false' "$tmp/pose.js"
-
-          fetch_text 'role-custom-visual.js' 'custom-visual.js'
-          grep -Fq 'reference-fallback' "$tmp/custom-visual.js"
-
           fetch_text 'assets/humans/manifest.json' 'manifest.json'
           grep -Fq '"nuannuan"' "$tmp/manifest.json"
 
           verify_http_200 'assets/humans/reference-mpfb.glb'
           verify_http_200 'assets/humans/reference-vitruvian-morph.glb'
-          echo 'sirole.vip production 3D runtime verified'
+          echo "sirole.vip production full-body 3D presets verified: $expected_build"

@@ -15,14 +15,48 @@ await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
 for(const name of staticEntries) await cp(new URL(name,root),new URL(name,out),{recursive:true});
 
+// Self-host the exact 3D runtime. Production Safari must never depend on a
+// third-party ESM CDN just to render a preset card.
+const threeSource=new URL('node_modules/three/',root);
+const threeOut=new URL('vendor/three/',out);
+await mkdir(new URL('build/',threeOut),{recursive:true});
+await mkdir(new URL('examples/jsm/loaders/',threeOut),{recursive:true});
+await mkdir(new URL('examples/jsm/utils/',threeOut),{recursive:true});
+await cp(new URL('build/three.module.js',threeSource),new URL('build/three.module.js',threeOut));
+await cp(new URL('LICENSE',threeSource),new URL('LICENSE',threeOut));
+
+async function copyThreeAddon(path){
+  let source=await readFile(new URL(path,threeSource),'utf8');
+  source=source.replace(/from\s+['"]three['"]/g,"from '../../../build/three.module.js'");
+  await writeFile(new URL(path,threeOut),source);
+}
+for(const path of [
+  'examples/jsm/loaders/GLTFLoader.js',
+  'examples/jsm/utils/BufferGeometryUtils.js',
+  'examples/jsm/utils/SkeletonUtils.js'
+]) await copyThreeAddon(path);
+
+const meshoptOut=new URL('vendor/meshoptimizer/',out);
+await mkdir(meshoptOut,{recursive:true});
+await cp(new URL('node_modules/meshoptimizer/meshopt_decoder.mjs',root),new URL('meshopt_decoder.mjs',meshoptOut));
+try{await cp(new URL('node_modules/meshoptimizer/LICENSE.md',root),new URL('LICENSE.md',meshoptOut));}catch{}
+
 const configSource=await readFile(new URL('config/app.js',root),'utf8');
 const referencedRuntime=[...configSource.matchAll(/['"](role-[a-z0-9-]+\.js)['"]/gi)].map(match=>match[1]);
 for(const name of referencedRuntime) await access(new URL(name,out));
+for(const path of [
+  'vendor/three/build/three.module.js',
+  'vendor/three/examples/jsm/loaders/GLTFLoader.js',
+  'vendor/three/examples/jsm/utils/BufferGeometryUtils.js',
+  'vendor/three/examples/jsm/utils/SkeletonUtils.js',
+  'vendor/meshoptimizer/meshopt_decoder.mjs'
+]) await access(new URL(path,out));
 
 await writeFile(new URL('_headers',out),
   '/*.html\n  Cache-Control: no-cache\n'+
   '/version.json\n  Cache-Control: no-store\n'+
   '/config/app.js\n  Cache-Control: no-store\n'+
+  '/vendor/*\n  Cache-Control: public, max-age=300, must-revalidate\n'+
   '/*.js\n  Cache-Control: public, max-age=300, must-revalidate\n'+
   '/*.css\n  Cache-Control: public, max-age=300, must-revalidate\n'
 );
