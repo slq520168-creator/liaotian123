@@ -40,12 +40,6 @@ def main() -> None:
     path = pathlib.Path(sys.argv[1])
     text = path.read_text(encoding='utf-8')
 
-    # The pinned CharacterCreator build still imports MPFB from Blender's old
-    # user_default extension namespace. Blender 5.2 installs the verified MPFB
-    # package from the official repository under blender_org. Rewrite all MPFB
-    # imports before upstream code executes; otherwise the outer MPFB smoke test
-    # passes but the real CharacterCreator build fails as soon as build_base.py
-    # imports its own MPFB services.
     old_namespace = 'bl_ext.user_default.mpfb'
     new_namespace = 'bl_ext.blender_org.mpfb'
     namespace_count = text.count(old_namespace)
@@ -83,18 +77,24 @@ def main() -> None:
     new_offs = '    if kind in ("expr", "dyn", "arkit", "viseme"):\n        offs = {}'
     text = replace_once(text, old_offs, new_offs, 'disable facial joint offsets')
 
-    # build_base.py can terminate Blender immediately after its final BUILD done
-    # line, so a marker written by the outer runpy wrapper is not reliable. Put
-    # the marker inside the pinned build itself, after every required output has
-    # been exported and the .blend snapshot has been saved. The workflow also
-    # starts from a clean output directory, so this cannot be satisfied by an
-    # upstream prebuilt file from an earlier run.
+    # Keep provenance beside the generated candidate rather than beside the
+    # Blender snapshot. The workflow starts with a clean output/ directory and
+    # all later promotion gates consume only that candidate directory, so a
+    # stale upstream license inventory cannot accidentally satisfy the gate.
+    old_license = 'with open(os.path.join(os.path.dirname(args.blend), "asset_licenses.json"), "w", encoding="utf-8") as f:'
+    new_license = 'with open(os.path.join(out_dir, "asset_licenses.json"), "w", encoding="utf-8") as f:'
+    text = replace_once(text, old_license, new_license, 'write license inventory with candidate output')
+
+    # build_base.py may end the Blender process before the outer runpy wrapper
+    # gets control again. Write the success marker from inside the build, only
+    # after every GLB, skeleton sidecar, license inventory and .blend snapshot
+    # has been written.
     old_done = 'print("BUILD done", args.out)'
     new_done = old_done + '\nwith open("/tmp/cc-build-ready", "w", encoding="utf-8") as _ready:\n    _ready.write("ok")'
     text = replace_once(text, old_done, new_done, 'write in-build success marker')
 
     path.write_text(text, encoding='utf-8')
-    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} build_marker=inside file={path}')
+    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} license=output build_marker=inside file={path}')
 
 
 if __name__ == '__main__':
