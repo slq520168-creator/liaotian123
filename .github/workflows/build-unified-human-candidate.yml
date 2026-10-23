@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node <<'NODE' | tee output/unified-human-report.json
+          node <<'NODE'
           const fs=require('fs'), b=fs.readFileSync('output/base_body.glb');
           if(b.toString('ascii',0,4)!=='glTF') throw new Error('candidate is not GLB');
           let off=12,g=null; while(off+8<=b.length){const len=b.readUInt32LE(off),type=b.readUInt32LE(off+4);off+=8;if(type===0x4E4F534A){g=JSON.parse(b.subarray(off,off+len).toString('utf8').replace(/\u0000+$/,''));break;}off+=len;} if(!g) throw new Error('missing GLB JSON');
@@ -94,7 +94,8 @@ jobs:
           const visemes=['viseme_sil','viseme_PP','viseme_FF','viseme_TH','viseme_DD','viseme_kk','viseme_CH','viseme_SS','viseme_nn','viseme_RR','viseme_aa','viseme_E','viseme_I','viseme_O','viseme_U'];
           const baseRequired=['gender_female','gender_male','weight_min','weight_max','muscle_min','muscle_max','height_short','height_tall','face_nose_width_decr','face_nose_width_incr','face_jaw_width_decr','face_jaw_width_incr','face_eye_size_decr','face_eye_size_incr','face_lips_decr','face_lips_incr'];
           const missingArkit=arkit.filter(n=>!names.has(n)),missingVisemes=visemes.filter(n=>!names.has(n)),missingBase=baseRequired.filter(n=>!names.has(n));
-          const nodeNames=(g.nodes||[]).map(n=>String(n.name||'').toLowerCase()), bones=['pelvis','spine_01','spine_02','spine_03','neck_01','head','upperarm_l','upperarm_r','thigh_l','thigh_r'],missingBones=bones.filter(n=>!nodeNames.includes(n));
+          const rawNodeNames=(g.nodes||[]).map(n=>String(n.name||'')).filter(Boolean);
+          const nodeNames=rawNodeNames.map(n=>n.toLowerCase()), bones=['pelvis','spine_01','spine_02','spine_03','neck_01','head','upperarm_l','upperarm_r','thigh_l','thigh_r'],missingBones=bones.filter(n=>!nodeNames.includes(n));
           const hair=['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
           const clothing=['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
           const sizes=(kind,list)=>Object.fromEntries(list.map(id=>[id,fs.statSync(`output/${kind}_${id}.glb`).size]));
@@ -104,11 +105,13 @@ jobs:
             bytes:b.length,meshes:(g.meshes||[]).length,skins:(g.skins||[]).length,morphTargetNameCount:names.size,
             arkitCount:arkit.length-missingArkit.length,visemeCount:visemes.length-missingVisemes.length,
             missingArkit,missingVisemes,missingBase,missingBones,
+            diagnostics:{nodeNames:rawNodeNames.sort(),targetNames:[...names].sort()},
             modules:{hair:sizes('hair',hair),clothing:sizes('clothing',clothing)},
             licenseInventory:Boolean(licenses && typeof licenses==='object'),
             mobile:{validated:false,reason:'requires optimized production bundle plus real-device FPS/memory validation before promotion'}
           };
-          console.log(JSON.stringify(report,null,2));
+          fs.writeFileSync('output/unified-human-report.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify({arkitCount:report.arkitCount,visemeCount:report.visemeCount,morphTargetNameCount:report.morphTargetNameCount,skins:report.skins,missingArkit,missingVisemes,missingBase,missingBones},null,2));
           if(missingArkit.length||missingVisemes.length||missingBase.length||missingBones.length||(g.skins||[]).length<1||names.size<150||!report.licenseInventory) throw new Error('unified human contract failed');
           NODE
 
@@ -166,6 +169,17 @@ jobs:
           console.log(JSON.stringify({modularCompatibility:true,staticBudgetPassed,budget},null,2));
           if(!staticBudgetPassed)throw new Error('candidate exceeds static mobile payload budget; optimize before promotion');
           NODE
+
+      - name: Upload diagnostics even when the contract fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-cc0-human-diagnostics
+          path: |
+            /tmp/cc/output/unified-human-report.json
+            /tmp/candidate-build.log
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Collect validated candidate without promoting it to production
         shell: bash
