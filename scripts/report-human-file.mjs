@@ -10,9 +10,38 @@ if (!file) {
 }
 const bytes = fs.readFileSync(file);
 const parsed = parseGlb(bytes);
-const info = inspectHumanDocument(parsed.json, parsed.byteLength);
+const json = parsed.json || {};
+const info = inspectHumanDocument(json, parsed.byteLength);
+const nodes = Array.isArray(json.nodes) ? json.nodes : [];
+const meshes = Array.isArray(json.meshes) ? json.meshes : [];
+const skins = Array.isArray(json.skins) ? json.skins : [];
+const nodeName = index => nodes[index]?.name || `#${index}`;
+
+const skeleton = skins.map((skin, index) => ({
+  index,
+  name: skin?.name || `skin-${index}`,
+  skeletonRoot: Number.isInteger(skin?.skeleton) ? nodeName(skin.skeleton) : null,
+  jointCount: Array.isArray(skin?.joints) ? skin.joints.length : 0,
+  joints: (skin?.joints || []).map(joint => nodeName(joint))
+}));
+
+const nodeBindings = nodes.flatMap((node, index) => {
+  if (!Number.isInteger(node?.mesh)) return [];
+  const mesh = meshes[node.mesh] || {};
+  return [{
+    nodeIndex: index,
+    node: node?.name || `#${index}`,
+    meshIndex: node.mesh,
+    mesh: mesh?.name || `mesh-${node.mesh}`,
+    skinIndex: Number.isInteger(node?.skin) ? node.skin : null,
+    skin: Number.isInteger(node?.skin) ? (skins[node.skin]?.name || `skin-${node.skin}`) : null,
+    primitiveCount: Array.isArray(mesh?.primitives) ? mesh.primitives.length : 0,
+    morphTargetNames: Array.isArray(mesh?.extras?.targetNames) ? mesh.extras.targetNames : []
+  }];
+});
+
 const report = {
-  schema: 1,
+  schema: 2,
   source: {
     repository: process.env.HUMAN_SOURCE_REPO || '',
     commit: process.env.HUMAN_SOURCE_COMMIT || '',
@@ -32,6 +61,13 @@ const report = {
     mebibytes: Number((bytes.length / 1024 / 1024).toFixed(2)),
     sha256: crypto.createHash('sha256').update(bytes).digest('hex')
   },
+  gltf: {
+    extensionsUsed: json.extensionsUsed || [],
+    extensionsRequired: json.extensionsRequired || [],
+    nodeCount: nodes.length,
+    meshCount: meshes.length,
+    skinCount: skins.length
+  },
   inspection: {
     meshes: info.meshes,
     skins: info.skins,
@@ -43,6 +79,8 @@ const report = {
     bodyMorphCount: info.bodyMorphCount,
     bodyMorphs: info.bodyMorphs,
     targetNames: info.targetNames
-  }
+  },
+  skeleton,
+  nodeBindings
 };
 process.stdout.write(JSON.stringify(report, null, 2) + '\n');
