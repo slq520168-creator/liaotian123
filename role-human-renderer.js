@@ -143,6 +143,7 @@
       this.camera = null;
       this.root = null;
       this.faceRig = null;
+      this.bodyRig = null;
       this.loop = null;
       this.resizeObserver = null;
       this.loadToken = 0;
@@ -257,7 +258,9 @@
 
     clearModel() {
       if (this.faceRig?.reset) this.faceRig.reset();
+      if (this.bodyRig?.reset) this.bodyRig.reset();
       this.faceRig = null;
+      this.bodyRig = null;
       if (this.root && this.scene) {
         this.scene.remove(this.root);
         disposeObject(this.root);
@@ -307,6 +310,11 @@
         this.scene.add(this.root);
         const head = findHeadObject(this.root, candidate.mesh);
         this.faceRig = new window.RoleFaceRig.FaceRigAdapter(candidate.mesh, head);
+        const bodyCandidate = window.RoleBodyRig?.findBestBodyMesh?.(this.root);
+        if (bodyCandidate?.mesh && bodyCandidate.score > 0) {
+          this.bodyRig = new window.RoleBodyRig.BodyRigAdapter(bodyCandidate.mesh);
+          this.bodyRig.applySpec(char?.personality || '');
+        }
         this.frameModel(this.root, asset.framing);
         this.resize();
         this.setStatus('');
@@ -348,7 +356,7 @@
 
   function boot() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    if (!window.RolePresence || !window.RoleFaceRig || !window.RoleRenderLoop || typeof switchCharacter !== 'function') {
+    if (!window.RolePresence || !window.RoleFaceRig || !window.RoleBodyRig || !window.RoleRenderLoop || typeof switchCharacter !== 'function') {
       setTimeout(boot, 80);
       return;
     }
