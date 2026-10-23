@@ -4,7 +4,7 @@ const root=new URL('../',import.meta.url),out=new URL('dist/',root);
 const runtimeJs=[
   'role-experience.js','role-presence.js','role-visual-recipe.js','role-unified-human-recipe.js','role-unified-human-runtime.js','role-face-rig.js','role-direct-viseme-rig.js','role-render-loop.js','role-body-rig.js','role-proportion-rig.js','role-appearance-rig.js',
   'role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-natural-pose.js','role-fullscreen-stage.js','role-render-recipe-bridge.js',
-  'role-chat-mode.js','role-voice-stage.js','role-voice-style.js','role-code-compat.js','role-persistence.js','role-builder.js','role-creator-studio.js','role-creator-animated-presets.js','role-custom-visual.js'
+  'role-chat-mode.js','role-voice-stage.js','role-voice-style.js','role-code-compat.js','role-persistence.js','role-builder.js','role-creator-studio.js','role-creator-animated-presets.js','role-custom-visual.js','role-unified-custom-chat.js'
 ];
 const staticEntries=[
   'index.html','app.js','memory.js','role-code.js','roles.js','styles.css',...runtimeJs,
