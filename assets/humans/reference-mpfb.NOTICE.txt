@@ -1,0 +1,10 @@
+CC0 reference human asset
+Source repository: met4citizen/TalkingHead
+Source commit: 91796631b569ec70aeba1e43f6fa1987e5e4115c
+Source path: avatars/mpfb.glb
+Source license: CC0
+Optimizer: @gltf-transform/cli 4.5.1
+Geometry compression: meshopt
+Texture compression: webp
+Maximum texture dimension: 1024px
+This reference file is not automatically assigned to any site character.
