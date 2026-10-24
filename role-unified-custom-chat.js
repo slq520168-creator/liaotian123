@@ -1,8 +1,6 @@
 (() => {
   'use strict';
 
-  // This runtime is inert unless RoleUnifiedProductionGate has authorized the current browser.
-  // Production config never loads it directly; the gate loads it only after global or real-device QA.
   const STATUS='unified-static';
   const DEVICE_STATUS='device-qualified';
   const PRODUCTION_STATUS='production';
@@ -38,7 +36,8 @@
   async function loadModule(renderer,url){const loader=new renderer.modules.GLTFLoader();if(renderer.modules.MeshoptDecoder&&typeof loader.setMeshoptDecoder==='function')loader.setMeshoptDecoder(renderer.modules.MeshoptDecoder);return loader.loadAsync(url);}
   async function loadJoints(){if(!jointsPromise){jointsPromise=fetch(JOINTS_PATH,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`joint sidecar ${r.status}`);return r.json();}).then(data=>{if(!data?.morphs||!data?.bones)throw new Error('joint sidecar contract invalid');return data;}).catch(error=>{jointsPromise=null;throw error;});}return jointsPromise;}
   function tintSkin(root,hex){if(!hex||!root?.traverse)return 0;const seen=new Set();let changed=0;root.traverse(node=>{const materials=Array.isArray(node?.material)?node.material:(node?.material?[node.material]:[]);for(const material of materials){if(!material||seen.has(material))continue;seen.add(material);const name=String(material.name||'').toLowerCase();if(!material.color||!/(^skin$|skin|body|face|head)/.test(name))continue;try{material.color.set(hex);const gain=Number(material.userData?.tint?.gain);if(gain>0&&gain!==1&&typeof material.color.multiplyScalar==='function')material.color.multiplyScalar(gain);material.needsUpdate=true;changed++;}catch{}}});return changed;}
-  function recipeKey(mapped){return JSON.stringify({m:mapped?.morphs||{},h:mapped?.hair||'',c:mapped?.clothing||[],a:mapped?.accessory||'none',s:mapped?.skinTint||''});}
+  function tintModule(root,hex){if(!hex||!root?.traverse)return 0;const seen=new Set();let changed=0;root.traverse(node=>{const materials=Array.isArray(node?.material)?node.material:(node?.material?[node.material]:[]);for(const material of materials){if(!material||seen.has(material)||!material.color?.set)continue;seen.add(material);try{material.color.set(hex);material.needsUpdate=true;changed++;}catch{}}});return changed;}
+  function recipeKey(mapped){return JSON.stringify({m:mapped?.morphs||{},h:mapped?.hair||'',ht:mapped?.hairTint||'',c:mapped?.clothing||[],a:mapped?.accessory||'none',s:mapped?.skinTint||''});}
 
   async function loadUnifiedCandidate(renderer,char,mapped,key,originalLoad,token){
     let baseRoot=null;
@@ -48,79 +47,32 @@
       if(renderer.currentId===char.id&&renderer.root&&renderer.__unifiedCustomKey!==key){resetUnifiedState(renderer);renderer.clearModel?.();}
       const ok=await originalLoad.call(renderer,char);
       if(!ok||!renderer.root||renderer.currentId!==char.id||renderer.__unifiedLoadToken!==token||!gateQualification())return false;
-      renderer.loop?.stop?.();
-      baseRoot=renderer.root;
-      const oldFaceRig=renderer.faceRig;
-      resetLegacyRigs(renderer);
-      const runtime=window.RoleUnifiedHumanRuntime;
-      runtime.applyMorphWeights(baseRoot,{}, {reset:true});
-      const modules=[];
-      if(mapped.hair)modules.push({kind:'hair',url:HAIR_PATH(mapped.hair)});
-      for(const id of mapped.clothing||[])modules.push({kind:'clothing',url:CLOTHING_PATH(id)});
+      renderer.loop?.stop?.();baseRoot=renderer.root;const oldFaceRig=renderer.faceRig;resetLegacyRigs(renderer);
+      const runtime=window.RoleUnifiedHumanRuntime;runtime.applyMorphWeights(baseRoot,{}, {reset:true});
+      const modules=[];if(mapped.hair)modules.push({kind:'hair',url:HAIR_PATH(mapped.hair)});for(const id of mapped.clothing||[])modules.push({kind:'clothing',url:CLOTHING_PATH(id)});
       for(const item of modules){
         if(!isCurrentLoad(renderer,baseRoot,char.id,token)||!gateQualification())return false;
         const gltf=await loadModule(renderer,item.url);
         if(!isCurrentLoad(renderer,baseRoot,char.id,token)||!gateQualification()){disposeScene(gltf.scene);return false;}
+        if(item.kind==='hair'&&mapped.hairTint&&tintModule(gltf.scene,mapped.hairTint)<1){disposeScene(gltf.scene);throw new Error('hair tint material unavailable');}
         const required=item.kind==='hair'?['gender_female','gender_male','weight_min','weight_max','height_short','height_tall','face_forehead_decr','face_forehead_incr','face_ear_size_decr','face_ear_size_incr']:['gender_female','gender_male','weight_min','weight_max','height_short','height_tall'];
-        runtime.attachModule(baseRoot,gltf.scene,mapped.morphs||{},required);
-        attached.push(gltf.scene);
+        runtime.attachModule(baseRoot,gltf.scene,mapped.morphs||{},required);attached.push(gltf.scene);
       }
-      const joints=await loadJoints();
-      if(!isCurrentLoad(renderer,baseRoot,char.id,token)||!gateQualification())return false;
+      const joints=await loadJoints();if(!isCurrentLoad(renderer,baseRoot,char.id,token)||!gateQualification())return false;
       const state=runtime.applyCandidateState(baseRoot,attached,joints,mapped.morphs||{});
       if(!state.morphs?.applied)throw new Error('identity morphs were not applied');
       if(state.skeleton?.moved<20||state.skeleton?.missingBones?.length)throw new Error(`joint sidecar application failed: ${state.skeleton?.missingBones?.join(',')||'no moved skeleton'}`);
-      const accessoryId=mapped.accessory||'none';
-      let accessory=null;
-      if(accessoryId!=='none'){
-        const accessoryApi=window.RoleAccessoryGeometry;
-        if(!accessoryApi?.attach)throw new Error('accessory geometry runtime unavailable');
-        accessory=accessoryApi.attach(baseRoot,renderer.modules?.THREE,accessoryId);
-        if(!accessory)throw new Error(`accessory attachment failed: ${accessoryId}`);
-      }
-      oldFaceRig?.reset?.();
-      const compositeFace=createCompositeFaceRig(baseRoot,oldFaceRig?.headObject,window.RoleFaceRig);
-      if(!compositeFace||compositeFace.meshes.length<2)throw new Error('multi-mesh face rig unavailable');
-      compositeFace.reset();
-      renderer.faceRig=compositeFace;
-      tintSkin(baseRoot,mapped.skinTint);
-      renderer.__unifiedCustomModules=attached;
-      renderer.__unifiedCustomAccessory=accessory;
-      renderer.__unifiedCustomKey=key;
-      renderer.__unifiedCandidateState=state;
-      renderer.frameModel?.(baseRoot,'full');
-      renderer.resize?.();
-      renderer.loop?.start?.();
-      return true;
-    }catch(error){
-      console.warn('统一3D候选未通过运行时合同，保持关闭。',error);
-      if(baseRoot&&isCurrentLoad(renderer,baseRoot,char.id,token)){resetUnifiedState(renderer);renderer.clearModel?.();}
-      return false;
-    }
+      const accessoryId=mapped.accessory||'none';let accessory=null;if(accessoryId!=='none'){const accessoryApi=window.RoleAccessoryGeometry;if(!accessoryApi?.attach)throw new Error('accessory geometry runtime unavailable');accessory=accessoryApi.attach(baseRoot,renderer.modules?.THREE,accessoryId);if(!accessory)throw new Error(`accessory attachment failed: ${accessoryId}`);}
+      oldFaceRig?.reset?.();const compositeFace=createCompositeFaceRig(baseRoot,oldFaceRig?.headObject,window.RoleFaceRig);if(!compositeFace||compositeFace.meshes.length<2)throw new Error('multi-mesh face rig unavailable');compositeFace.reset();renderer.faceRig=compositeFace;
+      tintSkin(baseRoot,mapped.skinTint);renderer.__unifiedCustomModules=attached;renderer.__unifiedCustomAccessory=accessory;renderer.__unifiedCustomKey=key;renderer.__unifiedCandidateState=state;renderer.frameModel?.(baseRoot,'full');renderer.resize?.();renderer.loop?.start?.();return true;
+    }catch(error){console.warn('统一3D候选未通过运行时合同，保持关闭。',error);if(baseRoot&&isCurrentLoad(renderer,baseRoot,char.id,token)){resetUnifiedState(renderer);renderer.clearModel?.();}return false;}
   }
 
   function patchRenderer(){
-    const proto=window.RoleHumanRenderer?.HumanRenderer?.prototype;
-    if(!proto?.loadCharacter||proto.loadCharacter.__unifiedCustom)return false;
-    const originalLoad=proto.loadCharacter,originalSync=proto.syncCharacter;
-    proto.loadCharacter=async function(char){
-      if(!isCustom(char)){nextLoadToken(this);resetUnifiedState(this);return originalLoad.call(this,char);}
-      if(!decorate(char)){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}
-      const mapped=plan(char),runtime=window.RoleUnifiedHumanRuntime;
-      if(!mapped||!runtime?.attachModule||!runtime?.applyCandidateState){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}
-      const key=recipeKey(mapped),pendingKey=`${char.id}|${key}`;
-      if(this.currentId===char.id&&this.root&&this.__unifiedCustomKey===key){this.loop?.start?.();return true;}
-      if(this.__unifiedPendingKey===pendingKey&&this.__unifiedPendingPromise)return this.__unifiedPendingPromise;
-      const token=nextLoadToken(this);
-      const task=loadUnifiedCandidate(this,char,mapped,key,originalLoad,token);
-      this.__unifiedPendingKey=pendingKey;
-      this.__unifiedPendingPromise=task;
-      try{return await task;}finally{if(this.__unifiedPendingPromise===task){this.__unifiedPendingPromise=null;this.__unifiedPendingKey='';}}
-    };
+    const proto=window.RoleHumanRenderer?.HumanRenderer?.prototype;if(!proto?.loadCharacter||proto.loadCharacter.__unifiedCustom)return false;const originalLoad=proto.loadCharacter,originalSync=proto.syncCharacter;
+    proto.loadCharacter=async function(char){if(!isCustom(char)){nextLoadToken(this);resetUnifiedState(this);return originalLoad.call(this,char);}if(!decorate(char)){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}const mapped=plan(char),runtime=window.RoleUnifiedHumanRuntime;if(!mapped||!runtime?.attachModule||!runtime?.applyCandidateState){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}const key=recipeKey(mapped),pendingKey=`${char.id}|${key}`;if(this.currentId===char.id&&this.root&&this.__unifiedCustomKey===key){this.loop?.start?.();return true;}if(this.__unifiedPendingKey===pendingKey&&this.__unifiedPendingPromise)return this.__unifiedPendingPromise;const token=nextLoadToken(this);const task=loadUnifiedCandidate(this,char,mapped,key,originalLoad,token);this.__unifiedPendingKey=pendingKey;this.__unifiedPendingPromise=task;try{return await task;}finally{if(this.__unifiedPendingPromise===task){this.__unifiedPendingPromise=null;this.__unifiedPendingKey='';}}};
     proto.loadCharacter.__unifiedCustom=true;
-    proto.syncCharacter=async function(...args){const char=this.currentCharacter?.()||currentChar();if(!isCustom(char))return originalSync.apply(this,args);if(!decorate(char)||ensureDefault3D(char)!=='3d'){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}return this.loadCharacter(char);};
-    proto.syncCharacter.__unifiedCustom=true;
-    return true;
+    proto.syncCharacter=async function(...args){const char=this.currentCharacter?.()||currentChar();if(!isCustom(char))return originalSync.apply(this,args);if(!decorate(char)||ensureDefault3D(char)!=='3d'){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}return this.loadCharacter(char);};proto.syncCharacter.__unifiedCustom=true;return true;
   }
 
   function installModeButton(){const button=document.getElementById('roleChatModeBtn')||window.RoleChatMode?.ensureButton?.();if(!button)return false;if(button.dataset.unifiedCustom==='1')return true;button.dataset.unifiedCustom='1';button.addEventListener('click',event=>{const char=currentChar();if(!isCustom(char)||!gateQualification())return;event.preventDefault();event.stopImmediatePropagation();const next=ensureDefault3D(char)==='3d'?'text':'3d';setMode(char,next);updateModeButton();window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();},true);return true;}
@@ -129,7 +81,7 @@
   function patchSwitch(){if(typeof switchCharacter!=='function'||switchCharacter.__unifiedCustom)return false;const base=switchCharacter;const wrapped=function(...args){const result=base.apply(this,args);const char=currentChar();decorate(char);requestAnimationFrame(()=>{installModeButton();updateModeButton();window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();});return result;};wrapped.__unifiedCustom=true;switchCharacter=wrapped;return true;}
   function boot(){if(typeof window==='undefined'||typeof document==='undefined'||!gateQualification())return false;if(!window.RoleHumanRenderer||!window.RoleUnifiedHumanRuntime||!window.RoleUnifiedHumanRecipe||!window.RoleAccessoryGeometry||typeof switchCharacter!=='function'){setTimeout(boot,80);return false;}decorateAll();patchRenderer();patchSwitch();installModeButton();updateModeButton();requestAnimationFrame(()=>window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());return true;}
 
-  const api=Object.freeze({STATUS,DEVICE_STATUS,PRODUCTION_STATUS,ASSET_ID,BASE_ASSET,JOINTS_PATH,isCustom,gateQualification,statusForQualification,decorate,plan,walkRoot,collectFaceMeshes,createCompositeFaceRig,resetLegacyRigs,resetUnifiedState,nextLoadToken,cancelRendererLoad,isCurrentLoad,loadJoints,tintSkin,recipeKey,loadUnifiedCandidate,ensureDefault3D,setMode,patchRenderer,patchSwitch,updateModeButton,boot});
+  const api=Object.freeze({STATUS,DEVICE_STATUS,PRODUCTION_STATUS,ASSET_ID,BASE_ASSET,JOINTS_PATH,isCustom,gateQualification,statusForQualification,decorate,plan,walkRoot,collectFaceMeshes,createCompositeFaceRig,resetLegacyRigs,resetUnifiedState,nextLoadToken,cancelRendererLoad,isCurrentLoad,loadJoints,tintSkin,tintModule,recipeKey,loadUnifiedCandidate,ensureDefault3D,setMode,patchRenderer,patchSwitch,updateModeButton,boot});
   if(typeof window!=='undefined'){window.RoleUnifiedCustomChat=api;boot();}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
