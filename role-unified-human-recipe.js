@@ -126,7 +126,7 @@
   }
   function mapRecipe(recipe={}){
     return Object.freeze({
-      schema:3,candidateId:CANDIDATE_ID,morphs:identityMorphs(recipe),
+      schema:2,candidateId:CANDIDATE_ID,morphs:identityMorphs(recipe),
       hair:HAIR[recipe.hair]||HAIR['自然长发'],
       clothing:clothingFor(recipe),
       skinTint:SKIN_TINTS[recipe.skin]||SKIN_TINTS['自然肤色'],

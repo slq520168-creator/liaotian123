@@ -4,7 +4,7 @@ const recipe=require('../role-unified-human-recipe.js');
 
 test('male unified recipe always includes safety briefs before outer clothing',()=>{
   const result=recipe.mapRecipe({gender:'male',outfit:'日常休闲'});
-  assert.equal(result.schema,3);
+  assert.equal(result.schema,2);
   assert.equal(result.clothing[0],'briefs');
   assert(result.clothing.includes('jeans'));
 });
