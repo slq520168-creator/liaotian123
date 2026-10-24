@@ -16,3 +16,13 @@ test('custom role IndexedDB backup is coalesced instead of writing on every side
   assert(source.includes('new MutationObserver(()=>scheduleCustomRolesPersist())'));
   assert(!source.includes("new MutationObserver(()=>persistCustomRoles()).observe(customList"));
 });
+
+test('creator pauses WebGL and defers disposal of the previous 3D model off the submit frame', () => {
+  const source = fs.readFileSync('role-render-recipe-bridge.js', 'utf8');
+  assert(source.includes('function creatorModalOpen()'));
+  assert(source.includes('this.cancelPendingLoad?.()'));
+  assert(source.includes('hideRendererStage(this)'));
+  assert(source.includes('requestIdleCallback(cleanup, {timeout:900})'));
+  assert(source.includes('deferTextCleanup(this, char, currentSync, args)'));
+  assert(source.includes("observer.observe(modal, {attributes:true, attributeFilter:['class']})"));
+});
