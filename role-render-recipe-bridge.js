@@ -53,6 +53,12 @@
     return Boolean(document.getElementById('createModalOverlay')?.classList?.contains('active'));
   }
 
+  function isCustomRoleId(charId) {
+    if (typeof charId !== 'string' || !/^custom_[a-z0-9_-]+$/i.test(charId)) return false;
+    if (typeof characters === 'undefined' || !Array.isArray(characters)) return true;
+    return characters.some(char => char && !char.isPreset && char.id === charId);
+  }
+
   function rendererAsset(renderer, char) {
     const api = typeof window !== 'undefined' ? window.RoleHumanRenderer : null;
     if (!renderer || !char || typeof api?.assetForCharacter !== 'function') return null;
@@ -89,6 +95,93 @@
     } else {
       renderer.__creatorDeferredCleanup = {kind:'timer', id:setTimeout(cleanup, 180)};
     }
+  }
+
+  let creatorFullSaveJob = null;
+  function cancelCreatorFullSave() {
+    if (!creatorFullSaveJob) return;
+    if (creatorFullSaveJob.kind === 'idle' && typeof cancelIdleCallback === 'function') cancelIdleCallback(creatorFullSaveJob.id);
+    if (creatorFullSaveJob.kind === 'timer') clearTimeout(creatorFullSaveJob.id);
+    creatorFullSaveJob = null;
+  }
+
+  function fastPersistCustomCatalog() {
+    if (typeof localStorage === 'undefined' || typeof characters === 'undefined' || !Array.isArray(characters)) return false;
+    try {
+      localStorage.setItem('liaotian_custom_chars', JSON.stringify(characters.filter(char => !char.isPreset)));
+      if (typeof activeCharacterId === 'string' && activeCharacterId) localStorage.setItem('liaotian_active_char', activeCharacterId);
+      return true;
+    } catch (error) {
+      const status = typeof document !== 'undefined' ? document.getElementById('replyStatus') : null;
+      if (status) status.textContent = '空间不足，暂时无法保存。';
+      return false;
+    }
+  }
+
+  function scheduleCreatorFullSave(baseSave) {
+    cancelCreatorFullSave();
+    const save = () => {
+      creatorFullSaveJob = null;
+      if (creatorModalOpen() || (typeof window !== 'undefined' && window.__ROLE_CREATOR_PENDING_SWITCH)) {
+        scheduleCreatorFullSave(baseSave);
+        return;
+      }
+      try { baseSave(); } catch (error) {}
+    };
+    if (typeof requestIdleCallback === 'function') {
+      creatorFullSaveJob = {kind:'idle', id:requestIdleCallback(save, {timeout:1400})};
+    } else {
+      creatorFullSaveJob = {kind:'timer', id:setTimeout(save, 240)};
+    }
+  }
+
+  function flushCreatorPendingSwitch() {
+    if (typeof window === 'undefined' || creatorModalOpen()) return false;
+    const pending = window.__ROLE_CREATOR_PENDING_SWITCH;
+    if (!pending?.charId || typeof switchCharacter !== 'function') return false;
+    window.__ROLE_CREATOR_PENDING_SWITCH = null;
+    switchCharacter(pending.charId, false);
+    return true;
+  }
+
+  function installCreatorCommitFastPath() {
+    if (typeof window === 'undefined') return false;
+    let installed = false;
+    if (typeof switchCharacter === 'function' && !switchCharacter.__creatorCommitFastPath) {
+      const baseSwitch = switchCharacter;
+      const wrappedSwitch = function(charId, save = true) {
+        if (creatorModalOpen() && isCustomRoleId(charId)) {
+          activeCharacterId = charId;
+          window.__ROLE_CREATOR_PENDING_SWITCH = {charId, save: save !== false};
+          return true;
+        }
+        return baseSwitch.apply(this, arguments);
+      };
+      wrappedSwitch.__creatorCommitFastPath = true;
+      wrappedSwitch.__creatorCommitFastPathBase = baseSwitch;
+      switchCharacter = wrappedSwitch;
+      installed = true;
+    }
+    if (typeof saveDataToStorage === 'function' && !saveDataToStorage.__creatorCommitFastPath) {
+      const baseSave = saveDataToStorage;
+      const wrappedSave = function(...args) {
+        if (creatorModalOpen() && window.__ROLE_CREATOR_PENDING_SWITCH) {
+          const ok = fastPersistCustomCatalog();
+          if (!ok) {
+            window.__ROLE_CREATOR_PENDING_SWITCH = null;
+            return false;
+          }
+          scheduleCreatorFullSave(() => baseSave.apply(this, args));
+          return true;
+        }
+        return baseSave.apply(this, args);
+      };
+      wrappedSave.__creatorCommitFastPath = true;
+      wrappedSave.__creatorCommitFastPathBase = baseSave;
+      saveDataToStorage = wrappedSave;
+      installed = true;
+    }
+    return installed;
   }
 
   function installCreatorPerformanceGate(rendererProto) {
@@ -130,7 +223,11 @@
         return;
       }
       requestAnimationFrame(() => {
-        if (!creatorModalOpen()) renderer.syncCharacter?.();
+        if (creatorModalOpen()) return;
+        flushCreatorPendingSwitch();
+        requestAnimationFrame(() => {
+          if (!creatorModalOpen()) renderer.syncCharacter?.();
+        });
       });
     };
     const observer = new MutationObserver(syncAfterClose);
@@ -142,6 +239,7 @@
 
   function install() {
     if (typeof window === 'undefined') return false;
+    installCreatorCommitFastPath();
     const Renderer = window.RoleHumanRenderer?.HumanRenderer;
     const proto = Renderer?.prototype;
     if (!proto?.loadCharacter) return false;
@@ -186,7 +284,8 @@
 
   const api = Object.freeze({
     recipeForCharacter, ensureAppearanceRig, ensureProportionRig, applyStructuredRecipe,
-    creatorModalOpen, rendererAsset, hideRendererStage, cancelDeferredCleanup, deferTextCleanup,
+    creatorModalOpen, isCustomRoleId, rendererAsset, hideRendererStage, cancelDeferredCleanup, deferTextCleanup,
+    cancelCreatorFullSave, fastPersistCustomCatalog, scheduleCreatorFullSave, flushCreatorPendingSwitch, installCreatorCommitFastPath,
     installCreatorPerformanceGate, bindCreatorModal, install
   });
   if (typeof window !== 'undefined') {

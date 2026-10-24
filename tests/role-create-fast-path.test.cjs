@@ -26,3 +26,14 @@ test('creator pauses WebGL and defers disposal of the previous 3D model off the 
   assert(source.includes('deferTextCleanup(this, char, currentSync, args)'));
   assert(source.includes("observer.observe(modal, {attributes:true, attributeFilter:['class']})"));
 });
+
+test('creator commit closes before heavy role switching and full persistence', () => {
+  const source = fs.readFileSync('role-render-recipe-bridge.js', 'utf8');
+  assert(source.includes('function installCreatorCommitFastPath()'));
+  assert(source.includes('window.__ROLE_CREATOR_PENDING_SWITCH = {charId, save: save !== false}'));
+  assert(source.includes("localStorage.setItem('liaotian_custom_chars'"));
+  assert(source.includes("localStorage.setItem('liaotian_active_char'"));
+  assert(source.includes('scheduleCreatorFullSave(() => baseSave.apply(this, args))'));
+  assert(source.includes('flushCreatorPendingSwitch();'));
+  assert(source.includes('requestIdleCallback(save, {timeout:1400})'));
+});
