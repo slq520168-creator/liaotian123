@@ -29,8 +29,9 @@
     return Object.freeze({count:frames.length,avgFrameMs:round2(avgFrameMs),avgFps:round2(1000/avgFrameMs),p95FrameMs:round2(percentile(frames,.95))});
   }
 
-  function classify(summary){
-    if(!summary||summary.count<WINDOW_SIZE)return'wait';
+  function classify(summary,minCount=WINDOW_SIZE){
+    const required=Math.max(1,Math.round(finite(minCount,WINDOW_SIZE)));
+    if(!summary||summary.count<required)return'wait';
     if(summary.avgFps<LOW_FPS||summary.p95FrameMs>LOW_P95_MS)return'low';
     if(summary.avgFps>=RECOVERY_FPS&&summary.p95FrameMs<=RECOVERY_P95_MS)return'good';
     return'neutral';
@@ -113,7 +114,7 @@
 
     evaluate(){
       const summary=summarize(this.samples);this.samples=[];this.lastSummary=summary;
-      const state=classify(summary);
+      const state=classify(summary,this.windowSize);
       if(state==='low'){
         this.lowWindows++;this.goodWindows=0;
         if(this.lowWindows>=LOW_WINDOWS){this.lowWindows=0;return Object.freeze({state,action:this.degrade(),summary});}
