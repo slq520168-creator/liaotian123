@@ -16,6 +16,9 @@
     '运动': Object.freeze(['tshirt','shorts','shoes']), '甜美': Object.freeze(['dress','shoes']),
     '性感但自然': Object.freeze(['tshirt','skirt','shoes'])
   });
+  const ACCESSORIES = Object.freeze({
+    '无':'none','细框眼镜':'glasses','小耳环':'earrings','细项链':'necklace','眼镜+耳环':'glasses-earrings'
+  });
   const SAFETY_UNDERWEAR = Object.freeze({
     male:Object.freeze(['briefs']),
     female:Object.freeze(['panties','bra']),
@@ -129,12 +132,13 @@
       schema:2,candidateId:CANDIDATE_ID,morphs:identityMorphs(recipe),
       hair:HAIR[recipe.hair]||HAIR['自然长发'],
       clothing:clothingFor(recipe),
+      accessory:ACCESSORIES[recipe.accessory]||ACCESSORIES['无'],
       skinTint:SKIN_TINTS[recipe.skin]||SKIN_TINTS['自然肤色'],
       expressionMorphs:expressionMorphs(recipe.expression), action:recipe.action||'自然站立',voiceStyle:recipe.voiceStyle||'自然'
     });
   }
 
-  const api=Object.freeze({CANDIDATE_ID,HAIR,OUTFITS,SAFETY_UNDERWEAR,SKIN_TINTS,FACE_PRESETS,EXPRESSIONS,PRIMARY,CORRECTIVE_PAIRS,CORRECTIVE_NAMES,ALLOWED_MORPHS,bmi,addCorrectives,identityMorphs,expressionMorphs,clothingFor,mapRecipe});
+  const api=Object.freeze({CANDIDATE_ID,HAIR,OUTFITS,ACCESSORIES,SAFETY_UNDERWEAR,SKIN_TINTS,FACE_PRESETS,EXPRESSIONS,PRIMARY,CORRECTIVE_PAIRS,CORRECTIVE_NAMES,ALLOWED_MORPHS,bmi,addCorrectives,identityMorphs,expressionMorphs,clothingFor,mapRecipe});
   if(typeof window!=='undefined') window.RoleUnifiedHumanRecipe=api;
   if(typeof module!=='undefined'&&module.exports) module.exports=api;
 })();

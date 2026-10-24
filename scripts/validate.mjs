@@ -12,7 +12,7 @@ function run(args) {
 }
 for (const file of [
   'config/app.js', 'roles.js', 'memory.js', 'role-code.js', 'role-experience.js',
-  'role-presence.js', 'role-visual-recipe.js', 'role-face-rig.js', 'role-direct-viseme-rig.js', 'role-render-loop.js', 'role-body-rig.js', 'role-proportion-rig.js', 'role-appearance-rig.js',
+  'role-presence.js', 'role-visual-recipe.js', 'role-accessory-geometry.js', 'role-face-rig.js', 'role-direct-viseme-rig.js', 'role-render-loop.js', 'role-body-rig.js', 'role-proportion-rig.js', 'role-appearance-rig.js',
   'role-meshopt-support.js', 'role-human-manifest.js', 'role-asset-policy.js', 'role-human-asset-capability.js', 'role-human-renderer.js', 'role-render-recipe-bridge.js', 'role-chat-mode.js', 'role-voice-stage.js', 'role-voice-style.js',
   'role-unified-human-recipe.js', 'role-unified-human-runtime.js', 'role-unified-custom-chat.js', 'role-unified-production-gate.js',
   'role-code-compat.js', 'role-persistence.js', 'role-builder.js', 'role-creator-studio.js', 'role-creator-animated-presets.js', 'role-custom-visual.js', 'app.js'
@@ -41,7 +41,7 @@ for(const token of [
 ]) if(!presetPreviewSource.includes(token)) throw new Error(`3D预设运行时缺少: ${token}`);
 if(/esm\.sh/.test(presetPreviewSource)) throw new Error('3D预设禁止继续依赖 esm.sh');
 const buildSource=fs.readFileSync(path.join(root,'scripts/build-cloudflare.mjs'),'utf8');
-for(const token of ['build/three.module.js','meshopt_decoder.mjs','vendor/three','vendor/meshoptimizer']){
+for(const token of ['build/three.module.js','meshopt_decoder.mjs','vendor/three','vendor/meshoptimizer','role-accessory-geometry.js']){
   if(!buildSource.includes(token)) throw new Error(`Cloudflare构建缺少自托管3D运行时: ${token}`);
 }
 
@@ -90,4 +90,4 @@ run(['--disable-warning=ExperimentalWarning', 'scripts/test-chat-contract.mjs'])
 run(['scripts/test-chat-transport.mjs']);
 run(['scripts/test-role-code.mjs']);
 run(['scripts/test-site-update.mjs']);
-console.log('检查通过：自托管Three.js/Meshopt全身3D预设、统一自定义3D候选完整合同与生产硬门槛、移动端单预览/桌面双预览上限与点击优先、可见错误态、创作中心、普通/3D聊天门槛、安全动作、ARKit表情、语音风格、3D真人资产合同、Vitruvian真实morph映射、正式资产导入、运行时manifest、真实骨骼比例、真实外观rig、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
+console.log('检查通过：自托管Three.js/Meshopt全身3D预设、统一自定义3D候选完整合同与生产硬门槛、真实骨架饰品几何、移动端单预览/桌面双预览上限与点击优先、可见错误态、创作中心、普通/3D聊天门槛、安全动作、ARKit表情、语音风格、3D真人资产合同、Vitruvian真实morph映射、正式资产导入、运行时manifest、真实骨骼比例、真实外观rig、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
