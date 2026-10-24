@@ -2,6 +2,7 @@
   'use strict';
 
   const STYLE_ID = 'roleFullscreenStageStyles';
+  const PRIMARY_STAGE_ID = 'roleHumanStage';
   const FULLSCREEN_CSS = `
     .chat-main{position:relative;overflow:hidden}
     .chat-main>.role-human-stage{
@@ -141,12 +142,18 @@
     return true;
   }
 
+  function isPrimaryRenderer(renderer = null, stage = null) {
+    if (renderer?.container) return false;
+    const id = String(stage?.id || '');
+    return !id || id === PRIMARY_STAGE_ID;
+  }
+
   function mountStage(renderer = null, documentRef = null) {
     const doc = documentRef || (typeof document !== 'undefined' ? document : null);
     if (!doc) return false;
     const main = doc.querySelector?.('.chat-main');
-    const stage = renderer?.stage || doc.getElementById?.('roleHumanStage');
-    if (!main || !stage) return false;
+    const stage = renderer?.stage || doc.getElementById?.(PRIMARY_STAGE_ID);
+    if (!main || !stage || !isPrimaryRenderer(renderer, stage)) return false;
     if (stage.parentElement !== main) main.prepend(stage);
     renderer?.resize?.();
     const messages = doc.getElementById?.('messagesContainer');
@@ -162,7 +169,7 @@
     if (!current.__fullscreenStage) {
       const wrapped = function(...args) {
         const stage = current.apply(this, args);
-        mountStage(this, documentRef);
+        if (isPrimaryRenderer(this, stage)) mountStage(this, documentRef);
         return stage;
       };
       wrapped.__fullscreenStage = true;
@@ -195,7 +202,7 @@
     return false;
   }
 
-  const api = Object.freeze({STYLE_ID, FULLSCREEN_CSS, injectStyles, mountStage, patchRenderer, boot});
+  const api = Object.freeze({STYLE_ID, PRIMARY_STAGE_ID, FULLSCREEN_CSS, injectStyles, isPrimaryRenderer, mountStage, patchRenderer, boot});
   if (typeof window !== 'undefined') {
     window.RoleFullscreenStage = api;
     boot();
