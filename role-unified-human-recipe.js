@@ -16,6 +16,11 @@
     '运动': Object.freeze(['tshirt','shorts','shoes']), '甜美': Object.freeze(['dress','shoes']),
     '性感但自然': Object.freeze(['tshirt','skirt','shoes'])
   });
+  const SAFETY_UNDERWEAR = Object.freeze({
+    male:Object.freeze(['briefs']),
+    female:Object.freeze(['panties','bra']),
+    unspecified:Object.freeze(['briefs'])
+  });
   const SKIN_TINTS = Object.freeze({'偏白':'#f2d1bf','自然肤色':'#d7a17f','小麦肤色':'#b97b55','深肤色':'#774b36'});
   const FACE_PRESETS = Object.freeze({
     '自然耐看': Object.freeze({}),
@@ -113,17 +118,23 @@
     for(const [name,weight] of Object.entries(source)) add(out,name,weight);
     return Object.freeze(out);
   }
+  function clothingFor(recipe={}){
+    const gender=['male','female'].includes(recipe.gender)?recipe.gender:'unspecified';
+    const safety=SAFETY_UNDERWEAR[gender]||SAFETY_UNDERWEAR.unspecified;
+    const outfit=OUTFITS[recipe.outfit]||OUTFITS['日常休闲'];
+    return Object.freeze([...new Set([...safety,...outfit])]);
+  }
   function mapRecipe(recipe={}){
     return Object.freeze({
-      schema:2,candidateId:CANDIDATE_ID,morphs:identityMorphs(recipe),
+      schema:3,candidateId:CANDIDATE_ID,morphs:identityMorphs(recipe),
       hair:HAIR[recipe.hair]||HAIR['自然长发'],
-      clothing:Object.freeze([...(OUTFITS[recipe.outfit]||OUTFITS['日常休闲'])]),
+      clothing:clothingFor(recipe),
       skinTint:SKIN_TINTS[recipe.skin]||SKIN_TINTS['自然肤色'],
       expressionMorphs:expressionMorphs(recipe.expression), action:recipe.action||'自然站立',voiceStyle:recipe.voiceStyle||'自然'
     });
   }
 
-  const api=Object.freeze({CANDIDATE_ID,HAIR,OUTFITS,SKIN_TINTS,FACE_PRESETS,EXPRESSIONS,PRIMARY,CORRECTIVE_PAIRS,CORRECTIVE_NAMES,ALLOWED_MORPHS,bmi,addCorrectives,identityMorphs,expressionMorphs,mapRecipe});
+  const api=Object.freeze({CANDIDATE_ID,HAIR,OUTFITS,SAFETY_UNDERWEAR,SKIN_TINTS,FACE_PRESETS,EXPRESSIONS,PRIMARY,CORRECTIVE_PAIRS,CORRECTIVE_NAMES,ALLOWED_MORPHS,bmi,addCorrectives,identityMorphs,expressionMorphs,clothingFor,mapRecipe});
   if(typeof window!=='undefined') window.RoleUnifiedHumanRecipe=api;
   if(typeof module!=='undefined'&&module.exports) module.exports=api;
 })();

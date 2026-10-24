@@ -87,7 +87,8 @@ const CORRECTIVES = CORRECTIVE_PAIRS.flatMap(([a,b]) => a.flatMap(x => b.map(y =
 const REQUIRED_JOINT_MORPHS = [...BODY_PRIMARY, ...BREAST_PRIMARY, ...CORRECTIVES];
 const BASE_REQUIRED_MORPHS = [...BODY_PRIMARY, ...BREAST_PRIMARY, ...BREAST_DETAILS, ...FACE_IDENTITY, ...ARKIT, ...VISEMES, ...CORRECTIVES];
 const HAIR = ['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
-const CLOTHING = ['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
+const SAFETY_UNDERWEAR = ['briefs','panties','bra'];
+const CLOTHING = [...SAFETY_UNDERWEAR,'dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
 const HAIR_REQUIRED_MORPHS = ['gender_female','gender_male','weight_min','weight_max','height_short','height_tall','face_forehead_decr','face_forehead_incr','face_ear_size_decr','face_ear_size_incr'];
 const CLOTHING_REQUIRED_MORPHS = ['gender_female','gender_male','weight_min','weight_max','height_short','height_tall'];
 
@@ -143,6 +144,7 @@ function main(argv = process.argv.slice(2)) {
     ok:true,
     defaultMorphsZero:true,
     moduleDefaultMorphsZero:true,
+    safetyUnderwear:[...SAFETY_UNDERWEAR],
     moduleCount,
     targetNameCount:names.size,
     arkitCount:ARKIT.filter(name=>names.has(name)).length,
@@ -157,5 +159,5 @@ module.exports = {
   readGlbJson, meshTargetNames, collectTargetNames, assertMorphContract, assertDefaultMorphsZero,
   assertJointsContract, assertModuleContracts, assertModuleDefaultsZero,
   BODY_PRIMARY, BREAST_PRIMARY, BREAST_DETAILS, FACE_IDENTITY, ARKIT, VISEMES, CORRECTIVES,
-  REQUIRED_JOINT_MORPHS, BASE_REQUIRED_MORPHS, HAIR, CLOTHING, HAIR_REQUIRED_MORPHS, CLOTHING_REQUIRED_MORPHS
+  REQUIRED_JOINT_MORPHS, BASE_REQUIRED_MORPHS, HAIR, SAFETY_UNDERWEAR, CLOTHING, HAIR_REQUIRED_MORPHS, CLOTHING_REQUIRED_MORPHS
 };

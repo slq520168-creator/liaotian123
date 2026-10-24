@@ -143,6 +143,19 @@
     document.head.appendChild(style);
   }
 
+  function creatorModalActive() {
+    if (typeof document === 'undefined') return false;
+    return Boolean(document.getElementById('createModalOverlay')?.classList.contains('active'));
+  }
+
+  function syncHumanRendererWhenSafe() {
+    if (typeof window === 'undefined' || creatorModalActive()) return false;
+    requestAnimationFrame(() => {
+      if (!creatorModalActive()) window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
+    });
+    return true;
+  }
+
   function installSwitchWrapper() {
     if (typeof switchCharacter !== 'function' || switchCharacter.__customVisual) return false;
     const baseSwitch = switchCharacter;
@@ -154,7 +167,7 @@
         applyRoleTheme(char);
       }
       const result = baseSwitch.call(this, charId, ...args);
-      requestAnimationFrame(() => window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());
+      syncHumanRendererWhenSafe();
       return result;
     };
     wrapped.__customVisual = true;
@@ -192,6 +205,21 @@
     return true;
   }
 
+  function installCreateModalSyncBridge() {
+    if (typeof document === 'undefined') return false;
+    const modal = document.getElementById('createModalOverlay');
+    if (!modal || modal.dataset.humanSyncBridge === '1') return false;
+    modal.dataset.humanSyncBridge = '1';
+    let wasActive = modal.classList.contains('active');
+    const observer = new MutationObserver(() => {
+      const active = modal.classList.contains('active');
+      if (wasActive && !active) syncHumanRendererWhenSafe();
+      wasActive = active;
+    });
+    observer.observe(modal, {attributes:true, attributeFilter:['class']});
+    return true;
+  }
+
   function decorateExistingCharacters() {
     if (typeof characters === 'undefined' || !Array.isArray(characters)) return 0;
     let changed = 0;
@@ -212,10 +240,11 @@
     decorateExistingCharacters();
     installSwitchWrapper();
     installCreateFormBridge();
-    requestAnimationFrame(() => window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());
+    installCreateModalSyncBridge();
+    syncHumanRendererWhenSafe();
     window.addEventListener('humanmanifestready', () => {
       decorateExistingCharacters();
-      window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
+      syncHumanRendererWhenSafe();
     });
     return true;
   }
@@ -223,8 +252,8 @@
   const api = Object.freeze({
     DEFAULT_AVATAR, LEGACY_FALLBACK_URL, CUSTOM_HUMAN_ASSET, isCustomCharacter, capabilityApi, configuredCandidates,
     customHumanSelection, stableHue, customHumanAsset, isLegacyFallbackAsset, decorateCharacter,
-    generatedAvatar, needsGeneratedAvatar, ensureCustomAvatar, applyRoleTheme,
-    injectThemeStyles, installSwitchWrapper, installCreateFormBridge, decorateExistingCharacters, boot
+    generatedAvatar, needsGeneratedAvatar, ensureCustomAvatar, applyRoleTheme, creatorModalActive, syncHumanRendererWhenSafe,
+    injectThemeStyles, installSwitchWrapper, installCreateFormBridge, installCreateModalSyncBridge, decorateExistingCharacters, boot
   });
 
   if (typeof window !== 'undefined') {

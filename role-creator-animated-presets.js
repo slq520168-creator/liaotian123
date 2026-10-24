@@ -8,7 +8,7 @@
   const GLTF_URL=localUrl('vendor/three/examples/jsm/loaders/GLTFLoader.js');
   const SKEL_URL=localUrl('vendor/three/examples/jsm/utils/SkeletonUtils.js');
   const MESHOPT_URL=localUrl('vendor/meshoptimizer/meshopt_decoder.mjs');
-  const ACTIVE_MOBILE=4,ACTIVE_DESKTOP=6;
+  const ACTIVE_MOBILE=1,ACTIVE_DESKTOP=2;
   const PROFILES=[
     {name:'自然陪伴',sx:1.00,sy:1.00,sz:1.00,yaw:-0.04,accent:0xffd7e5,cloth:0xd7dce8,pace:0.85,smile:0.05},
     {name:'温柔治愈',sx:0.98,sy:1.01,sz:0.99,yaw:0.05,accent:0xffc6dc,cloth:0xf0d8df,pace:0.72,smile:0.22},
@@ -138,6 +138,12 @@
   function dispose(card,redrain=true){
     nextToken(card);const r=runtimes.get(card);if(!r)return;r.disposed=true;cancelAnimationFrame(r.raf);r.resizeObserver?.disconnect?.();r.ownedMaterials?.forEach(m=>m.dispose?.());r.groundGeometry?.dispose?.();r.groundMaterial?.dispose?.();r.renderer?.dispose?.();r.renderer?.forceContextLoss?.();r.renderer?.domElement?.remove?.();runtimes.delete(card);if(redrain)drain();
   }
+  function releaseCreatorPreviews(){
+    for(const card of [...mounting])nextToken(card);
+    mounting.clear();
+    for(const card of [...runtimes.keys()])dispose(card,false);
+    visibleCards.clear();
+  }
   function requestMount(card,force=false){
     if(!visibleCards.has(card)||runtimes.has(card)||mounting.has(card)||(!force&&activeCount()>=activeLimit()))return;
     const token=nextToken(card),{profile,index}=profileFor(card);mounting.add(card);
@@ -192,6 +198,13 @@
 
   const mo=new MutationObserver(()=>requestAnimationFrame(decorate));
   function boot(){const studio=document.getElementById('roleCreatorStudio');if(!studio){setTimeout(boot,80);return;}mo.observe(studio,{childList:true,subtree:true});decorate();}
+  const createForm=document.getElementById('createRoleForm');
+  const createModal=document.getElementById('createModalOverlay');
+  createForm?.addEventListener('submit',releaseCreatorPreviews,{capture:true});
+  if(createModal){
+    const modalObserver=new MutationObserver(()=>{if(!createModal.classList.contains('active'))releaseCreatorPreviews();else requestAnimationFrame(()=>{decorate();drain();});});
+    modalObserver.observe(createModal,{attributes:true,attributeFilter:['class']});
+  }
   window.addEventListener('resize',()=>{for(const r of runtimes.values())r.resize?.();drain();},{passive:true});
   document.addEventListener('visibilitychange',()=>{for(const [card,r]of runtimes){r.visible=!document.hidden&&visibleCards.has(card);}});
   boot();

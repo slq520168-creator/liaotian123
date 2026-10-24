@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const visual = require('../role-custom-visual.js');
 
 test('custom characters receive only the explicit MPFB reference fallback by default', () => {
@@ -52,4 +53,11 @@ test('preset characters are not silently replaced', () => {
 test('custom visual theme is stable per role', () => {
   assert.equal(visual.stableHue('custom_abc|姐姐'), visual.stableHue('custom_abc|姐姐'));
   assert.notEqual(visual.stableHue('custom_abc|姐姐'), visual.stableHue('custom_xyz|哥哥'));
+});
+
+test('creator modal gates the expensive main human renderer until the modal closes', () => {
+  const source=fs.readFileSync('role-custom-visual.js','utf8');
+  assert(source.includes('function syncHumanRendererWhenSafe()'));
+  assert(source.includes("creatorModalActive()) return false"));
+  assert(source.includes('if (wasActive && !active) syncHumanRendererWhenSafe();'));
 });

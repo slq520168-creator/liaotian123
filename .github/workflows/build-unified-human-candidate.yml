@@ -95,9 +95,9 @@ jobs:
             output/hair.json output/hair_short02.glb output/hair_bob02.glb output/hair_long01.glb \
             output/hair_ponytail01.glb output/hair_braid01.glb output/hair_short04.glb \
             output/hair_bob01.glb output/hair_afro01.glb \
-            output/clothing.json output/clothing_dress.glb output/clothing_jeans.glb \
-            output/clothing_tshirt.glb output/clothing_hoodie.glb output/clothing_jacket.glb \
-            output/clothing_skirt.glb output/clothing_shorts.glb output/clothing_shoes.glb; do
+            output/clothing.json output/clothing_briefs.glb output/clothing_panties.glb output/clothing_bra.glb \
+            output/clothing_dress.glb output/clothing_jeans.glb output/clothing_tshirt.glb output/clothing_hoodie.glb \
+            output/clothing_jacket.glb output/clothing_skirt.glb output/clothing_shorts.glb output/clothing_shoes.glb; do
             test -s "$f"
           done
 
@@ -126,7 +126,7 @@ jobs:
           const rawNodeNames=(g.nodes||[]).map(n=>String(n.name||'')).filter(Boolean);
           const nodeNames=rawNodeNames.map(n=>n.toLowerCase()), bones=['pelvis','spine_01','spine_02','spine_03','neck_01','head','upperarm_l','upperarm_r','thigh_l','thigh_r'],missingBones=bones.filter(n=>!nodeNames.includes(n));
           const hair=['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
-          const clothing=['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
+          const clothing=['briefs','panties','bra','dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
           const sizes=(kind,list)=>Object.fromEntries(list.map(id=>[id,fs.statSync(`output/${kind}_${id}.glb`).size]));
           let licenses=null,licenseError=''; try{licenses=JSON.parse(fs.readFileSync('output/asset_licenses.json','utf8'));}catch(error){licenseError=String(error?.message||error);}
           const report={
@@ -136,11 +136,12 @@ jobs:
             missingArkit,missingVisemes,missingBase,missingBones,
             diagnostics:{nodeNames:rawNodeNames.sort(),targetNames:[...names].sort(),licenseError},
             modules:{hair:sizes('hair',hair),clothing:sizes('clothing',clothing)},
+            safetyUnderwear:{male:['briefs'],female:['panties','bra']},
             licenseInventory:Boolean(licenses && typeof licenses==='object'),
             mobile:{validated:false,reason:'requires optimized production bundle plus real-device FPS/memory validation before promotion'}
           };
           fs.writeFileSync('output/unified-human-report.json',JSON.stringify(report,null,2)+'\n');
-          console.log(JSON.stringify({arkitCount:report.arkitCount,visemeCount:report.visemeCount,morphTargetNameCount:report.morphTargetNameCount,skins:report.skins,missingArkit,missingVisemes,missingBase,missingBones,licenseError},null,2));
+          console.log(JSON.stringify({arkitCount:report.arkitCount,visemeCount:report.visemeCount,morphTargetNameCount:report.morphTargetNameCount,skins:report.skins,missingArkit,missingVisemes,missingBase,missingBones,licenseError,safetyUnderwear:report.safetyUnderwear},null,2));
           if(missingArkit.length||missingVisemes.length||missingBase.length||missingBones.length||(g.skins||[]).length<1||names.size<150||!report.licenseInventory) throw new Error('unified human contract failed');
           NODE
 
@@ -153,7 +154,7 @@ jobs:
           const fs=require('fs');
           const MiB=1024*1024;
           const hair=['short02','bob02','long01','ponytail01','braid01','short04','bob01','afro01'];
-          const clothing=['dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
+          const clothing=['briefs','panties','bra','dress','jeans','tshirt','hoodie','jacket','skirt','shorts','shoes'];
           function glb(path){
             const b=fs.readFileSync(path); if(b.toString('ascii',0,4)!=='glTF')throw new Error(`not GLB: ${path}`);
             let off=12,json=null; while(off+8<=b.length){const len=b.readUInt32LE(off),type=b.readUInt32LE(off+4);off+=8;if(type===0x4E4F534A){json=JSON.parse(b.subarray(off,off+len).toString('utf8').replace(/\u0000+$/,''));break;}off+=len;}
@@ -178,18 +179,20 @@ jobs:
           }
           const hairReport=hair.map(id=>inspect('hair',id));
           const clothingReport=clothing.map(id=>inspect('clothing',id));
+          const byId=id=>clothingReport.find(x=>x.id===id)?.bytes||0;
           const largestHair=Math.max(...hairReport.map(x=>x.bytes));
           const largestClothing=Math.max(...clothingReport.map(x=>x.bytes));
-          const worstInitial=base.bytes+largestHair+largestClothing;
-          const budget={baseMax:14*MiB,moduleMax:6*MiB,worstInitialMax:22*MiB,baseBytes:base.bytes,largestHairBytes:largestHair,largestClothingBytes:largestClothing,worstInitialBytes:worstInitial};
+          const safetyUnderwearBytes=Math.max(byId('briefs'),byId('panties')+byId('bra'));
+          const worstInitial=base.bytes+largestHair+largestClothing+safetyUnderwearBytes;
+          const budget={baseMax:14*MiB,moduleMax:6*MiB,worstInitialMax:22*MiB,baseBytes:base.bytes,largestHairBytes:largestHair,largestClothingBytes:largestClothing,safetyUnderwearBytes,worstInitialBytes:worstInitial};
           const staticBudgetPassed=base.bytes<=budget.baseMax&&largestHair<=budget.moduleMax&&largestClothing<=budget.moduleMax&&worstInitial<=budget.worstInitialMax;
           const report=JSON.parse(fs.readFileSync('output/unified-human-report.json','utf8'));
           report.modularCompatibility={passed:true,hair:hairReport,clothing:clothingReport};
           report.mobile={...report.mobile,staticBudgetPassed,budget};
           fs.writeFileSync('output/unified-human-report.json',JSON.stringify(report,null,2)+'\n');
-          const manifest={schema:1,status:'candidate-only',license:'CC0',source:report.source,base:{url:'base_body.glb',bytes:base.bytes},modules:{hair:Object.fromEntries(hairReport.map(x=>[x.id,{url:`hair_${x.id}.glb`,bytes:x.bytes}])),clothing:Object.fromEntries(clothingReport.map(x=>[x.id,{url:`clothing_${x.id}.glb`,bytes:x.bytes}]))},capabilities:{skeleton:true,body:true,faceIdentity:true,expressions:true,visemes:true,hair:true,clothing:true,mobile:false},mobile:{validated:false,staticBudgetPassed,budget,reason:'static payload budget is not a substitute for real iPhone/Android FPS and memory validation'}};
+          const manifest={schema:1,status:'candidate-only',license:'CC0',source:report.source,base:{url:'base_body.glb',bytes:base.bytes},modules:{hair:Object.fromEntries(hairReport.map(x=>[x.id,{url:`hair_${x.id}.glb`,bytes:x.bytes}])),clothing:Object.fromEntries(clothingReport.map(x=>[x.id,{url:`clothing_${x.id}.glb`,bytes:x.bytes}]))},safetyUnderwear:{male:['briefs'],female:['panties','bra']},capabilities:{skeleton:true,body:true,faceIdentity:true,expressions:true,visemes:true,hair:true,clothing:true,mobile:false},mobile:{validated:false,staticBudgetPassed,budget,reason:'static payload budget is not a substitute for real iPhone/Android FPS and memory validation'}};
           fs.writeFileSync('output/unified-human-manifest.json',JSON.stringify(manifest,null,2)+'\n');
-          console.log(JSON.stringify({modularCompatibility:true,staticBudgetPassed,budget},null,2));
+          console.log(JSON.stringify({modularCompatibility:true,staticBudgetPassed,safetyUnderwear:manifest.safetyUnderwear,budget},null,2));
           if(!staticBudgetPassed)throw new Error('candidate exceeds static mobile payload budget; optimize before promotion');
           NODE
 
@@ -214,7 +217,7 @@ jobs:
           for f in \
             base_body.glb base_body.joints.json hair.json clothing.json unified-human-report.json unified-human-manifest.json asset_licenses.json \
             hair_short02.glb hair_bob02.glb hair_long01.glb hair_ponytail01.glb hair_braid01.glb hair_short04.glb hair_bob01.glb hair_afro01.glb \
-            clothing_dress.glb clothing_jeans.glb clothing_tshirt.glb clothing_hoodie.glb clothing_jacket.glb clothing_skirt.glb clothing_shorts.glb clothing_shoes.glb; do
+            clothing_briefs.glb clothing_panties.glb clothing_bra.glb clothing_dress.glb clothing_jeans.glb clothing_tshirt.glb clothing_hoodie.glb clothing_jacket.glb clothing_skirt.glb clothing_shorts.glb clothing_shoes.glb; do
             test -s "/tmp/cc/output/$f"
             cp "/tmp/cc/output/$f" candidate/
           done
@@ -239,11 +242,11 @@ jobs:
           for f in \
             base_body.glb base_body.joints.json hair.json clothing.json unified-human-report.json unified-human-manifest.json asset_licenses.json \
             hair_short02.glb hair_bob02.glb hair_long01.glb hair_ponytail01.glb hair_braid01.glb hair_short04.glb hair_bob01.glb hair_afro01.glb \
-            clothing_dress.glb clothing_jeans.glb clothing_tshirt.glb clothing_hoodie.glb clothing_jacket.glb clothing_skirt.glb clothing_shorts.glb clothing_shoes.glb; do
+            clothing_briefs.glb clothing_panties.glb clothing_bra.glb clothing_dress.glb clothing_jeans.glb clothing_tshirt.glb clothing_hoodie.glb clothing_jacket.glb clothing_skirt.glb clothing_shorts.glb clothing_shoes.glb; do
             test -s "candidate/$f"
             cp "candidate/$f" "assets/humans/unified/$f"
           done
-          node -e "const m=require('./assets/humans/unified/unified-human-manifest.json');if(m.status!=='candidate-only'||m.license!=='CC0'||m.capabilities.mobile!==false||m.mobile.validated!==false||m.mobile.staticBudgetPassed!==true)process.exit(1)"
+          node -e "const m=require('./assets/humans/unified/unified-human-manifest.json');if(m.status!=='candidate-only'||m.license!=='CC0'||m.capabilities.mobile!==false||m.mobile.validated!==false||m.mobile.staticBudgetPassed!==true||!m.safetyUnderwear?.male?.includes('briefs')||!m.safetyUnderwear?.female?.includes('panties')||!m.safetyUnderwear?.female?.includes('bra'))process.exit(1)"
           git add -- assets/humans/unified
           if git diff --cached --quiet; then
             echo 'changed=false' >> "$GITHUB_OUTPUT"
@@ -273,6 +276,9 @@ jobs:
           npm run cf:check
           test -s assets/humans/unified/base_body.glb
           test -s assets/humans/unified/unified-human-manifest.json
+          test -s assets/humans/unified/clothing_briefs.glb
+          test -s assets/humans/unified/clothing_panties.glb
+          test -s assets/humans/unified/clothing_bra.glb
 
       - name: Deploy persisted candidate assets to existing Cloudflare production
         shell: bash
@@ -303,9 +309,9 @@ jobs:
             return 1
           }
           fetch unified-human-manifest.json
-          node -e "const fs=require('fs'),m=JSON.parse(fs.readFileSync('$tmp/unified-human-manifest.json'));if(m.status!=='candidate-only'||m.license!=='CC0'||m.capabilities.mobile!==false||m.mobile.validated!==false||m.mobile.staticBudgetPassed!==true)process.exit(1)"
-          for file in base_body.glb hair_long01.glb hair_short04.glb hair_ponytail01.glb clothing_tshirt.glb clothing_dress.glb clothing_jacket.glb clothing_shoes.glb; do
+          node -e "const fs=require('fs'),m=JSON.parse(fs.readFileSync('$tmp/unified-human-manifest.json'));if(m.status!=='candidate-only'||m.license!=='CC0'||m.capabilities.mobile!==false||m.mobile.validated!==false||m.mobile.staticBudgetPassed!==true||!m.safetyUnderwear?.male?.includes('briefs')||!m.safetyUnderwear?.female?.includes('panties')||!m.safetyUnderwear?.female?.includes('bra'))process.exit(1)"
+          for file in base_body.glb hair_long01.glb hair_short04.glb hair_ponytail01.glb clothing_briefs.glb clothing_panties.glb clothing_bra.glb clothing_tshirt.glb clothing_dress.glb clothing_jacket.glb clothing_shoes.glb; do
             fetch "$file"
             test "$(wc -c < "$tmp/$file")" -gt 100000
           done
-          echo 'Persisted unified CC0 candidate assets are live; mobile gate remains closed.'
+          echo 'Persisted unified CC0 candidate assets are live with safety underwear; mobile gate remains closed.'
