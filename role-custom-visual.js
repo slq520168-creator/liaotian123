@@ -54,11 +54,19 @@
   function decorateCharacter(char, candidates = null) {
     if (!isCustomCharacter(char)) return false;
     const selection = customHumanSelection(candidates);
-    // Never promote an arbitrary or incomplete model. Until a candidate passes the
-    // complete capability contract, custom roles stay on the explicit reference fallback.
+    // Never attach an incomplete/reference GLB to a live custom role. The main
+    // renderer would decode it as soon as creation closes, blocking mobile UI
+    // and visually substituting a half-finished body. Keep custom roles on the
+    // lightweight avatar/text path until the full production contract passes.
+    if (!selection.complete) {
+      delete char.humanAsset;
+      char.humanAssetStatus = 'candidate-gated';
+      char.humanAssetId = selection.id || '';
+      return true;
+    }
     char.humanAsset = {...selection.descriptor};
-    char.humanAssetStatus = selection.complete ? 'production' : 'reference-fallback';
-    char.humanAssetId = selection.id || 'reference-mpfb';
+    char.humanAssetStatus = 'production';
+    char.humanAssetId = selection.id || '';
     return true;
   }
 

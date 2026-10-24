@@ -3,24 +3,22 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const visual = require('../role-custom-visual.js');
 
-test('custom characters receive only the explicit MPFB reference fallback by default', () => {
+test('custom roles stay lightweight until a complete custom 3D candidate exists', () => {
   const char = {id: 'custom_abc', name: '姐姐'};
   assert.equal(visual.decorateCharacter(char), true);
-  assert.equal(char.humanAsset.url, 'assets/humans/reference-mpfb.glb');
-  assert.equal(char.humanAsset.minMorphTargets, 52);
-  assert.equal(char.humanAsset.framing, 'portrait');
-  assert.equal(char.humanAssetStatus, 'reference-fallback');
+  assert.equal(char.humanAsset, undefined);
+  assert.equal(char.humanAssetStatus, 'candidate-gated');
   assert.equal(char.humanAssetId, 'reference-mpfb');
 });
 
-test('legacy full-body fallback is migrated to safe portrait reference framing', () => {
+test('legacy reference fallback is removed instead of decoded after role creation', () => {
   const char = {id: 'custom_old', name: '姐姐', humanAsset: {url:'assets/humans/reference-mpfb.glb', framing:'full', minMorphTargets:52}};
   assert.equal(visual.decorateCharacter(char), true);
-  assert.equal(char.humanAsset.framing, 'portrait');
-  assert.equal(char.humanAssetStatus, 'reference-fallback');
+  assert.equal(char.humanAsset, undefined);
+  assert.equal(char.humanAssetStatus, 'candidate-gated');
 });
 
-test('a fully validated candidate can replace the reference fallback', () => {
+test('a fully validated candidate can replace the gated state', () => {
   const candidate = {
     id:'unified-charactercreator', status:'validated',
     descriptor:{url:'assets/humans/unified-charactercreator.glb',framing:'portrait',minMorphTargets:52},
@@ -33,15 +31,15 @@ test('a fully validated candidate can replace the reference fallback', () => {
   assert.equal(char.humanAssetId,'unified-charactercreator');
 });
 
-test('an incomplete candidate is never promoted just because it has a GLB URL', () => {
+test('an incomplete candidate is never attached just because it has a GLB URL', () => {
   const candidate = {
     id:'body-only', descriptor:{url:'assets/humans/reference-vitruvian-morph.glb'},
     capabilities:{skeleton:true,body:true,faceIdentity:false,expressions:true,visemes:true,hair:false,clothing:false,mobile:false,license:'CC0'}
   };
   const char = {id:'custom_bodyonly',name:'候选'};
   visual.decorateCharacter(char,[candidate]);
-  assert.equal(char.humanAsset.url,'assets/humans/reference-mpfb.glb');
-  assert.equal(char.humanAssetStatus,'reference-fallback');
+  assert.equal(char.humanAsset,undefined);
+  assert.equal(char.humanAssetStatus,'candidate-gated');
 });
 
 test('preset characters are not silently replaced', () => {
