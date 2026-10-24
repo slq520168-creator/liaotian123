@@ -92,7 +92,8 @@ def main() -> None:
     # mobile GPUs. Keep the full build during fitting, then prune the glTF target
     # references. Blender may duplicate targetNames into primitive.extras; those
     # copies must be removed so mesh.extras.targetNames remains the single
-    # canonical ordering shared by targets and weights.
+    # canonical ordering shared by targets and weights. The generated asset is a
+    # neutral Basis, so exported default morph weights are always normalized to 0.
     prune_block = r'''
 
 def _cc_keep_runtime_morph(name, policy):
@@ -163,10 +164,12 @@ def _cc_prune_runtime_morphs(path, mode):
         if "weights" in mesh:
             weights = list(mesh["weights"])
             assert len(weights) == len(names), "%s: targetNames/weights mismatch before prune" % mesh_name
-            if len(keep) != len(names):
-                mesh["weights"] = [weights[i] for i in keep]
+            had_nonzero = any(abs(float(value)) > 1e-7 for value in weights)
+            mesh["weights"] = [0.0] * len(kept_names)
+            if len(keep) != len(names) or had_nonzero:
                 changed = True
             assert len(mesh["weights"]) == len(kept_names), "%s: weights mismatch after prune" % mesh_name
+            assert not any(abs(float(value)) > 1e-12 for value in mesh["weights"]), "%s: non-zero default morph weight after normalization" % mesh_name
         if kept_names != names:
             mesh.setdefault("extras", {})["targetNames"] = kept_names
             changed = True
@@ -198,7 +201,7 @@ for _fn in sorted(os.listdir(out_dir)):
     text = replace_once(text, old_done, new_done, 'write in-build success marker')
 
     path.write_text(text, encoding='utf-8')
-    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} license=output morph_prune=runtime build_marker=inside file={path}')
+    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} license=output morph_prune=runtime-neutral build_marker=inside file={path}')
 
 
 if __name__ == '__main__':
