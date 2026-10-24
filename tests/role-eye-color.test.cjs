@@ -36,9 +36,18 @@ test('runtime tint matches exact Iris material and leaves sclera/cornea/skin unt
   assert.equal(irisLike.needsUpdate,false);
 });
 
-test('creator eye UI states that only Iris is tinted',()=>{
+test('required Iris tint fails closed instead of silently accepting a fake eye color',()=>{
+  const eyeWhite={name:'Eye',color:{set(){throw new Error('sclera must not be tinted');}}};
+  const cornea={name:'Cornea',color:{set(){throw new Error('cornea must not be tinted');}}};
+  const root={traverse(visit){visit({material:[eyeWhite,cornea]});}};
+  assert.equal(eye.tintNamedMaterial(root,'Iris','#123456'),0);
+  assert.throws(()=>eye.requireNamedMaterialTint(root,'Iris','#123456'),/Iris tint material unavailable/);
+});
+
+test('creator eye UI states that only Iris is tinted and renderer enforces that contract',()=>{
   const source=fs.readFileSync('role-eye-color.js','utf8');
-  assert(source.includes("tintNamedMaterial(this.root,'Iris',mapped.eyeTint)"));
+  assert(source.includes("requireNamedMaterialTint(this.root,'Iris',mapped.eyeTint)"));
   assert(source.includes('只染 Iris 虹膜材质'));
   assert(source.includes("char.humanAssetId!=='unified-charactercreator'"));
+  assert(source.includes('统一3D保持关闭'));
 });

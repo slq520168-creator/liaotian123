@@ -67,11 +67,21 @@ test('candidate cancellation also invalidates the underlying GLB renderer load',
   assert.equal(fallback.loadToken,10);
 });
 
-test('skin tint respects asset tint gain and only updates each material once',()=>{
+test('skin tint respects asset tint gain, deduplicates material and excludes non-skin surfaces',()=>{
   const color={value:'',gain:1,set(value){this.value=value;return this;},multiplyScalar(value){this.gain*=value;return this;}};
   const skin={name:'Skin',color,userData:{tint:{gain:1.5}},needsUpdate:false};
-  const cloth={name:'Dress',color:{set(){throw new Error('clothing must not be tinted');}}};
-  const scene={traverse(visit){visit({material:skin});visit({material:[skin,cloth]});}};
+  const forbidden=name=>({name,color:{set(){throw new Error(`${name} must not be skin tinted`);}},needsUpdate:false});
+  const eyes=forbidden('Eyes'),iris=forbidden('Iris'),teeth=forbidden('Teeth'),tongue=forbidden('Tongue'),cloth=forbidden('Dress');
+  const scene={traverse(visit){visit({material:skin});visit({material:[skin,eyes,iris,teeth,tongue,cloth]});}};
   assert.equal(custom.tintSkin(scene,'#d7a17f'),1);
   assert.equal(color.value,'#d7a17f');assert.equal(color.gain,1.5);assert.equal(skin.needsUpdate,true);
+  for(const material of [eyes,iris,teeth,tongue,cloth])assert.equal(material.needsUpdate,false);
+});
+
+test('required skin tint fails closed when the base asset exposes no skin material',()=>{
+  const eyes={name:'Eyes',color:{set(){throw new Error('eyes must not be tinted');}},needsUpdate:false};
+  const teeth={name:'Teeth',color:{set(){throw new Error('teeth must not be tinted');}},needsUpdate:false};
+  const scene={traverse(visit){visit({material:[eyes,teeth]});}};
+  assert.equal(custom.tintSkin(scene,'#d7a17f'),0);
+  assert.throws(()=>custom.requireSkinTint(scene,'#d7a17f'),/skin tint material unavailable/);
 });

@@ -72,6 +72,13 @@
     return changed;
   }
 
+  function requireNamedMaterialTint(root,name,hex){
+    if(!hex)return 0;
+    const changed=tintNamedMaterial(root,name,hex);
+    if(changed<1)throw new Error(`${name} tint material unavailable`);
+    return changed;
+  }
+
   function installNormalizer(visualApi){
     if(typeof normalizeCustomCharacter!=='function'||normalizeCustomCharacter.__eyeColor)return false;
     const base=normalizeCustomCharacter;
@@ -169,9 +176,15 @@
       if(!char||char.isPreset||char.humanAssetId!=='unified-charactercreator')return ok;
       const recipe=win.RoleVisualRecipe?.forCharacter?.(char)||char.visualRecipe||{};
       const mapped=win.RoleUnifiedHumanRecipe?.mapRecipe?.(recipe)||{};
-      const changed=mapped.eyeTint?tintNamedMaterial(this.root,'Iris',mapped.eyeTint):0;
-      this.__irisTintApplied=changed>0;
-      if(mapped.eyeTint&&!changed)console.warn('Iris 材质不存在，保持资产默认眼睛颜色。');
+      try{
+        const changed=requireNamedMaterialTint(this.root,'Iris',mapped.eyeTint);
+        this.__irisTintApplied=changed>0;
+      }catch(error){
+        this.__irisTintApplied=false;
+        console.warn('Iris 材质不存在，统一3D保持关闭。',error);
+        this.clearModel?.();
+        return false;
+      }
       return ok;
     };
     wrapped.__eyeColorTint=true;proto.loadCharacter=wrapped;return true;
@@ -187,7 +200,7 @@
     return true;
   }
 
-  const api=Object.freeze({DEFAULT_EYE_COLOR,EYE_TINTS,EYE_OPTIONS,normalizeEyeColor,parseEyeColor,upsertEyeColor,extendVisualApi,extendUnifiedApi,tintNamedMaterial,currentCreatorColor,syncCreatorLine,ensureCreatorUi,installCreatorUi,patchRenderer,boot});
+  const api=Object.freeze({DEFAULT_EYE_COLOR,EYE_TINTS,EYE_OPTIONS,normalizeEyeColor,parseEyeColor,upsertEyeColor,extendVisualApi,extendUnifiedApi,tintNamedMaterial,requireNamedMaterialTint,currentCreatorColor,syncCreatorLine,ensureCreatorUi,installCreatorUi,patchRenderer,boot});
   if(typeof window!=='undefined'){window.RoleEyeColor=api;boot(window);}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
