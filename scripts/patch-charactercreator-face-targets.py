@@ -67,8 +67,8 @@ def main() -> None:
     new_files = old_files + '\nTARGET_FILES.update(dict(ARKIT_MORPHS + META_VISEME_MORPHS))'
     text = replace_once(text, old_files, new_files, 'extend target files')
 
-    old_zero = 'ZERO_BELOW = {"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5}'
-    new_zero = 'ZERO_BELOW = {"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5, "arkit": 5e-5, "viseme": 5e-5}'
+    old_zero = '{"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5}'
+    new_zero = '{"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5, "arkit": 5e-5, "viseme": 5e-5}'
     text = replace_once(text, old_zero, new_zero, 'extend sparse thresholds')
 
     old_full = '        full = os.path.join(MPFB_TARGETS, rel + ".target.gz")\n        assert os.path.isfile(full), "target missing: %s" % full'
@@ -89,10 +89,10 @@ def main() -> None:
 
     # The upstream exporter intentionally puts every morph target on every mesh.
     # That is useful while fitting garments and hair in Blender, but wasteful on
-    # mobile GPUs.  Keep the full build during fitting, then prune only the glTF
-    # target references after export.  The binary accessors remain in the GLB,
-    # so this does not alter geometry generation or licenses; Three.js simply no
-    # longer instantiates irrelevant morph attributes at runtime.
+    # mobile GPUs. Keep the full build during fitting, then prune the glTF target
+    # references. Blender may duplicate targetNames into primitive.extras; those
+    # copies must be removed so mesh.extras.targetNames remains the single
+    # canonical ordering shared by targets and weights.
     prune_block = r'''
 
 def _cc_keep_runtime_morph(name, policy):
@@ -141,20 +141,37 @@ def _cc_prune_runtime_morphs(path, mode):
             policy = mode
         keep = [i for i, name in enumerate(names) if _cc_keep_runtime_morph(name, policy)]
         assert keep, "runtime morph pruning removed every target from %s" % mesh_name
-        if len(keep) == len(names):
-            summary.append((mesh_name, len(names), len(names), policy))
-            continue
+        kept_names = [names[i] for i in keep]
         for primitive in mesh.get("primitives", []):
             targets = primitive.get("targets") or []
-            assert len(targets) == len(names), "%s: targetNames/targets mismatch" % mesh_name
-            primitive["targets"] = [targets[i] for i in keep]
+            assert len(targets) == len(names), "%s: targetNames/targets mismatch before prune" % mesh_name
+            if len(keep) != len(names):
+                primitive["targets"] = [targets[i] for i in keep]
+                changed = True
+            # Blender 5.2 can emit a duplicate full targetNames list here. If it
+            # survives a mesh-level prune, validators and runtimes see 159 names
+            # beside only 54/60 targets. Keep target names canonical at mesh level.
+            primitive_extras = primitive.get("extras")
+            if isinstance(primitive_extras, dict) and "targetNames" in primitive_extras:
+                primitive_names = list(primitive_extras.get("targetNames") or [])
+                assert not primitive_names or len(primitive_names) == len(names), "%s: primitive targetNames mismatch before prune" % mesh_name
+                primitive_extras.pop("targetNames", None)
+                if not primitive_extras:
+                    primitive.pop("extras", None)
+                changed = True
+            assert len(primitive.get("targets") or []) == len(kept_names), "%s: targets mismatch after prune" % mesh_name
         if "weights" in mesh:
-            weights = mesh["weights"]
-            assert len(weights) == len(names), "%s: targetNames/weights mismatch" % mesh_name
-            mesh["weights"] = [weights[i] for i in keep]
-        mesh.setdefault("extras", {})["targetNames"] = [names[i] for i in keep]
-        changed = True
-        summary.append((mesh_name, len(names), len(keep), policy))
+            weights = list(mesh["weights"])
+            assert len(weights) == len(names), "%s: targetNames/weights mismatch before prune" % mesh_name
+            if len(keep) != len(names):
+                mesh["weights"] = [weights[i] for i in keep]
+                changed = True
+            assert len(mesh["weights"]) == len(kept_names), "%s: weights mismatch after prune" % mesh_name
+        if kept_names != names:
+            mesh.setdefault("extras", {})["targetNames"] = kept_names
+            changed = True
+        assert list((mesh.get("extras") or {}).get("targetNames") or []) == kept_names, "%s: canonical targetNames mismatch after prune" % mesh_name
+        summary.append((mesh_name, len(names), len(kept_names), policy))
     if changed:
         write_glb(path, g, binary)
     print("BUILD runtime morph prune", os.path.basename(path), summary)
