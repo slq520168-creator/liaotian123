@@ -111,24 +111,43 @@
   }
 
   function gateAnchor(studio){return studio?.querySelector?.('.creator-actions')||null;}
+  function gateEntryModel(result,proof,diagnosticsApi){
+    if(result?.ok===true){
+      const global=result.qualification==='global';
+      return Object.freeze({key:global?'ready-global':'ready-device',ready:true,status:global?'3D已正式启用':'本机3D已解锁',hint:global?'当前统一3D已通过全局生产资格。':'当前设备已通过真机验收，自建角色可进入3D聊天。'});
+    }
+    let diagnostic=diagnosticsApi?.summary?.(proof,3)||'';
+    if(!diagnostic&&result?.error)diagnostic=diagnosticsApi?.summary?.({error:result.error,eligibleForMobilePromotion:false},3)||clean(result.error);
+    if(!diagnostic){
+      const reasons=Array.isArray(result?.device?.reasons)?result.device.reasons:[];
+      if(reasons.some(reason=>/^proof:(?:origin|user-agent|platform|base-bytes|hair|clothing)/.test(reason)))diagnostic='上次验收证据与当前设备或3D资源版本不匹配，请重新验收';
+    }
+    return Object.freeze({key:`pending|${diagnostic}`,ready:false,status:'本机3D验收',hint:diagnostic?`上次验收未通过：${diagnostic}`:'通过后，本机自动启用自建角色3D。'});
+  }
+
   function installGateEntry(win,result=win?.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT){
     const doc=win?.document;if(!doc)return false;
     const studio=doc.getElementById('roleCreatorStudio');if(!studio)return false;
     const actions=gateAnchor(studio);if(!actions)return false;
+    const proof=readProof(win.sessionStorage);
+    const model=gateEntryModel(result,proof,win.RoleMobileQaDiagnostics);
     let row=studio.querySelector('#creator3dGateRow');
-    if(row)row.remove();
-    row=doc.createElement('div');row.id='creator3dGateRow';row.className='creator-3d-qa';row.style.cssText='margin:8px 0;padding:8px 9px;border-radius:10px;background:#f7f3f5;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
-    if(result?.ok===true){
-      const strong=doc.createElement('strong');strong.id='creator3dGateStatus';strong.textContent=result.qualification==='global'?'3D已正式启用':'本机3D已解锁';strong.style.cssText='font-size:12px;color:#287a4d';
-      const hint=doc.createElement('small');hint.textContent=result.qualification==='global'?'当前统一3D已通过全局生产资格。':'当前设备已通过真机验收，自建角色可进入3D聊天。';hint.style.cssText='font-size:11px;color:#75636c';
+    if(row?.dataset?.gateKey===model.key&&row.nextSibling===actions)return true;
+    if(!row){row=doc.createElement('div');row.id='creator3dGateRow';row.className='creator-3d-qa';row.style.cssText='margin:8px 0;padding:8px 9px;border-radius:10px;background:#f7f3f5;display:flex;align-items:center;gap:8px;flex-wrap:wrap';}
+    row.dataset.gateKey=model.key;
+    row.replaceChildren();
+    if(model.ready){
+      const strong=doc.createElement('strong');strong.id='creator3dGateStatus';strong.textContent=model.status;strong.style.cssText='font-size:12px;color:#287a4d';
+      const hint=doc.createElement('small');hint.textContent=model.hint;hint.style.cssText='font-size:11px;color:#75636c';
       row.append(strong,hint);
     }else{
       const button=doc.createElement('button');button.type='button';button.id='creator3dQaBtn';button.className='btn btn-outline btn-sm';button.textContent='本机3D验收';
-      const hint=doc.createElement('small');hint.textContent='通过后，本机自动启用自建角色3D。';hint.style.cssText='font-size:11px;color:#75636c';
+      const hint=doc.createElement('small');hint.textContent=model.hint;hint.style.cssText='font-size:11px;color:#75636c;flex:1 1 220px';
       button.addEventListener('click',()=>{try{win.sessionStorage?.setItem(RETURN_KEY,win.location.href);}catch{}win.location.href=QA_URL;});
       row.append(button,hint);
     }
-    studio.insertBefore(row,actions);return true;
+    if(row.nextSibling!==actions)studio.insertBefore(row,actions);
+    return true;
   }
 
   function watchGateEntry(win){
@@ -136,7 +155,16 @@
     installGateEntry(win);
     if(win.__ROLE_UNIFIED_GATE_ENTRY_OBSERVER)return win.__ROLE_UNIFIED_GATE_ENTRY_OBSERVER;
     let queued=false;
-    const observer=new win.MutationObserver(()=>{if(queued)return;queued=true;Promise.resolve().then(()=>{queued=false;installGateEntry(win);});});
+    const observer=new win.MutationObserver(()=>{
+      if(queued)return;queued=true;
+      Promise.resolve().then(()=>{
+        queued=false;
+        const studio=doc.getElementById('roleCreatorStudio');if(!studio)return;
+        const actions=gateAnchor(studio),row=studio.querySelector('#creator3dGateRow');
+        if(row&&actions&&row.nextSibling===actions)return;
+        installGateEntry(win);
+      });
+    });
     observer.observe(doc.body,{childList:true,subtree:true});
     win.__ROLE_UNIFIED_GATE_ENTRY_OBSERVER=observer;return observer;
   }
@@ -157,20 +185,20 @@
       if(sessionDevice.ok)saveCertificate(win.localStorage,certificateFrom(manifest,proof,environment));
       const certificate=readCertificate(win.localStorage),persistentDevice=certificateQualification(manifest,certificate,environment),device=sessionDevice.ok?sessionDevice:persistentDevice,qualification=global.ok?'global':device.ok?'device':'';
       if(!qualification){
-        const result=Object.freeze({ok:false,global,device,manifestStatus:clean(manifest.status),qaUrl:QA_URL});win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT=result;watchGateEntry(win);win.dispatchEvent(new win.CustomEvent('unifiedproductionpending',{detail:result}));return result;
+        const result=Object.freeze({ok:false,global,device,manifestStatus:clean(manifest.status),qaUrl:QA_URL});win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT=result;watchGateEntry(win);installGateEntry(win,result);win.dispatchEvent(new win.CustomEvent('unifiedproductionpending',{detail:result}));return result;
       }
       const candidate=candidateFrom(manifest,qualification);win.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES||=[];registerCandidate(win.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES,candidate);
       const capability=win.RoleHumanAssetCapability?.selectCustomAsset?.(win.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES);if(!capability?.complete)throw new Error('统一3D候选未通过正式能力选择器');
       await loadScript(win,versionedUrl('role-unified-custom-chat.js',win.LIAOTIAN_BUILD_VERSION||''));
-      const result=Object.freeze({ok:true,qualification,candidate,global,device,qaUrl:QA_URL});win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT=result;watchGateEntry(win);win.dispatchEvent(new win.CustomEvent('unifiedproductionready',{detail:result}));win.RoleUnifiedCustomChat?.boot?.();win.__ROLE_HUMAN_RENDERER?.syncCharacter?.();return result;
+      const result=Object.freeze({ok:true,qualification,candidate,global,device,qaUrl:QA_URL});win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT=result;watchGateEntry(win);installGateEntry(win,result);win.dispatchEvent(new win.CustomEvent('unifiedproductionready',{detail:result}));win.RoleUnifiedCustomChat?.boot?.();win.__ROLE_HUMAN_RENDERER?.syncCharacter?.();return result;
     })().catch(error=>{
       console.warn('统一3D生产门槛未通过，保持普通聊天。',error);
-      const result=Object.freeze({ok:false,error:String(error?.message||error),qaUrl:QA_URL});win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT=result;watchGateEntry(win);return result;
+      const result=Object.freeze({ok:false,error:String(error?.message||error),qaUrl:QA_URL});win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT=result;watchGateEntry(win);installGateEntry(win,result);return result;
     });
     win.__ROLE_UNIFIED_PRODUCTION_GATE_PROMISE=task;return task;
   }
 
-  const api=Object.freeze({CANDIDATE_ID,MANIFEST_URL,QA_URL,QA_KEY,CERT_KEY,RETURN_KEY,REQUIRED_CAPABILITIES,REQUIRED_VISUAL_PROOF,staticQualification,globalQualification,deviceQualification,certificateFrom,certificateQualification,candidateFrom,registerCandidate,readJson,readProof,readCertificate,saveCertificate,environmentFromWindow,versionedUrl,gateAnchor,installGateEntry,watchGateEntry,installQaEntry,fetchManifest,boot});
+  const api=Object.freeze({CANDIDATE_ID,MANIFEST_URL,QA_URL,QA_KEY,CERT_KEY,RETURN_KEY,REQUIRED_CAPABILITIES,REQUIRED_VISUAL_PROOF,staticQualification,globalQualification,deviceQualification,certificateFrom,certificateQualification,candidateFrom,registerCandidate,readJson,readProof,readCertificate,saveCertificate,environmentFromWindow,versionedUrl,gateAnchor,gateEntryModel,installGateEntry,watchGateEntry,installQaEntry,fetchManifest,boot});
   if(typeof window!=='undefined'){window.RoleUnifiedProductionGate=api;boot();}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
