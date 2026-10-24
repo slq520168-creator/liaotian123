@@ -98,6 +98,8 @@ def main() -> None:
     # copies must be removed so mesh.extras.targetNames remains the single
     # canonical ordering shared by targets and weights. The generated asset is a
     # neutral Basis, so exported mesh and node default morph weights are always 0.
+    # CharacterCreator names the actual base human mesh "Body" before export;
+    # keep that mesh on the complete morph contract instead of face-card pruning.
     prune_block = r'''
 
 def _cc_keep_runtime_morph(name, policy):
@@ -134,12 +136,13 @@ def _cc_prune_runtime_morphs(path, mode):
         if not names:
             continue
         mesh_name = str(mesh.get("name") or "")
+        mesh_key = mesh_name.strip().lower()
         if mode == "base":
-            if mesh_name == "base":
+            if mesh_key in ("body", "base"):
                 policy = "all"
-            elif mesh_name == "Eyes":
+            elif mesh_key == "eyes":
                 policy = "eyes"
-            elif mesh_name in ("Teeth", "Tongue"):
+            elif mesh_key in ("teeth", "tongue"):
                 policy = "mouth"
             else:
                 policy = "facecard"
@@ -181,6 +184,11 @@ def _cc_prune_runtime_morphs(path, mode):
             changed = True
         assert list((mesh.get("extras") or {}).get("targetNames") or []) == kept_names, "%s: canonical targetNames mismatch after prune" % mesh_name
         summary.append((mesh_name, len(names), len(kept_names), policy))
+
+    if mode == "base":
+        body_rows = [row for row in summary if str(row[0]).strip().lower() in ("body", "base")]
+        assert len(body_rows) == 1 and body_rows[0][3] == "all" and body_rows[0][1] == body_rows[0][2], \
+            "base body mesh was not preserved with the full morph contract: %s" % (body_rows,)
 
     # glTF nodes may override mesh.weights. Neutralize those too so a runtime
     # cannot reactivate the sampled morph values even when the mesh is neutral.
