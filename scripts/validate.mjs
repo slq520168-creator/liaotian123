@@ -14,7 +14,7 @@ for (const file of [
   'config/app.js', 'roles.js', 'memory.js', 'role-code.js', 'role-experience.js',
   'role-presence.js', 'role-visual-recipe.js', 'role-face-rig.js', 'role-direct-viseme-rig.js', 'role-render-loop.js', 'role-body-rig.js', 'role-proportion-rig.js', 'role-appearance-rig.js',
   'role-meshopt-support.js', 'role-human-manifest.js', 'role-asset-policy.js', 'role-human-asset-capability.js', 'role-human-renderer.js', 'role-render-recipe-bridge.js', 'role-chat-mode.js', 'role-voice-stage.js', 'role-voice-style.js',
-  'role-unified-human-recipe.js', 'role-unified-human-runtime.js', 'role-unified-custom-chat.js',
+  'role-unified-human-recipe.js', 'role-unified-human-runtime.js', 'role-unified-custom-chat.js', 'role-unified-production-gate.js',
   'role-code-compat.js', 'role-persistence.js', 'role-builder.js', 'role-creator-studio.js', 'role-creator-animated-presets.js', 'role-custom-visual.js', 'app.js'
 ]) run(['--check', file]);
 for (const file of ['scripts/build-cloudflare.mjs','scripts/import-human-asset.mjs','scripts/validate-vitruvian-morph-map.mjs','scripts/validate-vitruvian-reference.mjs','scripts/validate-unified-human-candidate.cjs']) run(['--check', file]);
@@ -48,7 +48,8 @@ for(const token of ['build/three.module.js','meshopt_decoder.mjs','vendor/three'
 const unifiedManifestPath=path.join(root,'assets/humans/unified/unified-human-manifest.json');
 const unifiedManifest=JSON.parse(fs.readFileSync(unifiedManifestPath,'utf8'));
 const appConfigSource=fs.readFileSync(path.join(root,'config/app.js'),'utf8');
-const unifiedRuntimeEnabled=appConfigSource.includes("'role-unified-custom-chat.js'")||appConfigSource.includes('"role-unified-custom-chat.js"');
+const productionList=appConfigSource.match(/for\(const src of \[([\s\S]*?)\]\)\{/m)?.[1]||'';
+const unifiedRuntimeEnabled=productionList.includes("'role-unified-custom-chat.js'")||productionList.includes('"role-unified-custom-chat.js"');
 if(unifiedRuntimeEnabled&&unifiedManifest?.capabilities?.mobile!==true) throw new Error('统一自定义3D角色尚未通过真实移动端验收，禁止载入生产配置');
 if(unifiedRuntimeEnabled&&unifiedManifest?.status!=='production') throw new Error('统一自定义3D角色未标记 production，禁止载入生产配置');
 
