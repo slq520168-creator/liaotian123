@@ -3,7 +3,7 @@ import {access,cp,mkdir,readFile,rm,writeFile} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),out=new URL('dist/',root);
 const runtimeJs=[
   'role-experience.js','role-presence.js','role-visual-recipe.js','role-unified-human-recipe.js','role-unified-human-runtime.js','role-accessory-geometry.js','role-face-rig.js','role-direct-viseme-rig.js','role-render-loop.js','role-body-rig.js','role-proportion-rig.js','role-appearance-rig.js',
-  'role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-composite-direct-viseme.js','role-safe-skeleton-motion.js','role-natural-pose.js','role-fullscreen-stage.js','role-render-recipe-bridge.js',
+  'role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-stage-lighting.js','role-composite-direct-viseme.js','role-safe-skeleton-motion.js','role-natural-pose.js','role-fullscreen-stage.js','role-render-recipe-bridge.js',
   'role-chat-mode.js','role-voice-stage.js','role-voice-style.js','role-code-compat.js','role-persistence.js','role-builder.js','role-eye-color.js','role-creator-studio.js','role-body-details.js','role-creator-identity.js','role-creator-3d-preview.js','role-creator-animated-presets.js','role-custom-visual.js','role-mobile-qa-diagnostics.js','role-unified-custom-chat.js','role-unified-production-gate.js'
 ];
 const staticEntries=[
