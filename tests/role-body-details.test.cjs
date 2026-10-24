@@ -64,7 +64,8 @@ test('chest edits stay on the incremental preview path instead of changing struc
 test('creator exposes exactly the two validated chest controls and does not invent waist hip or shoulder morph sliders',()=>{
   assert.deepEqual(Object.keys(bodyUi.BODY_DETAILS),['chestSize','chestFirmness']);
   const source=fs.readFileSync('role-body-details.js','utf8');
-  assert(source.includes("data.bodyDetail"));
+  assert(source.includes('input.dataset.bodyDetail=key'));
+  assert(source.includes('event.target?.dataset?.bodyDetail'));
   assert(source.includes('真实胸部 morph'));
   assert.equal(/waist|hips|shoulder|腰部精调|臀部精调|肩部精调/i.test(source),false);
 });
