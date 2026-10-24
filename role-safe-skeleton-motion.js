@@ -2,11 +2,15 @@
   'use strict';
 
   const ASSET_ID='unified-charactercreator';
-  const SAFE_BONES=Object.freeze(['spine_01','spine_02','spine_03']);
+  const SPINE_BONES=Object.freeze(['spine_01','spine_02','spine_03']);
+  const UPPER_BODY_BONES=Object.freeze(['clavicle_l','clavicle_r','upperarm_l','upperarm_r']);
+  const SAFE_BONES=Object.freeze([...SPINE_BONES,...UPPER_BODY_BONES]);
   const MAX_DELTA=0.012;
+  const UPPER_BODY_MAX_DELTA=0.004;
   const states=new WeakMap();
 
   const clamp=(value,lo,hi)=>Math.max(lo,Math.min(hi,Number(value)||0));
+  const limitFor=name=>SPINE_BONES.includes(name)?MAX_DELTA:UPPER_BODY_MAX_DELTA;
 
   function collectBones(root){
     const found=new Map();
@@ -35,21 +39,34 @@
     const breathing=clamp(frame?.breathing,-.006,.006);
     const t=Number.isFinite(Number(now))?Number(now):0;
     const sway=Math.sin(t/3000),turn=Math.sin(t/3600);
-    const out={spine_01:{x:0,y:0,z:0},spine_02:{x:0,y:0,z:0},spine_03:{x:0,y:0,z:0}};
+    const out=Object.fromEntries(SAFE_BONES.map(name=>[name,{x:0,y:0,z:0}]));
+    let shoulderGain=.22,armGain=.0009;
     if(action==='放松呼吸'){
       out.spine_01.x=breathing*.55;out.spine_02.x=breathing*.85;out.spine_03.x=breathing;
       out.spine_02.y=sway*.0025;out.spine_03.y=sway*.0035;
+      shoulderGain=.45;armGain=.0018;
     }else if(action==='专注交流'){
       out.spine_01.x=breathing*.18;out.spine_02.x=-.0022+breathing*.22;out.spine_03.x=-.0034+breathing*.28;
       out.spine_03.y=sway*.0015;
+      shoulderGain=.12;armGain=.0005;
     }else if(action==='轻微转身'){
       out.spine_01.x=breathing*.20;out.spine_02.x=breathing*.28;out.spine_03.x=breathing*.34;
       out.spine_01.y=turn*.002;out.spine_02.y=turn*.0045;out.spine_03.y=turn*.007;
+      shoulderGain=.18;armGain=.0012;
     }else{
       out.spine_01.x=breathing*.22;out.spine_02.x=breathing*.34;out.spine_03.x=breathing*.44;
       out.spine_03.y=sway*.0012;
     }
-    for(const delta of Object.values(out))for(const axis of ['x','y','z'])delta[axis]=clamp(delta[axis],-MAX_DELTA,MAX_DELTA);
+    const shoulder=breathing*shoulderGain,arm=armGain*sway;
+    out.clavicle_l.z=shoulder+arm*.35;
+    out.clavicle_r.z=-shoulder-arm*.35;
+    out.upperarm_l.y=arm;
+    out.upperarm_r.y=-arm;
+    if(action==='轻微转身'){
+      out.clavicle_l.y=turn*.0012;out.clavicle_r.y=turn*.0012;
+      out.upperarm_l.z=-turn*.001;out.upperarm_r.z=turn*.001;
+    }
+    for(const [name,delta] of Object.entries(out))for(const axis of ['x','y','z'])delta[axis]=clamp(delta[axis],-limitFor(name),limitFor(name));
     return out;
   }
 
@@ -97,7 +114,7 @@
     retry();return false;
   }
 
-  const api=Object.freeze({ASSET_ID,SAFE_BONES,MAX_DELTA,collectBones,captureRest,actionDeltas,apply,reset,eligibleCharacter,patchRenderer,boot});
+  const api=Object.freeze({ASSET_ID,SPINE_BONES,UPPER_BODY_BONES,SAFE_BONES,MAX_DELTA,UPPER_BODY_MAX_DELTA,limitFor,collectBones,captureRest,actionDeltas,apply,reset,eligibleCharacter,patchRenderer,boot});
   if(typeof window!=='undefined'){window.RoleSafeSkeletonMotion=api;boot();}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
