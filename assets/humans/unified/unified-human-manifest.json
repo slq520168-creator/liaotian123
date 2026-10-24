@@ -10,41 +10,41 @@
   },
   "base": {
     "url": "base_body.glb",
-    "bytes": 9130596
+    "bytes": 9130560
   },
   "modules": {
     "hair": {
       "short02": {
         "url": "hair_short02.glb",
-        "bytes": 1149520
+        "bytes": 1149532
       },
       "bob02": {
         "url": "hair_bob02.glb",
-        "bytes": 1107864
+        "bytes": 1107844
       },
       "long01": {
         "url": "hair_long01.glb",
-        "bytes": 1550076
+        "bytes": 1550072
       },
       "ponytail01": {
         "url": "hair_ponytail01.glb",
-        "bytes": 1849320
+        "bytes": 1849312
       },
       "braid01": {
         "url": "hair_braid01.glb",
-        "bytes": 1846920
+        "bytes": 1846912
       },
       "short04": {
         "url": "hair_short04.glb",
-        "bytes": 1162528
+        "bytes": 1162492
       },
       "bob01": {
         "url": "hair_bob01.glb",
-        "bytes": 1976784
+        "bytes": 1976768
       },
       "afro01": {
         "url": "hair_afro01.glb",
-        "bytes": 2081712
+        "bytes": 2081756
       }
     },
     "clothing": {
@@ -99,10 +99,10 @@
       "baseMax": 14680064,
       "moduleMax": 6291456,
       "worstInitialMax": 23068672,
-      "baseBytes": 9130596,
-      "largestHairBytes": 2081712,
+      "baseBytes": 9130560,
+      "largestHairBytes": 2081756,
       "largestClothingBytes": 864992,
-      "worstInitialBytes": 12077300
+      "worstInitialBytes": 12077308
     },
     "reason": "static payload budget is not a substitute for real iPhone/Android FPS and memory validation"
   }

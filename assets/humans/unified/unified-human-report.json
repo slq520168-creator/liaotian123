@@ -5,7 +5,7 @@
     "mpfb": "2.0.18",
     "blender": "5.2.2"
   },
-  "bytes": 9130596,
+  "bytes": 9130560,
   "meshes": 6,
   "skins": 1,
   "morphTargetNameCount": 159,
@@ -243,14 +243,14 @@
   },
   "modules": {
     "hair": {
-      "short02": 1149520,
-      "bob02": 1107864,
-      "long01": 1550076,
-      "ponytail01": 1849320,
-      "braid01": 1846920,
-      "short04": 1162528,
-      "bob01": 1976784,
-      "afro01": 2081712
+      "short02": 1149532,
+      "bob02": 1107844,
+      "long01": 1550072,
+      "ponytail01": 1849312,
+      "braid01": 1846912,
+      "short04": 1162492,
+      "bob01": 1976768,
+      "afro01": 2081756
     },
     "clothing": {
       "dress": 747572,
@@ -272,10 +272,10 @@
       "baseMax": 14680064,
       "moduleMax": 6291456,
       "worstInitialMax": 23068672,
-      "baseBytes": 9130596,
-      "largestHairBytes": 2081712,
+      "baseBytes": 9130560,
+      "largestHairBytes": 2081756,
       "largestClothingBytes": 864992,
-      "worstInitialBytes": 12077300
+      "worstInitialBytes": 12077308
     }
   },
   "modularCompatibility": {
@@ -283,56 +283,56 @@
     "hair": [
       {
         "id": "short02",
-        "bytes": 1149520,
+        "bytes": 1149532,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "bob02",
-        "bytes": 1107864,
+        "bytes": 1107844,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "long01",
-        "bytes": 1550076,
+        "bytes": 1550072,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "ponytail01",
-        "bytes": 1849320,
+        "bytes": 1849312,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "braid01",
-        "bytes": 1846920,
+        "bytes": 1846912,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "short04",
-        "bytes": 1162528,
+        "bytes": 1162492,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "bob01",
-        "bytes": 1976784,
+        "bytes": 1976768,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
       },
       {
         "id": "afro01",
-        "bytes": 2081712,
+        "bytes": 2081756,
         "skins": 1,
         "joints": 53,
         "morphTargets": 54
