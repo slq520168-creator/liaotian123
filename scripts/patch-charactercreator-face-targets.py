@@ -51,6 +51,10 @@ def main() -> None:
     if old_namespace in text:
         raise RuntimeError('MPFB namespace patch incomplete')
 
+    mpfb_import = 'from bl_ext.blender_org.mpfb.entities.clothes.mhclo import Mhclo\n'
+    mpfb_guard = mpfb_import + '''\n# Added by liaotian123 candidate build: the workflow version label must match\n# the extension Blender actually installed. This prevents a future repository\n# update from silently changing the geometry generator while reports still claim\n# the old MPFB version.\nimport importlib as _cc_importlib\nimport pathlib as _cc_pathlib\nimport tomllib as _cc_tomllib\n_cc_mpfb_module = _cc_importlib.import_module("bl_ext.blender_org.mpfb.services.humanservice")\n_cc_mpfb_manifest = next((_p / "blender_manifest.toml" for _p in _cc_pathlib.Path(_cc_mpfb_module.__file__).resolve().parents if (_p / "blender_manifest.toml").is_file()), None)\nif _cc_mpfb_manifest is None:\n    raise RuntimeError("MPFB blender_manifest.toml not found")\n_cc_actual_mpfb = str(_cc_tomllib.loads(_cc_mpfb_manifest.read_text(encoding="utf-8")).get("version") or "")\n_cc_expected_mpfb = str(os.environ.get("MPFB_VERSION") or "")\nif not _cc_expected_mpfb:\n    raise RuntimeError("MPFB_VERSION must be set for reproducible candidate builds")\nif _cc_actual_mpfb != _cc_expected_mpfb:\n    raise RuntimeError("MPFB version mismatch: installed=%s expected=%s" % (_cc_actual_mpfb, _cc_expected_mpfb))\nprint("BUILD MPFB version", _cc_actual_mpfb)\n'''
+    text = replace_once(text, mpfb_import, mpfb_guard, 'pin actual MPFB extension version')
+
     declaration = f'''\n# Added by liaotian123 candidate build: pinned CC0 extra-target packs.\nEXTRA_TARGET_ROOT = os.environ.get("CC_EXTRA_TARGETS", "")\nARKIT_TARGET_NAMES = {ARKIT!r}\nMETA_VISEME_NAMES = {VISEMES!r}\nif not EXTRA_TARGET_ROOT:\n    raise RuntimeError("CC_EXTRA_TARGETS must point at extra-targets/assets")\nARKIT_MORPHS = [(name, [os.path.join(EXTRA_TARGET_ROOT, "faceunits01", "targets", "faceunits", name + ".target")])\n                for name in ARKIT_TARGET_NAMES]\nMETA_VISEME_MORPHS = [(name, [os.path.join(EXTRA_TARGET_ROOT, "visemes02", "targets", "visemes", name + ".target")])\n                      for name in META_VISEME_NAMES]\n'''
     text = replace_once(
         text,
@@ -220,7 +224,7 @@ for _fn in sorted(os.listdir(out_dir)):
     text = replace_once(text, old_done, new_done, 'write in-build success marker')
 
     path.write_text(text, encoding='utf-8')
-    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} license=output morph_prune=runtime-neutral build_marker=inside file={path}')
+    print(f'PATCH OK mpfb_namespace={namespace_count} arkit={len(ARKIT)} visemes={len(VISEMES)} license=output morph_prune=runtime-neutral mpfb_version=verified build_marker=inside file={path}')
 
 
 if __name__ == '__main__':
