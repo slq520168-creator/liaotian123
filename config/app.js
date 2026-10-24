@@ -6,7 +6,7 @@ window.LIAOTIAN_HUMAN_ASSETS = window.LIAOTIAN_HUMAN_ASSETS || {};
 window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES || [];
 
 (() => {
-  const version='20261025-create3d25';
+  const version='20261025-create3d26';
   window.LIAOTIAN_BUILD_VERSION=version;
   const hideUpdate=document.createElement('style');
   hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';
