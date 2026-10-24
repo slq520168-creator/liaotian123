@@ -34,6 +34,17 @@
     '成熟脸': Object.freeze({face_jaw_width_incr:.12,face_cheekbones_incr:.26,face_eye_size_decr:.10,face_lips_decr:.08}),
     '甜美脸': Object.freeze({face_jaw_width_decr:.20,face_eye_size_incr:.26,face_lips_incr:.20,face_cheekbones_incr:.08})
   });
+  const FACE_DETAIL_MORPHS = Object.freeze({
+    eyeSize:Object.freeze(['face_eye_size_decr','face_eye_size_incr']),
+    eyeSpacing:Object.freeze(['face_eye_spacing_decr','face_eye_spacing_incr']),
+    eyeTilt:Object.freeze(['face_eye_tilt_decr','face_eye_tilt_incr']),
+    noseBridge:Object.freeze(['face_nose_height_decr','face_nose_height_incr']),
+    noseWidth:Object.freeze(['face_nose_width_decr','face_nose_width_incr']),
+    lips:Object.freeze(['face_lips_decr','face_lips_incr']),
+    mouthWidth:Object.freeze(['face_mouth_width_decr','face_mouth_width_incr']),
+    chin:Object.freeze(['face_chin_decr','face_chin_incr']),
+    cheekbones:Object.freeze(['face_cheekbones_decr','face_cheekbones_incr'])
+  });
   const EXPRESSIONS = Object.freeze({
     '自然':Object.freeze({}),
     '微笑':Object.freeze({mouthSmileLeft:.34,mouthSmileRight:.34,cheekSquintLeft:.08,cheekSquintRight:.08}),
@@ -87,6 +98,16 @@
     }
     return out;
   }
+  function applyFaceDetails(out,details={}){
+    for(const [key,pair] of Object.entries(FACE_DETAIL_MORPHS)){
+      const raw=clamp(details?.[key]||0,-100,100);
+      if(!raw)continue;
+      const [decr,incr]=pair;
+      delete out[decr];delete out[incr];
+      add(out,raw<0?decr:incr,(Math.abs(raw)/100)*.65);
+    }
+    return out;
+  }
   function identityMorphs(recipe={}) {
     const out={};
     if(recipe.gender==='female') add(out,'gender_female',1);
@@ -113,6 +134,7 @@
     }
     const face=FACE_PRESETS[recipe.face]||FACE_PRESETS['自然耐看'];
     for(const [name,weight] of Object.entries(face)) add(out,name,weight);
+    applyFaceDetails(out,recipe.faceDetails);
     addCorrectives(out);
     return Object.freeze(out);
   }
@@ -138,7 +160,7 @@
     });
   }
 
-  const api=Object.freeze({CANDIDATE_ID,HAIR,OUTFITS,ACCESSORIES,SAFETY_UNDERWEAR,SKIN_TINTS,FACE_PRESETS,EXPRESSIONS,PRIMARY,CORRECTIVE_PAIRS,CORRECTIVE_NAMES,ALLOWED_MORPHS,bmi,addCorrectives,identityMorphs,expressionMorphs,clothingFor,mapRecipe});
+  const api=Object.freeze({CANDIDATE_ID,HAIR,OUTFITS,ACCESSORIES,SAFETY_UNDERWEAR,SKIN_TINTS,FACE_PRESETS,FACE_DETAIL_MORPHS,EXPRESSIONS,PRIMARY,CORRECTIVE_PAIRS,CORRECTIVE_NAMES,ALLOWED_MORPHS,bmi,addCorrectives,applyFaceDetails,identityMorphs,expressionMorphs,clothingFor,mapRecipe});
   if(typeof window!=='undefined') window.RoleUnifiedHumanRecipe=api;
   if(typeof module!=='undefined'&&module.exports) module.exports=api;
 })();

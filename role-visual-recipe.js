@@ -3,6 +3,10 @@
 
   const VERSION = 1;
   const GENDERS = Object.freeze(['unspecified','male','female']);
+  const FACE_DETAILS = Object.freeze({
+    eyeSize:'眼睛大小', eyeSpacing:'眼距', eyeTilt:'眼角', noseBridge:'鼻梁', noseWidth:'鼻翼',
+    lips:'嘴唇', mouthWidth:'嘴宽', chin:'下巴', cheekbones:'颧骨'
+  });
   const OPTIONS = Object.freeze({
     body: Object.freeze(['偏瘦','匀称','微胖','丰满','胖','健壮']),
     face: Object.freeze(['自然耐看','圆脸','鹅蛋脸','方脸','长脸','成熟脸','甜美脸']),
@@ -15,6 +19,7 @@
     voiceStyle: Object.freeze(['自然','温柔','成熟','活泼','低沉','清爽']),
     relationship: Object.freeze(['慢慢熟悉','普通朋友','知心朋友','暧昧对象','恋人','伴侣','姐姐/哥哥型陪伴'])
   });
+  const EMPTY_FACE_DETAILS = Object.freeze(Object.fromEntries(Object.keys(FACE_DETAILS).map(key=>[key,0])));
 
   const DEFAULTS = Object.freeze({
     version: VERSION,
@@ -24,6 +29,7 @@
     weightJin: 110,
     body: '匀称',
     face: '自然耐看',
+    faceDetails: EMPTY_FACE_DETAILS,
     skin: '自然肤色',
     hair: '自然长发',
     outfit: '日常休闲',
@@ -41,9 +47,14 @@
     const n = Number(value);
     return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback;
   }
+  function clampSigned(value){return clampInt(value,-100,100,0);}
   function pick(value, list, fallback) { return list.includes(value) ? value : fallback; }
   function cleanList(value, max = 12) {
     return [...new Set((Array.isArray(value) ? value : []).filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean).slice(0, max))].map(item => item.slice(0, 32));
+  }
+  function sanitizeFaceDetails(value={}){
+    const source=value&&typeof value==='object'?value:{};
+    return Object.freeze(Object.fromEntries(Object.keys(FACE_DETAILS).map(key=>[key,clampSigned(source[key])])));
   }
   function sanitize(input = {}) {
     const personalities = cleanList(input.personality);
@@ -56,6 +67,7 @@
       weightJin: clampInt(input.weightJin ?? input.weight, 60, 500, DEFAULTS.weightJin),
       body: pick(input.body, OPTIONS.body, DEFAULTS.body),
       face: pick(input.face, OPTIONS.face, DEFAULTS.face),
+      faceDetails: sanitizeFaceDetails(input.faceDetails),
       skin: pick(input.skin, OPTIONS.skin, DEFAULTS.skin),
       hair: pick(input.hair, OPTIONS.hair, DEFAULTS.hair),
       outfit: pick(input.outfit, OPTIONS.outfit, DEFAULTS.outfit),
@@ -79,6 +91,16 @@
     const age = Number(line.match(/(\d{1,3})\s*岁/)?.[1]) || undefined;
     return {gender, age};
   }
+  function parseFaceDetails(lines){
+    const line=lineValue(lines,'脸部细节：');
+    const out={};
+    for(const [key,label] of Object.entries(FACE_DETAILS)){
+      const escaped=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const match=line.match(new RegExp(`${escaped}([+-]?\\d{1,3})`));
+      if(match)out[key]=clampSigned(match[1]);
+    }
+    return out;
+  }
 
   function fromPersonality(text) {
     const value = String(text || '');
@@ -94,6 +116,7 @@
       weightJin: physical.match(/体重(\d+)斤/)?.[1],
       body: find(OPTIONS.body),
       face: find(OPTIONS.face),
+      faceDetails: parseFaceDetails(lines),
       skin: find(OPTIONS.skin),
       hair: find(OPTIONS.hair),
       outfit: find(OPTIONS.outfit),
@@ -153,7 +176,7 @@
     return changed;
   }
 
-  const api = Object.freeze({VERSION, GENDERS, OPTIONS, DEFAULTS, sanitize, parseIdentity, fromPersonality, withCharacterIdentity, forCharacter, installNormalizer, migrateLoadedCharacters});
+  const api = Object.freeze({VERSION, GENDERS, FACE_DETAILS, OPTIONS, EMPTY_FACE_DETAILS, DEFAULTS, clampSigned, sanitizeFaceDetails, sanitize, parseIdentity, parseFaceDetails, fromPersonality, withCharacterIdentity, forCharacter, installNormalizer, migrateLoadedCharacters});
   if (typeof window !== 'undefined') { window.RoleVisualRecipe = api; installNormalizer(); migrateLoadedCharacters(); }
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
