@@ -58,3 +58,35 @@ test('face-named mesh still prefers parent Head bone', () => {
   root.children=[head]; head.children=[mesh];
   assert.equal(human.findHeadObject(root,mesh),head);
 });
+
+test('WebGL2 context is explicitly required and unsupported devices fail closed', () => {
+  const calls=[];
+  const expected={tag:'webgl2'};
+  const canvas={getContext(type,attributes){calls.push({type,attributes});return type==='webgl2'?expected:null;}};
+  assert.equal(human.webGL2Context(canvas,{alpha:true}),expected);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].type,'webgl2');
+  assert.equal(human.webGL2Context({getContext(){return null;}},{}),null);
+  assert.equal(human.webGL2Context({},{}),null);
+});
+
+test('renderer load cancellation and model cleanup stop the RAF chain', () => {
+  const renderer=new human.HumanRenderer();
+  let stops=0,removed=0,geometryDisposals=0,materialDisposals=0,renderListDisposals=0;
+  renderer.loop={stop(){stops++;}};
+  renderer.renderer={renderLists:{dispose(){renderListDisposals++;}}};
+  renderer.scene={remove(){removed++;}};
+  renderer.root={children:[{children:[],geometry:{dispose(){geometryDisposals++;}},material:{dispose(){materialDisposals++;}}}]};
+  const first=renderer.cancelPendingLoad();
+  const second=renderer.cancelPendingLoad();
+  assert.equal(first,1);
+  assert.equal(second,2);
+  renderer.clearModel();
+  assert.equal(stops,1);
+  assert.equal(removed,1);
+  assert.equal(geometryDisposals,1);
+  assert.equal(materialDisposals,1);
+  assert.equal(renderListDisposals,1);
+  assert.equal(renderer.root,null);
+  assert.equal(renderer.currentId,'');
+});

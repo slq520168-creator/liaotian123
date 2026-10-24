@@ -127,6 +127,15 @@
     });
   }
 
+  function webGL2Context(canvas, attributes = {}) {
+    if (!canvas || typeof canvas.getContext !== 'function') return null;
+    try {
+      return canvas.getContext('webgl2', attributes) || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   function decoderFromModule(module) {
     return module?.MeshoptDecoder || module?.default?.MeshoptDecoder || module?.default || module || null;
   }
@@ -222,7 +231,11 @@
       this.modules = await loadThreeModules();
       const {THREE} = this.modules;
       const quality = window.RoleRenderLoop?.browserQuality?.() || {pixelRatio: 1, shadows: false};
-      this.renderer = new THREE.WebGLRenderer({alpha: true, antialias: quality.pixelRatio <= 1.25, powerPreference: 'high-performance'});
+      const renderOptions = {alpha: true, antialias: quality.pixelRatio <= 1.25, powerPreference: 'high-performance'};
+      const canvas = document.createElement('canvas');
+      const context = webGL2Context(canvas, renderOptions);
+      if (!context) throw new Error('当前设备不支持 WebGL2，已保持普通聊天模式');
+      this.renderer = new THREE.WebGLRenderer({...renderOptions, canvas, context});
       this.renderer.setPixelRatio(quality.pixelRatio);
       this.renderer.outputColorSpace = THREE.SRGBColorSpace;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -246,7 +259,6 @@
       window.addEventListener('resize', resize, {passive:true});
       this._onResize = resize;
       this.loop = window.RoleRenderLoop?.createBrowserLoop?.((frame) => this.renderFrame(frame));
-      this.loop?.start?.();
       this.resize();
     }
 
@@ -276,7 +288,13 @@
       this.camera.updateProjectionMatrix();
     }
 
+    cancelPendingLoad() {
+      this.loadToken++;
+      return this.loadToken;
+    }
+
     clearModel() {
+      this.loop?.stop?.();
       if (this.faceRig?.reset) this.faceRig.reset();
       if (this.bodyRig?.reset) this.bodyRig.reset();
       this.faceRig = null;
@@ -284,6 +302,7 @@
       if (this.root && this.scene) {
         this.scene.remove(this.root);
         disposeObject(this.root);
+        this.renderer?.renderLists?.dispose?.();
       }
       this.root = null;
       this.currentId = '';
@@ -300,7 +319,10 @@
         this.clearModel();
         return false;
       }
-      if (this.currentId === char.id && this.root) return true;
+      if (this.currentId === char.id && this.root) {
+        this.loop?.start?.();
+        return true;
+      }
       this.ensureStage();
       this.stage.classList.add('active');
       this.setStatus('正在加载真人角色…', 'loading');
@@ -340,6 +362,7 @@
         this.resize();
         this.setStatus('');
         this.stage.classList.remove('loading', 'error');
+        this.loop?.start?.();
         return true;
       } catch (error) {
         if (token !== this.loadToken) return false;
@@ -361,7 +384,7 @@
     }
 
     dispose() {
-      this.loadToken++;
+      this.cancelPendingLoad();
       this.clearModel();
       this.loop?.dispose?.();
       this.loop = null;
@@ -412,6 +435,7 @@
     findBestFaceMesh,
     findHeadObject,
     disposeObject,
+    webGL2Context,
     decoderFromModule,
     loadThreeModules,
     HumanRenderer

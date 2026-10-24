@@ -28,6 +28,7 @@
   function resetLegacyRigs(renderer){renderer?.bodyRig?.reset?.();renderer?.proportionRig?.reset?.();renderer?.appearanceRig?.reset?.();if(renderer){renderer.bodyRig=null;renderer.proportionRig=null;renderer.proportionResult=null;renderer.appearanceRig=null;renderer.appearanceResult=null;}return renderer;}
   function resetUnifiedState(renderer){if(!renderer)return renderer;renderer.__unifiedCustomModules=null;renderer.__unifiedCustomKey='';renderer.__unifiedCandidateState=null;return renderer;}
   function nextLoadToken(renderer){const next=(Number(renderer?.__unifiedLoadToken)||0)+1;if(renderer)renderer.__unifiedLoadToken=next;return next;}
+  function cancelRendererLoad(renderer){if(!renderer)return 0;if(typeof renderer.cancelPendingLoad==='function')return renderer.cancelPendingLoad();const next=(Number(renderer.loadToken)||0)+1;renderer.loadToken=next;return next;}
   function isCurrentLoad(renderer,baseRoot,charId,token){return Boolean(renderer&&renderer.__unifiedLoadToken===token&&renderer.root===baseRoot&&renderer.currentId===charId);}
 
   async function loadModule(renderer,url){const loader=new renderer.modules.GLTFLoader();if(renderer.modules.MeshoptDecoder&&typeof loader.setMeshoptDecoder==='function')loader.setMeshoptDecoder(renderer.modules.MeshoptDecoder);return loader.loadAsync(url);}
@@ -42,6 +43,7 @@
       if(renderer.currentId===char.id&&renderer.root&&renderer.__unifiedCustomKey!==key){resetUnifiedState(renderer);renderer.clearModel?.();}
       const ok=await originalLoad.call(renderer,char);
       if(!ok||!renderer.root||renderer.currentId!==char.id||renderer.__unifiedLoadToken!==token)return false;
+      renderer.loop?.stop?.();
       baseRoot=renderer.root;
       const oldFaceRig=renderer.faceRig;
       resetLegacyRigs(renderer);
@@ -74,6 +76,7 @@
       renderer.__unifiedCandidateState=state;
       renderer.frameModel?.(baseRoot,'full');
       renderer.resize?.();
+      renderer.loop?.start?.();
       return true;
     }catch(error){
       console.warn('统一3D候选未通过运行时合同，保持关闭。',error);
@@ -90,9 +93,9 @@
       if(!isCustom(char)||char.humanAssetId!==ASSET_ID){nextLoadToken(this);resetUnifiedState(this);return originalLoad.call(this,char);}
       decorate(char);
       const mapped=plan(char),runtime=window.RoleUnifiedHumanRuntime;
-      if(!mapped||!runtime?.attachModule||!runtime?.applyCandidateState)return false;
+      if(!mapped||!runtime?.attachModule||!runtime?.applyCandidateState){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}
       const key=recipeKey(mapped),pendingKey=`${char.id}|${key}`;
-      if(this.currentId===char.id&&this.root&&this.__unifiedCustomKey===key)return true;
+      if(this.currentId===char.id&&this.root&&this.__unifiedCustomKey===key){this.loop?.start?.();return true;}
       if(this.__unifiedPendingKey===pendingKey&&this.__unifiedPendingPromise)return this.__unifiedPendingPromise;
       const token=nextLoadToken(this);
       const task=loadUnifiedCandidate(this,char,mapped,key,originalLoad,token);
@@ -101,7 +104,7 @@
       try{return await task;}finally{if(this.__unifiedPendingPromise===task){this.__unifiedPendingPromise=null;this.__unifiedPendingKey='';}}
     };
     proto.loadCharacter.__unifiedCustom=true;
-    proto.syncCharacter=async function(...args){const char=this.currentCharacter?.()||currentChar();if(!isCustom(char))return originalSync.apply(this,args);decorate(char);if(ensureDefault3D(char)!=='3d'){nextLoadToken(this);resetUnifiedState(this);this.clearModel?.();return false;}return this.loadCharacter(char);};
+    proto.syncCharacter=async function(...args){const char=this.currentCharacter?.()||currentChar();if(!isCustom(char))return originalSync.apply(this,args);decorate(char);if(ensureDefault3D(char)!=='3d'){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}return this.loadCharacter(char);};
     proto.syncCharacter.__unifiedCustom=true;
     return true;
   }
@@ -112,7 +115,7 @@
   function patchSwitch(){if(typeof switchCharacter!=='function'||switchCharacter.__unifiedCustom)return false;const base=switchCharacter;const wrapped=function(...args){const result=base.apply(this,args);const char=currentChar();decorate(char);requestAnimationFrame(()=>{installModeButton();updateModeButton();window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();});return result;};wrapped.__unifiedCustom=true;switchCharacter=wrapped;return true;}
   function boot(){if(typeof window==='undefined'||typeof document==='undefined')return false;if(!window.RoleHumanRenderer||!window.RoleUnifiedHumanRuntime||!window.RoleUnifiedHumanRecipe||typeof switchCharacter!=='function'){setTimeout(boot,80);return false;}decorateAll();patchRenderer();patchSwitch();installModeButton();updateModeButton();requestAnimationFrame(()=>window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());return true;}
 
-  const api=Object.freeze({STATUS,ASSET_ID,BASE_ASSET,JOINTS_PATH,isCustom,decorate,plan,walkRoot,collectFaceMeshes,createCompositeFaceRig,resetLegacyRigs,resetUnifiedState,nextLoadToken,isCurrentLoad,loadJoints,tintSkin,recipeKey,loadUnifiedCandidate,ensureDefault3D,setMode,patchRenderer,patchSwitch,updateModeButton,boot});
+  const api=Object.freeze({STATUS,ASSET_ID,BASE_ASSET,JOINTS_PATH,isCustom,decorate,plan,walkRoot,collectFaceMeshes,createCompositeFaceRig,resetLegacyRigs,resetUnifiedState,nextLoadToken,cancelRendererLoad,isCurrentLoad,loadJoints,tintSkin,recipeKey,loadUnifiedCandidate,ensureDefault3D,setMode,patchRenderer,patchSwitch,updateModeButton,boot});
   if(typeof window!=='undefined'){window.RoleUnifiedCustomChat=api;boot();}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();

@@ -56,6 +56,17 @@ test('load tokens reject a stale custom load after another load starts',()=>{
   assert.equal(custom.isCurrentLoad(renderer,root,'custom_a',first),false);
 });
 
+test('candidate cancellation also invalidates the underlying GLB renderer load',()=>{
+  let nativeCalls=0;
+  const renderer={loadToken:4,cancelPendingLoad(){nativeCalls++;this.loadToken++;return this.loadToken;}};
+  assert.equal(custom.cancelRendererLoad(renderer),5);
+  assert.equal(nativeCalls,1);
+  assert.equal(renderer.loadToken,5);
+  const fallback={loadToken:9};
+  assert.equal(custom.cancelRendererLoad(fallback),10);
+  assert.equal(fallback.loadToken,10);
+});
+
 test('skin tint respects asset tint gain and only updates each material once',()=>{
   const color={value:'',gain:1,set(value){this.value=value;return this;},multiplyScalar(value){this.gain*=value;return this;}};
   const skin={name:'Skin',color,userData:{tint:{gain:1.5}},needsUpdate:false};
