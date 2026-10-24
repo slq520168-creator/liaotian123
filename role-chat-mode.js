@@ -3,9 +3,25 @@
   const STORAGE_PREFIX = 'liaotian_chat_mode_v2_';
   const MODES = Object.freeze(['text', '3d']);
   const ACTIONS = Object.freeze(['自然站立','放松呼吸','专注交流','轻微转身']);
+  const UNIFIED_CUSTOM_ASSET_ID = 'unified-charactercreator';
+  const CUSTOM_READY_STATUSES = Object.freeze(['production','device-qualified']);
 
   function isCustomCharacter(char) {
     return Boolean(char && !char.isPreset && /^custom_[a-z0-9_-]+$/i.test(String(char.id || '')));
+  }
+
+  function gateQualification() {
+    if (typeof window === 'undefined') return '';
+    const result = window.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT;
+    if (result?.ok !== true) return '';
+    return result.qualification === 'global' || result.qualification === 'device' ? result.qualification : '';
+  }
+
+  function isQualifiedCustomAsset(char) {
+    if (!char || !CUSTOM_READY_STATUSES.includes(String(char.humanAssetStatus || ''))) return false;
+    if (char.humanAssetStatus === 'production') return true;
+    if (char.humanAssetStatus !== 'device-qualified' || char.humanAssetId !== UNIFIED_CUSTOM_ASSET_ID) return false;
+    return gateQualification() === 'device';
   }
 
   function manifestAsset(char) {
@@ -30,7 +46,7 @@
     if (char.isPreset) return Boolean(attachManifestAsset(char));
     if (!isCustomCharacter(char)) return false;
     const asset = char.humanAsset || char.model3d || char.model3D;
-    return Boolean(asset && char.humanAssetStatus === 'production');
+    return Boolean(asset && isQualifiedCustomAsset(char));
   }
 
   function normalizeMode(value) {
@@ -278,11 +294,16 @@
       updateButton();
       window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
     }, 0));
+    window.addEventListener('unifiedproductionready', () => setTimeout(() => {
+      updateButton();
+      window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
+    }, 0));
     return true;
   }
 
   const api = Object.freeze({
-    STORAGE_PREFIX, MODES, ACTIONS, isCustomCharacter, manifestAsset, attachManifestAsset,
+    STORAGE_PREFIX, MODES, ACTIONS, UNIFIED_CUSTOM_ASSET_ID, CUSTOM_READY_STATUSES,
+    isCustomCharacter, gateQualification, isQualifiedCustomAsset, manifestAsset, attachManifestAsset,
     isProductionReady, normalizeMode, defaultMode, storedMode, saveMode, recipeFor,
     safeActionTransform, shouldRender3D, hideTextStage, cancelDeferredTextCleanup, deferTextModeCleanup,
     ensureButton, updateButton, patchRenderer, patchSwitchCharacter, boot
