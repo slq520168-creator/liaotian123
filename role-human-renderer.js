@@ -136,6 +136,24 @@
     }
   }
 
+  function bindWebGLContextLifecycle(canvas, handlers = {}) {
+    if (!canvas || typeof canvas.addEventListener !== 'function') return () => {};
+    const onLost = event => {
+      event?.preventDefault?.();
+      handlers.onLost?.(event);
+    };
+    const onRestored = event => handlers.onRestored?.(event);
+    canvas.addEventListener('webglcontextlost', onLost, false);
+    canvas.addEventListener('webglcontextrestored', onRestored, false);
+    let bound = true;
+    return () => {
+      if (!bound) return;
+      bound = false;
+      canvas.removeEventListener?.('webglcontextlost', onLost, false);
+      canvas.removeEventListener?.('webglcontextrestored', onRestored, false);
+    };
+  }
+
   function decoderFromModule(module) {
     return module?.MeshoptDecoder || module?.default?.MeshoptDecoder || module?.default || module || null;
   }
@@ -179,6 +197,8 @@
       this.currentId = '';
       this.modules = null;
       this.baseRootY = 0;
+      this.contextLost = false;
+      this._unbindContextLifecycle = null;
     }
 
     currentCharacter() {
@@ -251,6 +271,22 @@
       fill.position.set(-3, 2, 2);
       this.scene.add(hemi, key, fill);
       this.canvasHost.appendChild(this.renderer.domElement);
+      this._unbindContextLifecycle?.();
+      this._unbindContextLifecycle = bindWebGLContextLifecycle(this.renderer.domElement, {
+        onLost: () => {
+          this.contextLost = true;
+          this.loop?.stop?.();
+          this.setStatus('3D渲染已暂停，正在恢复…', 'loading');
+        },
+        onRestored: () => {
+          this.contextLost = false;
+          if (!this.root) return;
+          this.resize();
+          this.setStatus('');
+          this.stage?.classList.remove('loading', 'error');
+          this.loop?.start?.();
+        }
+      });
       const resize = () => this.resize();
       if ('ResizeObserver' in window) {
         this.resizeObserver = new ResizeObserver(resize);
@@ -374,7 +410,7 @@
     }
 
     renderFrame(frame) {
-      if (!this.renderer || !this.scene || !this.camera || !this.root || !this.faceRig) return;
+      if (this.contextLost || !this.renderer || !this.scene || !this.camera || !this.root || !this.faceRig) return;
       this.faceRig.render(frame || {});
       this.renderer.render(this.scene, this.camera);
     }
@@ -391,6 +427,9 @@
       this.resizeObserver?.disconnect?.();
       this.resizeObserver = null;
       if (this._onResize) window.removeEventListener('resize', this._onResize);
+      this._unbindContextLifecycle?.();
+      this._unbindContextLifecycle = null;
+      this.contextLost = false;
       this.renderer?.dispose?.();
       this.renderer = null;
       this.stage?.remove?.();
@@ -436,6 +475,7 @@
     findHeadObject,
     disposeObject,
     webGL2Context,
+    bindWebGLContextLifecycle,
     decoderFromModule,
     loadThreeModules,
     HumanRenderer

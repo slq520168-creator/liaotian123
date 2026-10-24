@@ -70,6 +70,32 @@ test('WebGL2 context is explicitly required and unsupported devices fail closed'
   assert.equal(human.webGL2Context({},{}),null);
 });
 
+test('WebGL context loss prevents default, resumes through restore hook, and unbinds exactly once', () => {
+  const listeners={};
+  let prevented=0,lost=0,restored=0,removed=0;
+  const canvas={
+    addEventListener(type,fn){listeners[type]=fn;},
+    removeEventListener(type,fn){assert.equal(listeners[type],fn);delete listeners[type];removed++;}
+  };
+  const unbind=human.bindWebGLContextLifecycle(canvas,{
+    onLost(){lost++;},
+    onRestored(){restored++;}
+  });
+  assert.equal(typeof listeners.webglcontextlost,'function');
+  assert.equal(typeof listeners.webglcontextrestored,'function');
+  listeners.webglcontextlost({preventDefault(){prevented++;}});
+  listeners.webglcontextrestored({});
+  assert.equal(prevented,1);
+  assert.equal(lost,1);
+  assert.equal(restored,1);
+  unbind();
+  unbind();
+  assert.equal(removed,2);
+  assert.equal(listeners.webglcontextlost,undefined);
+  assert.equal(listeners.webglcontextrestored,undefined);
+  assert.doesNotThrow(()=>human.bindWebGLContextLifecycle(null,{}));
+});
+
 test('renderer load cancellation and model cleanup stop the RAF chain', () => {
   const renderer=new human.HumanRenderer();
   let stops=0,removed=0,geometryDisposals=0,materialDisposals=0,renderListDisposals=0;
