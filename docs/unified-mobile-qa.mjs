@@ -16,6 +16,7 @@ const percentile=(values,p)=>{if(!values.length)return 0;const sorted=[...values
 const isMobileDevice=()=>/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'')||((navigator.platform==='MacIntel'||navigator.platform==='MacPPC')&&(navigator.maxTouchPoints||0)>1);
 const fetchJson=async path=>{const response=await fetch(path,{cache:'no-store'});if(!response.ok)throw new Error(`${path} ${response.status}`);return response.json();};
 const largestModule=(group={})=>Object.entries(group).sort((a,b)=>(b[1]?.bytes||0)-(a[1]?.bytes||0))[0]||null;
+const requiredModule=(group,id,label)=>{const entry=group?.[id];if(!entry?.url)throw new Error(`候选缺少${label}: ${id}`);return [id,entry];};
 const moduleUrl=entry=>`${ROOT}${entry?.[1]?.url||''}`;
 
 function setExpression(root,name,value){
@@ -75,28 +76,34 @@ async function main(){
   addEventListener('resize',resize,{passive:true});resize();
 
   const loader=new GLTFLoader();loader.setMeshoptDecoder(MeshoptDecoder);
-  const hair=largestModule(manifest.modules?.hair),clothing=largestModule(manifest.modules?.clothing);
-  if(!hair||!clothing)throw new Error('候选头发/服装清单为空');
-  setStatus('正在加载统一人体和最大模块…','loading');
+  const hair=largestModule(manifest.modules?.hair);
+  const outfit=[
+    requiredModule(manifest.modules?.clothing,'hoodie','完整上装'),
+    requiredModule(manifest.modules?.clothing,'jeans','完整下装'),
+    requiredModule(manifest.modules?.clothing,'shoes','鞋')
+  ];
+  if(!hair)throw new Error('候选头发清单为空');
+  setStatus('正在加载统一人体、头发和完整服装套装…','loading');
   const loadStart=performance.now();
-  const [baseGltf,hairGltf,clothingGltf]=await Promise.all([
+  const [baseGltf,hairGltf,...outfitGltfs]=await Promise.all([
     loader.loadAsync(`${ROOT}${manifest.base.url}`),
     loader.loadAsync(moduleUrl(hair)),
-    loader.loadAsync(moduleUrl(clothing))
+    ...outfit.map(entry=>loader.loadAsync(moduleUrl(entry)))
   ]);
   const loadMs=performance.now()-loadStart;
   const base=baseGltf.scene;
+  const outfitScenes=outfitGltfs.map(gltf=>gltf.scene);
+  const modules=[hairGltf.scene,...outfitScenes];
   const identity={
-    gender_female:.72,weight_max:.34,muscle_max:.24,height_tall:.2,
-    breast_cup_max:.22,breast_firm_max:.18,
-    face_nose_width_incr:.24,face_eye_size_incr:.18,face_lips_incr:.2,
-    face_forehead_incr:.12,face_ear_size_decr:.1
+    gender_male:.78,weight_max:.28,muscle_max:.34,height_tall:.2,
+    face_nose_width_incr:.18,face_jaw_width_incr:.18,face_eye_size_incr:.12,
+    face_forehead_incr:.08,face_ear_size_decr:.08
   };
   const hairRequired=['gender_female','gender_male','weight_min','weight_max','height_short','height_tall','face_forehead_decr','face_forehead_incr','face_ear_size_decr','face_ear_size_incr'];
   const clothingRequired=['gender_female','gender_male','weight_min','weight_max','height_short','height_tall'];
   runtime.attachModule(base,hairGltf.scene,identity,hairRequired);
-  runtime.attachModule(base,clothingGltf.scene,identity,clothingRequired);
-  const candidateState=runtime.applyCandidateState(base,[hairGltf.scene,clothingGltf.scene],joints,identity);
+  for(const sceneRoot of outfitScenes)runtime.attachModule(base,sceneRoot,identity,clothingRequired);
+  const candidateState=runtime.applyCandidateState(base,modules,joints,identity);
   if(!candidateState.morphs?.applied)throw new Error('身份 morph 未实际应用');
   if(candidateState.skeleton?.moved<40||candidateState.skeleton?.missingBones?.length)throw new Error(`骨骼合同失败: ${candidateState.skeleton?.missingBones?.join(',')||'moved<40'}`);
   scene.add(base);base.updateMatrixWorld(true);frameScene(camera,base);resize();
@@ -134,6 +141,7 @@ async function main(){
   const avgFps=1000/mean,p95=percentile(deltas,.95),p99=percentile(deltas,.99);
   const mobileDevice=isMobileDevice();
   const performancePass=avgFps>=30&&p95<=50&&contextLosses===0&&!visibilityInterrupted;
+  const outfitBytes=outfit.reduce((sum,entry)=>sum+Number(entry?.[1]?.bytes||0),0);
   const result={
     schema:1,
     testedAt:new Date().toISOString(),
@@ -146,7 +154,7 @@ async function main(){
     avgFps:round(avgFps),p95FrameMs:round(p95),p99FrameMs:round(p99),samples:deltas.length,
     loadMs:round(loadMs),contextLosses,visibilityInterrupted,
     device:{userAgent:navigator.userAgent,platform:navigator.platform||'',touchPoints:navigator.maxTouchPoints||0,devicePixelRatio:window.devicePixelRatio||1,renderPixelRatio:quality.pixelRatio,memoryGB:navigator.deviceMemory||null,cores:navigator.hardwareConcurrency||null,viewport:[innerWidth,innerHeight]},
-    candidate:{baseBytes:manifest.base.bytes,hairId:hair[0],hairBytes:hair[1].bytes,clothingId:clothing[0],clothingBytes:clothing[1].bytes,movedBones:candidateState.skeleton.moved,appliedJointMorphs:candidateState.skeleton.appliedMorphs,expressionHits},
+    candidate:{baseBytes:manifest.base.bytes,hairId:hair[0],hairBytes:hair[1].bytes,clothingId:outfit[0][0],clothingIds:outfit.map(entry=>entry[0]),clothingBytes:outfitBytes,movedBones:candidateState.skeleton.moved,appliedJointMorphs:candidateState.skeleton.appliedMorphs,expressionHits},
     rendererInfo:{geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,triangles:renderer.info.render.triangles,calls:renderer.info.render.calls},
     thresholds:{minAverageFps:30,maxP95FrameMs:50,maxContextLosses:0}
   };
