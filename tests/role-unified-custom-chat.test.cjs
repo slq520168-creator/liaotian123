@@ -39,3 +39,28 @@ test('legacy rigs are reset and detached before unified candidate state is appli
   assert.equal(body,1);assert.equal(proportion,1);assert.equal(appearance,1);
   assert.equal(renderer.bodyRig,null);assert.equal(renderer.proportionRig,null);assert.equal(renderer.appearanceRig,null);assert.equal(renderer.proportionResult,null);assert.equal(renderer.appearanceResult,null);
 });
+
+test('unified state cleanup drops disposed module references and cached recipe state',()=>{
+  const renderer={__unifiedCustomModules:[{id:1}],__unifiedCustomKey:'old',__unifiedCandidateState:{ok:true}};
+  custom.resetUnifiedState(renderer);
+  assert.equal(renderer.__unifiedCustomModules,null);
+  assert.equal(renderer.__unifiedCustomKey,'');
+  assert.equal(renderer.__unifiedCandidateState,null);
+});
+
+test('load tokens reject a stale custom load after another load starts',()=>{
+  const root={};const renderer={root,currentId:'custom_a'};
+  const first=custom.nextLoadToken(renderer);
+  assert.equal(custom.isCurrentLoad(renderer,root,'custom_a',first),true);
+  custom.nextLoadToken(renderer);
+  assert.equal(custom.isCurrentLoad(renderer,root,'custom_a',first),false);
+});
+
+test('skin tint respects asset tint gain and only updates each material once',()=>{
+  const color={value:'',gain:1,set(value){this.value=value;return this;},multiplyScalar(value){this.gain*=value;return this;}};
+  const skin={name:'Skin',color,userData:{tint:{gain:1.5}},needsUpdate:false};
+  const cloth={name:'Dress',color:{set(){throw new Error('clothing must not be tinted');}}};
+  const scene={traverse(visit){visit({material:skin});visit({material:[skin,cloth]});}};
+  assert.equal(custom.tintSkin(scene,'#d7a17f'),1);
+  assert.equal(color.value,'#d7a17f');assert.equal(color.gain,1.5);assert.equal(skin.needsUpdate,true);
+});

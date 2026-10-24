@@ -14,11 +14,13 @@ for (const file of [
   'config/app.js', 'roles.js', 'memory.js', 'role-code.js', 'role-experience.js',
   'role-presence.js', 'role-visual-recipe.js', 'role-face-rig.js', 'role-direct-viseme-rig.js', 'role-render-loop.js', 'role-body-rig.js', 'role-proportion-rig.js', 'role-appearance-rig.js',
   'role-meshopt-support.js', 'role-human-manifest.js', 'role-asset-policy.js', 'role-human-asset-capability.js', 'role-human-renderer.js', 'role-render-recipe-bridge.js', 'role-chat-mode.js', 'role-voice-stage.js', 'role-voice-style.js',
+  'role-unified-human-recipe.js', 'role-unified-human-runtime.js', 'role-unified-custom-chat.js',
   'role-code-compat.js', 'role-persistence.js', 'role-builder.js', 'role-creator-studio.js', 'role-creator-animated-presets.js', 'role-custom-visual.js', 'app.js'
 ]) run(['--check', file]);
-for (const file of ['scripts/build-cloudflare.mjs','scripts/import-human-asset.mjs','scripts/validate-vitruvian-morph-map.mjs','scripts/validate-vitruvian-reference.mjs']) run(['--check', file]);
-for (const file of ['roles/new-role.role.json', 'roles/preset-roles.json', 'scripts/vitruvian-morph-map.json']) JSON.parse(fs.readFileSync(file, 'utf8'));
+for (const file of ['scripts/build-cloudflare.mjs','scripts/import-human-asset.mjs','scripts/validate-vitruvian-morph-map.mjs','scripts/validate-vitruvian-reference.mjs','scripts/validate-unified-human-candidate.cjs']) run(['--check', file]);
+for (const file of ['roles/new-role.role.json', 'roles/preset-roles.json', 'scripts/vitruvian-morph-map.json', 'assets/humans/unified/unified-human-manifest.json', 'assets/humans/unified/unified-human-report.json', 'assets/humans/unified/asset_licenses.json']) JSON.parse(fs.readFileSync(file, 'utf8'));
 run(['scripts/validate-vitruvian-morph-map.mjs']);
+run(['scripts/validate-unified-human-candidate.cjs','assets/humans/unified']);
 
 const packageJson=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 if(packageJson.devDependencies?.three!=='0.186.1') throw new Error('Three.js 必须固定为 0.186.1');
@@ -40,6 +42,13 @@ const buildSource=fs.readFileSync(path.join(root,'scripts/build-cloudflare.mjs')
 for(const token of ['build/three.module.js','meshopt_decoder.mjs','vendor/three','vendor/meshoptimizer']){
   if(!buildSource.includes(token)) throw new Error(`Cloudflare构建缺少自托管3D运行时: ${token}`);
 }
+
+const unifiedManifestPath=path.join(root,'assets/humans/unified/unified-human-manifest.json');
+const unifiedManifest=JSON.parse(fs.readFileSync(unifiedManifestPath,'utf8'));
+const appConfigSource=fs.readFileSync(path.join(root,'config/app.js'),'utf8');
+const unifiedRuntimeEnabled=appConfigSource.includes("'role-unified-custom-chat.js'")||appConfigSource.includes('"role-unified-custom-chat.js"');
+if(unifiedRuntimeEnabled&&unifiedManifest?.capabilities?.mobile!==true) throw new Error('统一自定义3D角色尚未通过真实移动端验收，禁止载入生产配置');
+if(unifiedRuntimeEnabled&&unifiedManifest?.status!=='production') throw new Error('统一自定义3D角色未标记 production，禁止载入生产配置');
 
 const humanManifestPath = path.join(root, 'assets/humans/manifest.json');
 const humanManifest = JSON.parse(fs.readFileSync(humanManifestPath, 'utf8'));
@@ -78,4 +87,4 @@ run(['--disable-warning=ExperimentalWarning', 'scripts/test-chat-contract.mjs'])
 run(['scripts/test-chat-transport.mjs']);
 run(['scripts/test-role-code.mjs']);
 run(['scripts/test-site-update.mjs']);
-console.log('检查通过：自托管Three.js/Meshopt全身3D预设、移动端双WebGL上限、可见错误态、创作中心、普通/3D聊天门槛、安全动作、ARKit表情、语音风格、3D真人资产合同、Vitruvian真实morph映射、正式资产导入、运行时manifest、真实骨骼比例、真实外观rig、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
+console.log('检查通过：自托管Three.js/Meshopt全身3D预设、统一自定义3D候选完整合同与生产硬门槛、移动端双WebGL上限、可见错误态、创作中心、普通/3D聊天门槛、安全动作、ARKit表情、语音风格、3D真人资产合同、Vitruvian真实morph映射、正式资产导入、运行时manifest、真实骨骼比例、真实外观rig、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
