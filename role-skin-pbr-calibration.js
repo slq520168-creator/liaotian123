@@ -7,21 +7,34 @@
     '小麦肤色':'#d6936c',
     '深肤色':'#8a5a46'
   });
+  const CALIBRATED_HAIR_TINTS=Object.freeze({
+    '自然黑':'#533d2d',
+    '深棕':'#6d4437',
+    '栗棕':'#9d5a43',
+    '红棕':'#ae4f40',
+    '金棕':'#cd8e4f',
+    '银灰':'#bfbcc4'
+  });
   const NATURAL_SKIN='自然肤色';
+  const NATURAL_HAIR='自然黑';
 
-  function calibratedTint(choice){return CALIBRATED_SKIN_TINTS[choice]||CALIBRATED_SKIN_TINTS[NATURAL_SKIN];}
+  function calibratedSkinTint(choice){return CALIBRATED_SKIN_TINTS[choice]||CALIBRATED_SKIN_TINTS[NATURAL_SKIN];}
+  function calibratedHairTint(choice){return CALIBRATED_HAIR_TINTS[choice]||CALIBRATED_HAIR_TINTS[NATURAL_HAIR];}
+  function calibratedTint(choice){return calibratedSkinTint(choice);}
 
   function wrapRecipeApi(base){
     if(!base||typeof base.mapRecipe!=='function')return base||null;
-    if(base.__pbrSkinCalibration===true)return base;
+    if(base.__pbrSkinHairCalibration===true)return base;
     const baseMap=base.mapRecipe.bind(base);
     const wrapped={...base,
       SKIN_TINTS:CALIBRATED_SKIN_TINTS,
+      HAIR_TINTS:CALIBRATED_HAIR_TINTS,
       mapRecipe(recipe={}){
         const mapped=baseMap(recipe)||{};
-        return Object.freeze({...mapped,skinTint:calibratedTint(recipe?.skin)});
+        return Object.freeze({...mapped,skinTint:calibratedSkinTint(recipe?.skin),hairTint:calibratedHairTint(recipe?.hairColor)});
       },
-      __pbrSkinCalibration:true
+      __pbrSkinCalibration:true,
+      __pbrSkinHairCalibration:true
     };
     return Object.freeze(wrapped);
   }
@@ -42,7 +55,7 @@
     retry();return false;
   }
 
-  const api=Object.freeze({CALIBRATED_SKIN_TINTS,NATURAL_SKIN,calibratedTint,wrapRecipeApi,install,boot});
+  const api=Object.freeze({CALIBRATED_SKIN_TINTS,CALIBRATED_HAIR_TINTS,NATURAL_SKIN,NATURAL_HAIR,calibratedSkinTint,calibratedHairTint,calibratedTint,wrapRecipeApi,install,boot});
   if(typeof window!=='undefined'){window.RoleSkinPbrCalibration=api;boot(window);}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
