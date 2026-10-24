@@ -3,7 +3,7 @@
 
   const VERSION = 1;
   const GENDERS = Object.freeze(['unspecified','male','female']);
-  const FACE_DETAILS = Object.freeze({eyeSize:'眼睛大小',eyeSpacing:'眼距',eyeTilt:'眼角',noseBridge:'鼻梁',noseWidth:'鼻翼',lips:'嘴唇',mouthWidth:'嘴宽',chin:'下巴',cheekbones:'颧骨'});
+  const FACE_DETAILS = Object.freeze({eyeSize:'眼睛大小',eyeSpacing:'眼距',eyeTilt:'眼角',noseBridge:'鼻梁',noseWidth:'鼻翼',noseLength:'鼻长',lips:'嘴唇',mouthWidth:'嘴宽',jawWidth:'下颌宽度',chin:'下巴',cheekbones:'颧骨',earSize:'耳朵大小',forehead:'额头高度'});
   const BODY_DETAILS = Object.freeze({chestSize:'胸部体积',chestFirmness:'胸部紧实度',chestHeight:'胸部位置',chestSpacing:'胸部间距',chestProjection:'胸部突出度'});
   const OPTIONS = Object.freeze({
     body:Object.freeze(['偏瘦','匀称','微胖','丰满','胖','健壮']),
