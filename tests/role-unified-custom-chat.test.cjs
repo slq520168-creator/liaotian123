@@ -36,7 +36,7 @@ test('creator expression baseline remains visible while realtime blink and lip s
 
 test('expression merge attenuates mouth-only baseline while speaking and preserves brow/eye baseline',()=>{
   const merged=custom.mergeExpressionBaseline({mouthSmileLeft:.1,eyeBlinkLeft:.7},{mouthSmileLeft:.4,browInnerUp:.08,eyeSquintLeft:.05},{state:'speaking'});
-  assert.equal(merged.mouthSmileLeft,.14);
+  assert.ok(Math.abs(merged.mouthSmileLeft-.14)<1e-9);
   assert.equal(merged.browInnerUp,.08);
   assert.equal(merged.eyeSquintLeft,.05);
   assert.equal(merged.eyeBlinkLeft,.7);
