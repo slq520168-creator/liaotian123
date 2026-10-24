@@ -106,7 +106,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node "$GITHUB_WORKSPACE/scripts/validate-unified-human-candidate.cjs" output
+          rm -f /tmp/candidate-contract.log
+          node "$GITHUB_WORKSPACE/scripts/validate-unified-human-candidate.cjs" output 2>&1 | tee /tmp/candidate-contract.log
 
       - name: Enforce unified human contract
         working-directory: /tmp/cc
@@ -200,6 +201,7 @@ jobs:
           path: |
             /tmp/cc/output/unified-human-report.json
             /tmp/candidate-build.log
+            /tmp/candidate-contract.log
           if-no-files-found: warn
           retention-days: 30
 
