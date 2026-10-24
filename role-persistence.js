@@ -5,6 +5,7 @@
   const CUSTOM_ROLES_KEY='custom-roles';
   const ACTIVE_ROLE_KEY='active-role';
   const isAvatar=value=>typeof value==='string'&&/^data:image\/(?:jpeg|png|webp);base64,/i.test(value);
+  let customRolesTimer=0;
   const openDb=()=>new Promise((resolve,reject)=>{
     if(!('indexedDB'in window)){resolve(null);return;}
     const request=indexedDB.open(DB_NAME,1);
@@ -31,6 +32,13 @@
   function persistCustomRoles(){
     const list=currentCustomRoles();
     if(list.length||typeof characters!=='undefined')write(CUSTOM_ROLES_KEY,list);
+  }
+  function scheduleCustomRolesPersist(delay=180){
+    if(customRolesTimer)clearTimeout(customRolesTimer);
+    customRolesTimer=setTimeout(()=>{
+      customRolesTimer=0;
+      persistCustomRoles();
+    },Math.max(0,Number(delay)||0));
   }
   async function restoreCustomRoles(){
     const saved=await read(CUSTOM_ROLES_KEY);
@@ -60,7 +68,7 @@
     const preview=document.getElementById('userAvatarPreview');
     if(preview)new MutationObserver(()=>{const src=preview.getAttribute('src')||'';if(isAvatar(src))write(USER_AVATAR_KEY,src)}).observe(preview,{attributes:true,attributeFilter:['src']});
     const customList=document.getElementById('customCharacterList');
-    if(customList)new MutationObserver(()=>persistCustomRoles()).observe(customList,{childList:true,subtree:false});
+    if(customList)new MutationObserver(()=>scheduleCustomRolesPersist()).observe(customList,{childList:true,subtree:false});
     const upload=document.getElementById('userAvatarUpload');
     upload?.addEventListener('change',()=>setTimeout(()=>{if(isAvatar(userAvatar))write(USER_AVATAR_KEY,userAvatar)},700));
     const roleCode=document.getElementById('roleCodeUpload');
@@ -69,7 +77,14 @@
   function patchSwitchCharacter(){
     if(typeof switchCharacter!=='function'||switchCharacter.__persistence)return;
     const base=switchCharacter;
-    const wrapped=function(...args){const result=base.apply(this,args);if(typeof activeCharacterId==='string'&&activeCharacterId)write(ACTIVE_ROLE_KEY,activeCharacterId);return result};
+    const wrapped=function(...args){
+      const result=base.apply(this,args);
+      if(typeof activeCharacterId==='string'&&activeCharacterId){
+        const id=activeCharacterId;
+        setTimeout(()=>write(ACTIVE_ROLE_KEY,id),0);
+      }
+      return result
+    };
     wrapped.__persistence=true;
     switchCharacter=wrapped;
   }
@@ -87,6 +102,7 @@
     persistCustomRoles();
     if(typeof activeCharacterId==='string'&&activeCharacterId)write(ACTIVE_ROLE_KEY,activeCharacterId);
     window.addEventListener('pagehide',()=>{
+      if(customRolesTimer){clearTimeout(customRolesTimer);customRolesTimer=0;}
       if(isAvatar(userAvatar))write(USER_AVATAR_KEY,userAvatar);
       persistCustomRoles();
       if(typeof activeCharacterId==='string'&&activeCharacterId)write(ACTIVE_ROLE_KEY,activeCharacterId);
