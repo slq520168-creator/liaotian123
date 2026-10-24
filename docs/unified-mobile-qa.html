@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>统一 3D 人体 · 移动端候选 QA</title>
+  <style>
+    :root{color-scheme:light dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:#101014;color:#f7f7f8;min-height:100vh}main{max-width:920px;margin:0 auto;padding:16px}.panel{background:#19191f;border:1px solid #2a2a32;border-radius:16px;overflow:hidden}.head{padding:14px 16px;border-bottom:1px solid #2a2a32}.head h1{font-size:17px;margin:0 0 6px}.head p{font-size:12px;line-height:1.5;margin:0;color:#a9a9b3}#status{font-weight:700;margin-top:10px;font-size:13px}body[data-state="pass"] #status{color:#78e6a4}body[data-state="fail"] #status{color:#ff8f8f}body[data-state="loading"] #status{color:#ffd37a}.stage-wrap{height:min(68vh,680px);min-height:360px;background:#ece8eb}#stage{display:block;width:100%;height:100%;touch-action:none}.metrics{padding:12px 16px;border-top:1px solid #2a2a32}.metrics h2{font-size:13px;margin:0 0 8px}.metrics pre{white-space:pre-wrap;word-break:break-word;margin:0;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c8c8d0}.note{font-size:11px;line-height:1.5;color:#8d8d98;margin:12px 2px 0}@media(max-width:560px){main{padding:0}.panel{border-radius:0;border-left:0;border-right:0}.stage-wrap{height:60vh;min-height:320px}}
+  </style>
+</head>
+<body data-state="loading">
+<main>
+  <section class="panel" aria-label="统一3D人体移动端候选测试">
+    <div class="head">
+      <h1>统一 3D 人体 · 移动端候选 QA</h1>
+      <p>独立候选测试页，不连接正式聊天开关，不会把 candidate-only 自动晋级为 production。</p>
+      <div id="status" role="status">正在启动真实 WebGL2 测试…</div>
+    </div>
+    <div class="stage-wrap"><canvas id="stage" aria-label="3D候选渲染画布"></canvas></div>
+    <div class="metrics"><h2>本机结果</h2><pre id="metrics">等待采样…</pre></div>
+  </section>
+  <p class="note">结果只保存在当前浏览器 sessionStorage，不上传用户数据。真实移动端晋级必须同时满足：移动设备、WebGL2、完整候选合同、平均 ≥30 FPS、P95 ≤50ms、无上下文丢失。</p>
+</main>
+<script src="../role-unified-human-runtime.js"></script>
+<script src="../role-render-loop.js"></script>
+<script type="module" src="unified-mobile-qa.mjs"></script>
+</body>
+</html>
