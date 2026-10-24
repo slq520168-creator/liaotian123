@@ -12,6 +12,17 @@ test('female body emits MakeHuman corrective morphs instead of linear-only defor
   assert.ok(out.morphs.corr_gender_female__weight_max>0);
 });
 
+test('adult minimum age uses only a bounded young-adult share of the child morph',()=>{
+  const age18=mapper.mapRecipe({gender:'female',age:18}),age20=mapper.mapRecipe({gender:'female',age:20}),age24=mapper.mapRecipe({gender:'female',age:24}),age25=mapper.mapRecipe({gender:'female',age:25});
+  assert.equal(age18.morphs.age_child,mapper.YOUNG_ADULT_MAX);
+  assert.ok(age18.morphs.age_child<=.18);
+  assert.ok(age20.morphs.age_child<age18.morphs.age_child);
+  assert.ok(age24.morphs.age_child<age20.morphs.age_child);
+  assert.equal(age25.morphs.age_child,undefined);
+  assert.ok(age18.morphs.corr_gender_female__age_child>0);
+  assert.ok(age18.morphs.corr_gender_female__age_child<=mapper.YOUNG_ADULT_MAX);
+});
+
 test('athletic male emits gender x muscle and weight x muscle correction when needed',()=>{
   const out=mapper.mapRecipe({gender:'male',age:24,heightCm:185,weightJin:190,body:'健壮',face:'方脸'});
   assert.equal(out.morphs.gender_male,1);
@@ -30,6 +41,13 @@ test('unspecified gender stays neutral and cannot create gender correctives',()=
   assert.equal(out.morphs.gender_female,undefined);
   assert.equal(out.morphs.gender_male,undefined);
   assert.equal(out.morphs.corr_gender_female__weight_max,undefined);
+});
+
+test('unspecified gender uses neutral briefs safety layer instead of female underwear',()=>{
+  const out=mapper.mapRecipe({gender:'unspecified',outfit:'日常休闲'});
+  assert.ok(out.clothing.includes('briefs'));
+  assert.equal(out.clothing.includes('panties'),false);
+  assert.equal(out.clothing.includes('bra'),false);
 });
 
 test('all emitted morphs are in candidate contract',()=>{
