@@ -8,7 +8,7 @@
   const GLTF_URL=localUrl('vendor/three/examples/jsm/loaders/GLTFLoader.js');
   const SKEL_URL=localUrl('vendor/three/examples/jsm/utils/SkeletonUtils.js');
   const MESHOPT_URL=localUrl('vendor/meshoptimizer/meshopt_decoder.mjs');
-  const MAX_ACTIVE=2;
+  const ACTIVE_MOBILE=4,ACTIVE_DESKTOP=6;
   const PROFILES=[
     {name:'自然陪伴',sx:1.00,sy:1.00,sz:1.00,yaw:-0.04,accent:0xffd7e5,cloth:0xd7dce8,pace:0.85,smile:0.05},
     {name:'温柔治愈',sx:0.98,sy:1.01,sz:0.99,yaw:0.05,accent:0xffc6dc,cloth:0xf0d8df,pace:0.72,smile:0.22},
@@ -98,6 +98,7 @@
     return{profile:PROFILES[index]||PROFILES[0],index};
   }
   function activeCount(){return runtimes.size+mounting.size;}
+  function activeLimit(){return Math.min(PROFILES.length,(window.innerWidth||0)<=700?ACTIVE_MOBILE:ACTIVE_DESKTOP);}
   function nextToken(card){const n=(tokens.get(card)||0)+1;tokens.set(card,n);return n;}
   function tokenValid(card,token){return tokens.get(card)===token&&card.isConnected&&visibleCards.has(card);}
   async function mount(card,profile,index,token){
@@ -134,16 +135,31 @@
       }
     }
   }
-  function dispose(card){
-    nextToken(card);const r=runtimes.get(card);if(!r)return;r.disposed=true;cancelAnimationFrame(r.raf);r.resizeObserver?.disconnect?.();r.ownedMaterials?.forEach(m=>m.dispose?.());r.groundGeometry?.dispose?.();r.groundMaterial?.dispose?.();r.renderer?.dispose?.();r.renderer?.forceContextLoss?.();r.renderer?.domElement?.remove?.();runtimes.delete(card);drain();
+  function dispose(card,redrain=true){
+    nextToken(card);const r=runtimes.get(card);if(!r)return;r.disposed=true;cancelAnimationFrame(r.raf);r.resizeObserver?.disconnect?.();r.ownedMaterials?.forEach(m=>m.dispose?.());r.groundGeometry?.dispose?.();r.groundMaterial?.dispose?.();r.renderer?.dispose?.();r.renderer?.forceContextLoss?.();r.renderer?.domElement?.remove?.();runtimes.delete(card);if(redrain)drain();
   }
-  function requestMount(card){
-    if(!visibleCards.has(card)||runtimes.has(card)||mounting.has(card)||activeCount()>=MAX_ACTIVE)return;
+  function requestMount(card,force=false){
+    if(!visibleCards.has(card)||runtimes.has(card)||mounting.has(card)||(!force&&activeCount()>=activeLimit()))return;
     const token=nextToken(card),{profile,index}=profileFor(card);mounting.add(card);
     mount(card,profile,index,token).finally(()=>{mounting.delete(card);drain();});
   }
+  function prioritize(card){
+    if(!card?.isConnected)return;
+    visibleCards.add(card);
+    const running=runtimes.get(card);if(running){running.visible=true;return;}
+    if(mounting.has(card))return;
+    if(activeCount()>=activeLimit()){
+      const victim=[...runtimes.keys()].find(other=>other!==card);
+      if(victim)dispose(victim,false);
+      else{
+        const pending=[...mounting].find(other=>other!==card);
+        if(pending){nextToken(pending);mounting.delete(pending);}
+      }
+    }
+    requestMount(card,true);
+  }
   function drain(){
-    for(const card of visibleCards){if(activeCount()>=MAX_ACTIVE)break;if(!runtimes.has(card)&&!mounting.has(card))requestMount(card);}
+    for(const card of visibleCards){if(activeCount()>=activeLimit())break;if(!runtimes.has(card)&&!mounting.has(card))requestMount(card);}
   }
   function schedule(card,delay=0){
     if(!card?.isConnected)return;visibleCards.add(card);if(delay)setTimeout(()=>{if(visibleCards.has(card))drain();},delay);else drain();
@@ -164,10 +180,10 @@
       const name=card.dataset.preset||PROFILES[index]?.name||'3D预设',text=(card.querySelector('small')?.textContent||'').trim();
       card.dataset.full3d='1';card.classList.add('creator-preset-3d-card');if(name===selectedPreset)card.classList.add('selected');
       card.innerHTML=`<div class="creator-preset-3d" aria-label="${name} 全身3D预览"><span class="creator-preset-loading">正在加载 3D…</span></div><div class="creator-preset-copy"><b>${name}</b><small>${text}</small></div>`;
-      card.addEventListener('click',()=>{selectedPreset=name;if(hostFor(card)?.classList.contains('failed')){retries.set(card,0);modulesPromise=null;sourcePromise=null;schedule(card);}},{passive:true});
+      card.addEventListener('click',()=>{selectedPreset=name;studio.querySelectorAll('button[data-preset]').forEach(item=>item.classList.toggle('selected',item===card));if(hostFor(card)?.classList.contains('failed')){retries.set(card,0);modulesPromise=null;sourcePromise=null;}prioritize(card);},{passive:true});
       observe(card);
     }
-    if(!io)cards.slice(0,MAX_ACTIVE).forEach(schedule);
+    if(!io)cards.slice(0,activeLimit()).forEach(schedule);
   }
 
   const style=document.createElement('style');style.id='creatorPreset3DStyles';style.textContent=`
@@ -176,7 +192,7 @@
 
   const mo=new MutationObserver(()=>requestAnimationFrame(decorate));
   function boot(){const studio=document.getElementById('roleCreatorStudio');if(!studio){setTimeout(boot,80);return;}mo.observe(studio,{childList:true,subtree:true});decorate();}
-  window.addEventListener('resize',()=>{for(const r of runtimes.values())r.resize?.();},{passive:true});
+  window.addEventListener('resize',()=>{for(const r of runtimes.values())r.resize?.();drain();},{passive:true});
   document.addEventListener('visibilitychange',()=>{for(const [card,r]of runtimes){r.visible=!document.hidden&&visibleCards.has(card);}});
   boot();
 })();

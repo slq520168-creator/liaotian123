@@ -31,11 +31,11 @@
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const val=key=>key==='relationship'?old.relation?.value:key in state?state[key]:old[key]?.value;
   const emit=el=>{el?.dispatchEvent(new Event('change',{bubbles:true}));el?.dispatchEvent(new Event('input',{bubbles:true}));};
-  function set(key,value){
+  function set(key,value,shouldRender=true){
     if(key==='relationship'){old.relation.value=value;emit(old.relation);}
     else if(key in state) state[key]=value;
     else if(old[key]){old[key].value=value;emit(old[key]);}
-    render();
+    if(shouldRender)render();
   }
   function choices(key,values,notes={}){return `<div class="creator-grid">${values.map(v=>`<button type="button" class="creator-card${val(key)===v?' selected':''}" data-key="${esc(key)}" data-value="${esc(v)}"><b>${esc(v)}</b>${notes[v]?`<small>${esc(notes[v])}</small>`:''}</button>`).join('')}</div>`;}
   function currentRecipe(){
@@ -71,8 +71,8 @@
   }
   function applyPreset(name){
     const preset=presets.find(p=>p[0]===name);if(!preset)return;
-    Object.entries(preset[2]).forEach(([key,value])=>set(key,value));
-    render();
+    Object.entries(preset[2]).forEach(([key,value])=>set(key,value,false));
+    active='body';render();
   }
   function augmentBlock(){
     const match=personality.value.match(BLOCK);if(!match)return;

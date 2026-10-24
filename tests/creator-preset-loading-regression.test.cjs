@@ -1,0 +1,11 @@
+'use strict';
+const fs=require('fs');
+const assert=require('assert');
+const animated=fs.readFileSync('role-creator-animated-presets.js','utf8');
+const studio=fs.readFileSync('role-creator-studio.js','utf8');
+assert(!animated.includes('const MAX_ACTIVE=2;'),'mobile preset previews must not hard-limit visible cards to two');
+assert(animated.includes('ACTIVE_MOBILE=4'),'mobile preset preview concurrency must cover the four cards visible on iPhone');
+assert(animated.includes('function prioritize(card)'),'tapped preset must be able to take a preview slot immediately');
+assert(studio.includes('function set(key,value,shouldRender=true)'),'preset state updates must support batched rendering');
+assert(studio.includes("active='body';render();"),'tapping a preset must visibly enter the body editor');
+console.log('creator preset loading regression: ok');
