@@ -3,7 +3,7 @@ import {access,cp,mkdir,readFile,rm,writeFile} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),out=new URL('dist/',root);
 const runtimeJs=[
   'role-experience.js','role-presence.js','role-visual-recipe.js','role-unified-human-recipe.js','role-unified-human-runtime.js','role-accessory-geometry.js','role-face-rig.js','role-direct-viseme-rig.js','role-render-loop.js','role-body-rig.js','role-proportion-rig.js','role-appearance-rig.js',
-  'role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-natural-pose.js','role-fullscreen-stage.js','role-render-recipe-bridge.js',
+  'role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-safe-skeleton-motion.js','role-natural-pose.js','role-fullscreen-stage.js','role-render-recipe-bridge.js',
   'role-chat-mode.js','role-voice-stage.js','role-voice-style.js','role-code-compat.js','role-persistence.js','role-builder.js','role-creator-studio.js','role-creator-animated-presets.js','role-custom-visual.js','role-unified-custom-chat.js','role-unified-production-gate.js'
 ];
 const staticEntries=[
@@ -13,18 +13,14 @@ const staticEntries=[
 
 await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
-for(const name of staticEntries) await cp(new URL(name,root),new URL(name,out),{recursive:true});
+for(const name of staticEntries)await cp(new URL(name,root),new URL(name,out),{recursive:true});
 
-// Self-host the complete Three.js ESM graph used by the preset cards. three.module.js
-// imports three.core.js relatively, so both files must ship together on Safari/iOS.
 const threeSource=new URL('node_modules/three/',root);
 const threeOut=new URL('vendor/three/',out);
 await mkdir(new URL('build/',threeOut),{recursive:true});
 await mkdir(new URL('examples/jsm/loaders/',threeOut),{recursive:true});
 await mkdir(new URL('examples/jsm/utils/',threeOut),{recursive:true});
-for(const name of ['three.module.js','three.core.js']){
-  await cp(new URL(`build/${name}`,threeSource),new URL(`build/${name}`,threeOut));
-}
+for(const name of ['three.module.js','three.core.js'])await cp(new URL(`build/${name}`,threeSource),new URL(`build/${name}`,threeOut));
 await cp(new URL('LICENSE',threeSource),new URL('LICENSE',threeOut));
 
 async function copyThreeAddon(path){
@@ -32,11 +28,7 @@ async function copyThreeAddon(path){
   source=source.replace(/from\s+['"]three['"]/g,"from '../../../build/three.module.js'");
   await writeFile(new URL(path,threeOut),source);
 }
-for(const path of [
-  'examples/jsm/loaders/GLTFLoader.js',
-  'examples/jsm/utils/BufferGeometryUtils.js',
-  'examples/jsm/utils/SkeletonUtils.js'
-]) await copyThreeAddon(path);
+for(const path of ['examples/jsm/loaders/GLTFLoader.js','examples/jsm/utils/BufferGeometryUtils.js','examples/jsm/utils/SkeletonUtils.js'])await copyThreeAddon(path);
 
 const meshoptOut=new URL('vendor/meshoptimizer/',out);
 await mkdir(meshoptOut,{recursive:true});
@@ -45,15 +37,8 @@ try{await cp(new URL('node_modules/meshoptimizer/LICENSE.md',root),new URL('LICE
 
 const configSource=await readFile(new URL('config/app.js',root),'utf8');
 const referencedRuntime=[...configSource.matchAll(/['"](role-[a-z0-9-]+\.js)['"]/gi)].map(match=>match[1]);
-for(const name of referencedRuntime) await access(new URL(name,out));
-for(const path of [
-  'vendor/three/build/three.module.js',
-  'vendor/three/build/three.core.js',
-  'vendor/three/examples/jsm/loaders/GLTFLoader.js',
-  'vendor/three/examples/jsm/utils/BufferGeometryUtils.js',
-  'vendor/three/examples/jsm/utils/SkeletonUtils.js',
-  'vendor/meshoptimizer/meshopt_decoder.mjs'
-]) await access(new URL(path,out));
+for(const name of referencedRuntime)await access(new URL(name,out));
+for(const path of ['vendor/three/build/three.module.js','vendor/three/build/three.core.js','vendor/three/examples/jsm/loaders/GLTFLoader.js','vendor/three/examples/jsm/utils/BufferGeometryUtils.js','vendor/three/examples/jsm/utils/SkeletonUtils.js','vendor/meshoptimizer/meshopt_decoder.mjs'])await access(new URL(path,out));
 
 await writeFile(new URL('_headers',out),
   '/*.html\n  Cache-Control: no-cache\n'+

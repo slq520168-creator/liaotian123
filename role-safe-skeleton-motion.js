@@ -1,0 +1,103 @@
+(() => {
+  'use strict';
+
+  const ASSET_ID='unified-charactercreator';
+  const SAFE_BONES=Object.freeze(['spine_01','spine_02','spine_03']);
+  const MAX_DELTA=0.012;
+  const states=new WeakMap();
+
+  const clamp=(value,lo,hi)=>Math.max(lo,Math.min(hi,Number(value)||0));
+
+  function collectBones(root){
+    const found=new Map();
+    root?.traverse?.(node=>{
+      const name=String(node?.name||'');
+      if(node?.isBone&&SAFE_BONES.includes(name)&&!found.has(name))found.set(name,node);
+    });
+    return found;
+  }
+
+  function captureRest(root){
+    if(!root)return null;
+    const cached=states.get(root);if(cached)return cached;
+    const bones=collectBones(root);
+    if(SAFE_BONES.some(name=>!bones.has(name)))return null;
+    const rest={};
+    for(const name of SAFE_BONES){
+      const bone=bones.get(name),rotation=bone?.rotation;
+      if(!rotation||![rotation.x,rotation.y,rotation.z].every(Number.isFinite))return null;
+      rest[name]=Object.freeze({bone,x:rotation.x,y:rotation.y,z:rotation.z});
+    }
+    const state=Object.freeze({root,rest:Object.freeze(rest)});states.set(root,state);return state;
+  }
+
+  function actionDeltas(action,frame={},now=0){
+    const breathing=clamp(frame?.breathing,-.006,.006);
+    const t=Number.isFinite(Number(now))?Number(now):0;
+    const sway=Math.sin(t/3000),turn=Math.sin(t/3600);
+    const out={spine_01:{x:0,y:0,z:0},spine_02:{x:0,y:0,z:0},spine_03:{x:0,y:0,z:0}};
+    if(action==='放松呼吸'){
+      out.spine_01.x=breathing*.55;out.spine_02.x=breathing*.85;out.spine_03.x=breathing;
+      out.spine_02.y=sway*.0025;out.spine_03.y=sway*.0035;
+    }else if(action==='专注交流'){
+      out.spine_01.x=breathing*.18;out.spine_02.x=-.0022+breathing*.22;out.spine_03.x=-.0034+breathing*.28;
+      out.spine_03.y=sway*.0015;
+    }else if(action==='轻微转身'){
+      out.spine_01.x=breathing*.20;out.spine_02.x=breathing*.28;out.spine_03.x=breathing*.34;
+      out.spine_01.y=turn*.002;out.spine_02.y=turn*.0045;out.spine_03.y=turn*.007;
+    }else{
+      out.spine_01.x=breathing*.22;out.spine_02.x=breathing*.34;out.spine_03.x=breathing*.44;
+      out.spine_03.y=sway*.0012;
+    }
+    for(const delta of Object.values(out))for(const axis of ['x','y','z'])delta[axis]=clamp(delta[axis],-MAX_DELTA,MAX_DELTA);
+    return out;
+  }
+
+  function apply(root,action,frame={},now=0){
+    const state=captureRest(root);if(!state)return false;
+    const deltas=actionDeltas(action,frame,now);
+    for(const name of SAFE_BONES){
+      const base=state.rest[name],delta=deltas[name];
+      base.bone.rotation.x=base.x+delta.x;
+      base.bone.rotation.y=base.y+delta.y;
+      base.bone.rotation.z=base.z+delta.z;
+    }
+    return true;
+  }
+
+  function reset(root){
+    const state=states.get(root);if(!state)return false;
+    for(const name of SAFE_BONES){const base=state.rest[name];base.bone.rotation.x=base.x;base.bone.rotation.y=base.y;base.bone.rotation.z=base.z;}
+    return true;
+  }
+
+  function eligibleCharacter(char){
+    return Boolean(char&&!char.isPreset&&char.humanAssetId===ASSET_ID&&['production','device-qualified'].includes(String(char.humanAssetStatus||'')));
+  }
+
+  function patchRenderer(rendererApi=typeof window!=='undefined'?window.RoleHumanRenderer:null){
+    const proto=rendererApi?.HumanRenderer?.prototype;if(!proto?.renderFrame||proto.renderFrame.__safeSkeletonMotion)return false;
+    const base=proto.renderFrame;
+    const wrapped=function(frame={}){
+      const char=this.currentCharacter?.();
+      if(this.root&&eligibleCharacter(char)){
+        const recipe=typeof window!=='undefined'?window.RoleVisualRecipe?.forCharacter?.(char):null;
+        apply(this.root,recipe?.action||'自然站立',frame,typeof performance!=='undefined'?performance.now():Date.now());
+      }else if(this.root){reset(this.root);}
+      return base.call(this,frame);
+    };
+    wrapped.__safeSkeletonMotion=true;proto.renderFrame=wrapped;return true;
+  }
+
+  function boot(){
+    if(typeof window==='undefined')return false;
+    if(patchRenderer())return true;
+    let attempts=0;
+    const retry=()=>{if(patchRenderer())return;if(++attempts<80)setTimeout(retry,80);};
+    retry();return false;
+  }
+
+  const api=Object.freeze({ASSET_ID,SAFE_BONES,MAX_DELTA,collectBones,captureRest,actionDeltas,apply,reset,eligibleCharacter,patchRenderer,boot});
+  if(typeof window!=='undefined'){window.RoleSafeSkeletonMotion=api;boot();}
+  if(typeof module!=='undefined'&&module.exports)module.exports=api;
+})();
