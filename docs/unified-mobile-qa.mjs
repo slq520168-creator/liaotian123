@@ -55,6 +55,7 @@ async function main(){
   const missingCaps=required.filter(name=>manifest?.capabilities?.[name]!==true);
   if(missingCaps.length)throw new Error(`候选能力不完整: ${missingCaps.join(',')}`);
   if(manifest?.license!=='CC0')throw new Error('候选资产不是 CC0');
+  if(!Array.isArray(manifest?.safetyUnderwear?.male)||!manifest.safetyUnderwear.male.includes('briefs'))throw new Error('候选缺少男角色安全内衣合同');
 
   const context=canvas.getContext('webgl2',{alpha:true,antialias:quality.pixelRatio<=1.25,powerPreference:'high-performance'});
   if(!context)throw new Error('当前设备没有可用 WebGL2');
@@ -78,12 +79,13 @@ async function main(){
   const loader=new GLTFLoader();loader.setMeshoptDecoder(MeshoptDecoder);
   const hair=largestModule(manifest.modules?.hair);
   const outfit=[
+    requiredModule(manifest.modules?.clothing,'briefs','安全内衣'),
     requiredModule(manifest.modules?.clothing,'hoodie','完整上装'),
     requiredModule(manifest.modules?.clothing,'jeans','完整下装'),
     requiredModule(manifest.modules?.clothing,'shoes','鞋')
   ];
   if(!hair)throw new Error('候选头发清单为空');
-  setStatus('正在加载统一人体、头发和完整服装套装…','loading');
+  setStatus('正在加载统一人体、头发、安全内衣和完整服装套装…','loading');
   const loadStart=performance.now();
   const [baseGltf,hairGltf,...outfitGltfs]=await Promise.all([
     loader.loadAsync(`${ROOT}${manifest.base.url}`),
@@ -106,6 +108,14 @@ async function main(){
   const candidateState=runtime.applyCandidateState(base,modules,joints,identity);
   if(!candidateState.morphs?.applied)throw new Error('身份 morph 未实际应用');
   if(candidateState.skeleton?.moved<40||candidateState.skeleton?.missingBones?.length)throw new Error(`骨骼合同失败: ${candidateState.skeleton?.missingBones?.join(',')||'moved<40'}`);
+  const visibleOutfit=outfitScenes.map((sceneRoot,index)=>{
+    sceneRoot.updateMatrixWorld(true);
+    const box=new THREE.Box3().setFromObject(sceneRoot);
+    if(box.isEmpty())throw new Error(`服装模块没有可见几何体: ${outfit[index][0]}`);
+    const size=box.getSize(new THREE.Vector3());
+    if(size.lengthSq()<1e-6)throw new Error(`服装模块尺寸异常: ${outfit[index][0]}`);
+    return {id:outfit[index][0],size:[round(size.x,3),round(size.y,3),round(size.z,3)]};
+  });
   scene.add(base);base.updateMatrixWorld(true);frameScene(camera,base);resize();
   const expressionHits={jaw:setExpression(base,'jawOpen',0),blinkL:setExpression(base,'eyeBlinkLeft',0),blinkR:setExpression(base,'eyeBlinkRight',0),smileL:setExpression(base,'mouthSmileLeft',0),smileR:setExpression(base,'mouthSmileRight',0)};
   if(expressionHits.jaw<2||expressionHits.blinkL<2||expressionHits.blinkR<2)throw new Error('多网格 ARKit 表情合同未实际连接');
@@ -154,7 +164,7 @@ async function main(){
     avgFps:round(avgFps),p95FrameMs:round(p95),p99FrameMs:round(p99),samples:deltas.length,
     loadMs:round(loadMs),contextLosses,visibilityInterrupted,
     device:{userAgent:navigator.userAgent,platform:navigator.platform||'',touchPoints:navigator.maxTouchPoints||0,devicePixelRatio:window.devicePixelRatio||1,renderPixelRatio:quality.pixelRatio,memoryGB:navigator.deviceMemory||null,cores:navigator.hardwareConcurrency||null,viewport:[innerWidth,innerHeight]},
-    candidate:{baseBytes:manifest.base.bytes,hairId:hair[0],hairBytes:hair[1].bytes,clothingId:outfit[0][0],clothingIds:outfit.map(entry=>entry[0]),clothingBytes:outfitBytes,movedBones:candidateState.skeleton.moved,appliedJointMorphs:candidateState.skeleton.appliedMorphs,expressionHits},
+    candidate:{baseBytes:manifest.base.bytes,hairId:hair[0],hairBytes:hair[1].bytes,clothingId:outfit[0][0],clothingIds:outfit.map(entry=>entry[0]),clothingBytes:outfitBytes,visibleOutfit,movedBones:candidateState.skeleton.moved,appliedJointMorphs:candidateState.skeleton.appliedMorphs,expressionHits},
     rendererInfo:{geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,triangles:renderer.info.render.triangles,calls:renderer.info.render.calls},
     thresholds:{minAverageFps:30,maxP95FrameMs:50,maxContextLosses:0}
   };
