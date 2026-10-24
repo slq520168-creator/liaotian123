@@ -26,8 +26,8 @@ test('production Skin PBR contract keeps author albedo normal map and physically
   const skin=materialForNode(json,'Body').find(material=>material?.name==='Skin');
   assert.ok(skin,'Body must bind the Skin material');
   const pbr=skin.pbrMetallicRoughness||{};
-  assert.equal(imageNameForTexture(json,pbr.baseColorTexture),'skin_albedo.png');
-  assert.equal(imageNameForTexture(json,skin.normalTexture),'skin_normal.png');
+  assert.equal(imageNameForTexture(json,pbr.baseColorTexture),'skin_albedo');
+  assert.equal(imageNameForTexture(json,skin.normalTexture),'skin_normal');
   assert.equal(pbr.metallicFactor,0);
   assert.ok(close(pbr.roughnessFactor,.52,.001));
   assert.equal(pbr.baseColorFactor.length,4);
@@ -42,8 +42,8 @@ test('eye PBR contract keeps Eye Iris and transparent Cornea as separate materia
   const iris=materials.find(material=>material?.name==='Iris');
   const cornea=materials.find(material=>material?.name==='Cornea');
   assert.ok(eye&&iris&&cornea,'Eyes must keep separate Eye/Iris/Cornea materials');
-  assert.equal(imageNameForTexture(json,eye.pbrMetallicRoughness?.baseColorTexture),'eye.png');
-  assert.equal(imageNameForTexture(json,iris.pbrMetallicRoughness?.baseColorTexture),'eye.png');
+  assert.equal(imageNameForTexture(json,eye.pbrMetallicRoughness?.baseColorTexture),'eye');
+  assert.equal(imageNameForTexture(json,iris.pbrMetallicRoughness?.baseColorTexture),'eye');
   assert.equal(cornea.alphaMode,'BLEND');
   assert.ok(Number(cornea.pbrMetallicRoughness?.roughnessFactor)<.08);
 });
