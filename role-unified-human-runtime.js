@@ -14,8 +14,36 @@
   function resetMorphWeights(root,preserve=[]){const keep=new Set(preserve||[]);let meshes=0,resets=0;walk(root,node=>{const dictionary=node?.morphTargetDictionary,influences=node?.morphTargetInfluences;if(!dictionary||!influences)return;meshes++;for(const [name,index] of Object.entries(dictionary)){if(keep.has(name)||!Number.isInteger(index)||index<0||index>=influences.length)continue;if(influences[index]!==0){influences[index]=0;resets++;}}});return Object.freeze({meshes,resets});}
   function applyMorphWeights(root,weights={},options={}){if(options?.reset===true)resetMorphWeights(root,options.preserve||[]);let meshes=0,assignments=0;walk(root,node=>{const dictionary=node?.morphTargetDictionary,influences=node?.morphTargetInfluences;if(!dictionary||!influences)return;meshes++;for(const [name,raw] of Object.entries(weights||{})){const index=dictionary[name];if(!Number.isInteger(index)||index<0||index>=influences.length)continue;influences[index]=Math.max(0,Math.min(1,Number(raw)||0));assignments++;}});return Object.freeze({meshes,assignments,applied:assignments>0});}
 
+  function prepareModuleSurface(root,options={}){
+    const distance=Math.max(0,Math.min(.012,Number(options.distance)||.004));
+    const renderOrder=Math.max(1,Math.min(20,Math.round(Number(options.renderOrder)||4)));
+    const bias=Math.max(-8,Math.min(-.25,Number(options.bias)||-2));
+    const seenGeometry=new Set(),seenMaterial=new Set();let meshes=0,vertices=0,materials=0;
+    walk(root,node=>{
+      if(!node?.isMesh)return;
+      meshes++;
+      node.renderOrder=Math.max(Number(node.renderOrder)||0,renderOrder);
+      const geometry=node.geometry,position=geometry?.attributes?.position,normal=geometry?.attributes?.normal;
+      if(distance>0&&geometry&&position&&normal&&position.count===normal.count&&!seenGeometry.has(geometry)){
+        seenGeometry.add(geometry);
+        for(let i=0;i<position.count;i++)position.setXYZ(i,position.getX(i)+normal.getX(i)*distance,position.getY(i)+normal.getY(i)*distance,position.getZ(i)+normal.getZ(i)*distance);
+        position.needsUpdate=true;
+        geometry.computeBoundingBox?.();geometry.computeBoundingSphere?.();vertices+=position.count;
+      }
+      const list=Array.isArray(node.material)?node.material:(node.material?[node.material]:[]);
+      for(const material of list){
+        if(!material||seenMaterial.has(material))continue;
+        seenMaterial.add(material);materials++;
+        if('polygonOffset'in material){material.polygonOffset=true;material.polygonOffsetFactor=bias;material.polygonOffsetUnits=bias;}
+        if('depthTest'in material)material.depthTest=true;
+        material.needsUpdate=true;
+      }
+    });
+    return Object.freeze({meshes,vertices,materials,distance,renderOrder,bias});
+  }
+
   function moduleContract(baseRoot,moduleRoot,requiredMorphs=[]){const base=primarySkeleton(baseRoot);if(!base)return Object.freeze({ok:false,reason:'base-skeleton',meshes:0,missingBones:['<base skeleton>'],missingMorphs:[...requiredMorphs]});const meshes=skinnedMeshes(moduleRoot),missingBones=new Set(),missingMorphs=new Set();if(!meshes.length)return Object.freeze({ok:false,reason:'module-skeleton',meshes:0,missingBones:['<module skeleton>'],missingMorphs:[...requiredMorphs]});for(const mesh of meshes){const remap=buildBoneRemap(mesh.skeleton,base.skeleton);remap.missing.forEach(name=>missingBones.add(name));const dictionary=mesh.morphTargetDictionary||{};for(const name of requiredMorphs)if(!(name in dictionary))missingMorphs.add(name);}return Object.freeze({ok:missingBones.size===0&&missingMorphs.size===0,reason:'',meshes:meshes.length,missingBones:Object.freeze([...missingBones]),missingMorphs:Object.freeze([...missingMorphs])});}
-  function attachModule(baseRoot,moduleRoot,weights={},requiredMorphs=[]){const contract=moduleContract(baseRoot,moduleRoot,requiredMorphs);if(!contract.ok)throw new Error(`unified module incompatible: bones=${contract.missingBones.join(',')} morphs=${contract.missingMorphs.join(',')}`);const base=primarySkeleton(baseRoot),bindings=[];for(const mesh of skinnedMeshes(moduleRoot)){const result=rebindMesh(mesh,base.skeleton);if(!result.ok)throw new Error(`unified module bind failed: ${result.missing.join(',')}`);bindings.push(result);}const morphs=applyMorphWeights(moduleRoot,weights,{reset:true});if(typeof baseRoot?.add==='function')baseRoot.add(moduleRoot);return Object.freeze({ok:true,bindings:Object.freeze(bindings),morphs,root:moduleRoot});}
+  function attachModule(baseRoot,moduleRoot,weights={},requiredMorphs=[]){const contract=moduleContract(baseRoot,moduleRoot,requiredMorphs);if(!contract.ok)throw new Error(`unified module incompatible: bones=${contract.missingBones.join(',')} morphs=${contract.missingMorphs.join(',')}`);const base=primarySkeleton(baseRoot),bindings=[];for(const mesh of skinnedMeshes(moduleRoot)){const result=rebindMesh(mesh,base.skeleton);if(!result.ok)throw new Error(`unified module bind failed: ${result.missing.join(',')}`);bindings.push(result);}const isClothing=!requiredMorphs.some(name=>/^face_/.test(String(name||'')));const surface=isClothing?prepareModuleSurface(moduleRoot):null;const morphs=applyMorphWeights(moduleRoot,weights,{reset:true});if(typeof baseRoot?.add==='function')baseRoot.add(moduleRoot);return Object.freeze({ok:true,bindings:Object.freeze(bindings),morphs,surface,root:moduleRoot});}
 
   function topRoot(obj){let node=obj;while(node?.parent&&!node.parent.isScene)node=node.parent;return node;}
   function skeletonRestState(mesh){let state=restStates.get(mesh);if(state)return state;const sk=mesh?.skeleton,bones=sk?.bones||[];if(!bones.length)return null;const root=topRoot(mesh);root?.updateMatrixWorld?.(true);const Matrix4=root?.matrixWorld?.constructor;if(typeof Matrix4!=='function')return null;const rootInv=new Matrix4().copy(root.matrixWorld).invert(),byName=new Map();bones.forEach((b,i)=>{byName.set(String(b.name||''),i);byName.set(normalizeBone(b.name),i);});state={root,byName,pos:bones.map(b=>b.position.clone()),world:bones.map(b=>new Matrix4().multiplyMatrices(rootInv,b.matrixWorld)),inv:(sk.boneInverses||[]).map(m=>m.clone()),toParent:bones.map(b=>{if(!b.parent)return new Matrix4();const rel=new Matrix4().multiplyMatrices(rootInv,b.parent.matrixWorld);rel.setPosition(0,0,0);return rel.invert();})};restStates.set(mesh,state);return state;}
@@ -25,7 +53,7 @@
 
   function applyCandidateState(baseRoot,moduleRoots=[],joints,weights={}){const morphs=applyMorphWeights(baseRoot,weights,{reset:true});const modules=[];for(const moduleRoot of moduleRoots||[])modules.push(applyMorphWeights(moduleRoot,weights,{reset:true}));const skeleton=applySkeletonOffsets(baseRoot,joints,weights);return Object.freeze({morphs,modules:Object.freeze(modules),skeleton});}
 
-  const api=Object.freeze({normalizeBone,walk,skinnedMeshes,primarySkeleton,boneIndex,buildBoneRemap,remapSkinIndexAttribute,rebindMesh,resetMorphWeights,applyMorphWeights,moduleContract,attachModule,applySkeletonOffsets,applyCandidateState});
+  const api=Object.freeze({normalizeBone,walk,skinnedMeshes,primarySkeleton,boneIndex,buildBoneRemap,remapSkinIndexAttribute,rebindMesh,resetMorphWeights,applyMorphWeights,prepareModuleSurface,moduleContract,attachModule,applySkeletonOffsets,applyCandidateState});
   if(typeof window!=='undefined')window.RoleUnifiedHumanRuntime=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();

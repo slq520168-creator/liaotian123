@@ -37,3 +37,15 @@ test('creator commit closes before heavy role switching and full persistence', (
   assert(source.includes('flushCreatorPendingSwitch();'));
   assert(source.includes('requestIdleCallback(save, {timeout:1400})'));
 });
+
+test('text-mode switch no longer synchronously destroys the previous 3D model on the creator close frame', () => {
+  const source = fs.readFileSync('role-chat-mode.js', 'utf8');
+  assert(source.includes('function deferTextModeCleanup(renderer, char)'));
+  assert(source.includes('requestIdleCallback(run, {timeout:1200})'));
+  assert(source.includes('setTimeout(run, 450)'));
+  assert(source.includes('hideTextStage(renderer)'));
+  assert(source.includes('cancelDeferredTextCleanup(this)'));
+  const gate = source.match(/if \(!shouldRender3D\(char\)\) \{([\s\S]*?)return Promise\.resolve\(false\);/m)?.[1] || '';
+  assert(gate.includes('deferTextModeCleanup(this, char)'));
+  assert(!gate.includes('this.clearModel?.()'));
+});

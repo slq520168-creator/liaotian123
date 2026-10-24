@@ -16,16 +16,16 @@
   <section class="panel" aria-label="统一3D人体移动端候选测试">
     <div class="head">
       <h1>统一 3D 人体 · 移动端候选 QA</h1>
-      <p>独立候选测试页，不连接正式聊天开关，不会把 candidate-only 自动晋级为 production。测试人物必须同时加载安全内衣、完整上装、完整下装和鞋，缺一项都不能显示绿色通过。</p>
+      <p>独立候选测试页，不连接正式聊天开关，不会把 candidate-only 自动晋级为 production。测试人物必须同时加载安全内衣、贴身上装、完整上装、完整下装和鞋，并通过实际像素可见性验证；只要仍出现裸体、裤子/鞋被身体吃掉或遮挡失效，就必须红色失败。</p>
       <div id="status" role="status">正在启动真实 WebGL2 测试…</div>
     </div>
     <div class="stage-wrap"><canvas id="stage" aria-label="3D候选渲染画布"></canvas></div>
     <div class="metrics"><h2>本机结果</h2><pre id="metrics">等待采样…</pre></div>
   </section>
-  <p class="note">结果只保存在当前浏览器 sessionStorage，不上传用户数据。真实移动端晋级必须同时满足：移动设备、WebGL2、完整候选合同、安全内衣+上装+下装+鞋全部可见、平均 ≥30 FPS、P95 ≤50ms、无上下文丢失。</p>
+  <p class="note">结果只保存在当前浏览器 sessionStorage，不上传用户数据。真实移动端晋级必须同时满足：移动设备、WebGL2、完整候选合同、安全内衣+上装+下装+鞋真实可见、平均 ≥30 FPS、P95 ≤50ms、无上下文丢失。</p>
 </main>
-<script src="../role-unified-human-runtime.js?v=20261024-qa5"></script>
-<script src="../role-render-loop.js?v=20261024-qa5"></script>
-<script type="module" src="unified-mobile-qa.mjs?v=20261024-qa5"></script>
+<script src="../role-unified-human-runtime.js?v=20261025-qa6"></script>
+<script src="../role-render-loop.js?v=20261025-qa6"></script>
+<script type="module" src="unified-mobile-qa.mjs?v=20261025-qa6"></script>
 </body>
 </html>

@@ -1,6 +1,5 @@
 (() => {
   'use strict';
-
   const STORAGE_PREFIX = 'liaotian_chat_mode_v2_';
   const MODES = Object.freeze(['text', '3d']);
   const ACTIONS = Object.freeze(['自然站立','放松呼吸','专注交流','轻微转身']);
@@ -86,6 +85,44 @@
     return isProductionReady(char) && storedMode(char) === '3d';
   }
 
+  function hideTextStage(renderer) {
+    renderer?.loop?.stop?.();
+    if (renderer?.stage) {
+      renderer.stage.classList.remove('active', 'loading', 'error');
+      renderer.setStatus?.('');
+    }
+  }
+
+  function cancelDeferredTextCleanup(renderer) {
+    const job = renderer?.__chatModeDeferredClear;
+    if (!job) return false;
+    if (job.kind === 'idle' && typeof cancelIdleCallback === 'function') cancelIdleCallback(job.id);
+    if (job.kind === 'timer') clearTimeout(job.id);
+    renderer.__chatModeDeferredClear = null;
+    return true;
+  }
+
+  function deferTextModeCleanup(renderer, char) {
+    if (!renderer) return false;
+    cancelDeferredTextCleanup(renderer);
+    renderer.cancelPendingLoad?.();
+    hideTextStage(renderer);
+    const expectedId = String(char?.id || '');
+    const run = () => {
+      renderer.__chatModeDeferredClear = null;
+      const current = renderer.currentCharacter?.() || activeCharacter();
+      if (!current || String(current.id || '') !== expectedId || shouldRender3D(current)) return;
+      renderer.cancelPendingLoad?.();
+      renderer.clearModel?.();
+    };
+    if (typeof requestIdleCallback === 'function') {
+      renderer.__chatModeDeferredClear = {kind:'idle', id:requestIdleCallback(run, {timeout:1200})};
+    } else {
+      renderer.__chatModeDeferredClear = {kind:'timer', id:setTimeout(run, 450)};
+    }
+    return true;
+  }
+
   function ensureButton() {
     if (typeof document === 'undefined') return null;
     let button = document.getElementById('roleChatModeBtn');
@@ -148,9 +185,10 @@
       const syncWrapped = function(...args) {
         const char = this.currentCharacter?.() || activeCharacter();
         if (!shouldRender3D(char)) {
-          this.clearModel?.();
+          deferTextModeCleanup(this, char);
           return Promise.resolve(false);
         }
+        cancelDeferredTextCleanup(this);
         attachManifestAsset(char);
         return currentSync.apply(this, args);
       };
@@ -246,8 +284,8 @@
   const api = Object.freeze({
     STORAGE_PREFIX, MODES, ACTIONS, isCustomCharacter, manifestAsset, attachManifestAsset,
     isProductionReady, normalizeMode, defaultMode, storedMode, saveMode, recipeFor,
-    safeActionTransform, shouldRender3D, ensureButton, updateButton, patchRenderer,
-    patchSwitchCharacter, boot
+    safeActionTransform, shouldRender3D, hideTextStage, cancelDeferredTextCleanup, deferTextModeCleanup,
+    ensureButton, updateButton, patchRenderer, patchSwitchCharacter, boot
   });
   if (typeof window !== 'undefined') {
     window.RoleChatMode = api;

@@ -5,6 +5,8 @@ import {MeshoptDecoder} from '../vendor/meshoptimizer/meshopt_decoder.mjs';
 const ROOT='../assets/humans/unified/';
 const WARMUP_MS=2000;
 const SAMPLE_MS=8000;
+const PROOF_WIDTH=180;
+const PROOF_HEIGHT=300;
 const statusEl=document.getElementById('status');
 const metricsEl=document.getElementById('metrics');
 const canvas=document.getElementById('stage');
@@ -44,6 +46,80 @@ function frameScene(camera,root){
   camera.updateProjectionMatrix();
 }
 
+function pixelDifference(a,b,width,height,range=[0,1]){
+  let changed=0,checked=0;
+  const low=Math.max(0,Math.min(1,Number(range[0])||0));
+  const high=Math.max(low,Math.min(1,Number(range[1])||1));
+  for(let y=0;y<height;y++){
+    const ratio=height>1?y/(height-1):0;
+    if(ratio<low||ratio>high)continue;
+    for(let x=0;x<width;x++){
+      const i=(y*width+x)*4;
+      checked++;
+      const delta=Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]);
+      if(delta>=24)changed++;
+    }
+  }
+  const minimum=Math.max(24,Math.floor(checked*.0012));
+  return Object.freeze({changed,checked,minimum,pass:changed>=minimum,range:[low,high]});
+}
+
+function proveVisibleOutfit(renderer,scene,camera,outfit,outfitScenes){
+  const target=new THREE.WebGLRenderTarget(PROOF_WIDTH,PROOF_HEIGHT,{depthBuffer:true,stencilBuffer:false});
+  const previousTarget=renderer.getRenderTarget();
+  const previousAspect=camera.aspect;
+  const read=()=>{
+    const pixels=new Uint8Array(PROOF_WIDTH*PROOF_HEIGHT*4);
+    renderer.setRenderTarget(target);
+    renderer.clear();
+    renderer.render(scene,camera);
+    renderer.readRenderTargetPixels(target,0,0,PROOF_WIDTH,PROOF_HEIGHT,pixels);
+    return pixels;
+  };
+  try{
+    camera.aspect=PROOF_WIDTH/PROOF_HEIGHT;
+    camera.updateProjectionMatrix();
+    const full=read();
+    const ranges={tshirt:[.40,.82],hoodie:[.40,.94],jeans:[.12,.60],shoes:[0,.24]};
+    const proof={};
+    for(let i=0;i<outfit.length;i++){
+      const id=outfit[i][0];
+      if(id==='briefs')continue;
+      const root=outfitScenes[i];
+      root.visible=false;
+      const without=read();
+      root.visible=true;
+      const metric=pixelDifference(full,without,PROOF_WIDTH,PROOF_HEIGHT,ranges[id]||[0,1]);
+      proof[id]=metric;
+      if(!metric.pass)throw new Error(`服装没有真实出现在画面中: ${id} (${metric.changed}/${metric.minimum})`);
+    }
+    const safetyIndex=outfit.findIndex(entry=>entry[0]==='briefs');
+    if(safetyIndex<0)throw new Error('安全内衣没有加入测试套装');
+    const safetyRoot=outfitScenes[safetyIndex];
+    const restore=[];
+    for(let i=0;i<outfitScenes.length;i++){
+      if(i===safetyIndex)continue;
+      restore.push([outfitScenes[i],outfitScenes[i].visible]);
+      outfitScenes[i].visible=false;
+    }
+    safetyRoot.visible=true;
+    const safetyOn=read();
+    safetyRoot.visible=false;
+    const safetyOff=read();
+    safetyRoot.visible=true;
+    for(const [root,visible] of restore)root.visible=visible;
+    const safety=pixelDifference(safetyOn,safetyOff,PROOF_WIDTH,PROOF_HEIGHT,[.30,.60]);
+    proof.briefs=safety;
+    if(!safety.pass)throw new Error(`安全内衣没有真实遮住身体 (${safety.changed}/${safety.minimum})`);
+    return Object.freeze(proof);
+  }finally{
+    renderer.setRenderTarget(previousTarget);
+    camera.aspect=previousAspect;
+    camera.updateProjectionMatrix();
+    target.dispose();
+  }
+}
+
 async function main(){
   if(!runtime?.attachModule||!runtime?.applyCandidateState)throw new Error('统一人体 runtime 未加载');
   setStatus('正在读取候选合同…','loading');
@@ -80,6 +156,7 @@ async function main(){
   const hair=largestModule(manifest.modules?.hair);
   const outfit=[
     requiredModule(manifest.modules?.clothing,'briefs','安全内衣'),
+    requiredModule(manifest.modules?.clothing,'tshirt','贴身上装'),
     requiredModule(manifest.modules?.clothing,'hoodie','完整上装'),
     requiredModule(manifest.modules?.clothing,'jeans','完整下装'),
     requiredModule(manifest.modules?.clothing,'shoes','鞋')
@@ -97,14 +174,18 @@ async function main(){
   const outfitScenes=outfitGltfs.map(gltf=>gltf.scene);
   const modules=[hairGltf.scene,...outfitScenes];
   const identity={
-    gender_male:.78,weight_max:.28,muscle_max:.34,height_tall:.2,
-    face_nose_width_incr:.18,face_jaw_width_incr:.18,face_eye_size_incr:.12,
-    face_forehead_incr:.08,face_ear_size_decr:.08
+    gender_male:1,weight_max:.20,muscle_max:.58,height_tall:.24,proportions_ideal:.24,
+    face_nose_width_incr:.20,face_jaw_width_incr:.34,face_chin_incr:.16,face_eye_size_decr:.06,
+    face_forehead_incr:.06,face_ear_size_decr:.08
   };
   const hairRequired=['gender_female','gender_male','weight_min','weight_max','height_short','height_tall','face_forehead_decr','face_forehead_incr','face_ear_size_decr','face_ear_size_incr'];
   const clothingRequired=['gender_female','gender_male','weight_min','weight_max','height_short','height_tall'];
   runtime.attachModule(base,hairGltf.scene,identity,hairRequired);
-  for(const sceneRoot of outfitScenes)runtime.attachModule(base,sceneRoot,identity,clothingRequired);
+  const surfaceResults=[];
+  for(const sceneRoot of outfitScenes){
+    const attached=runtime.attachModule(base,sceneRoot,identity,clothingRequired);
+    surfaceResults.push(attached.surface||null);
+  }
   const candidateState=runtime.applyCandidateState(base,modules,joints,identity);
   if(!candidateState.morphs?.applied)throw new Error('身份 morph 未实际应用');
   if(candidateState.skeleton?.moved<40||candidateState.skeleton?.missingBones?.length)throw new Error(`骨骼合同失败: ${candidateState.skeleton?.missingBones?.join(',')||'moved<40'}`);
@@ -114,13 +195,17 @@ async function main(){
     if(box.isEmpty())throw new Error(`服装模块没有可见几何体: ${outfit[index][0]}`);
     const size=box.getSize(new THREE.Vector3());
     if(size.lengthSq()<1e-6)throw new Error(`服装模块尺寸异常: ${outfit[index][0]}`);
-    return {id:outfit[index][0],size:[round(size.x,3),round(size.y,3),round(size.z,3)]};
+    const surface=surfaceResults[index];
+    if(!surface||surface.meshes<1||surface.vertices<1)throw new Error(`服装表面防穿模处理未生效: ${outfit[index][0]}`);
+    return {id:outfit[index][0],size:[round(size.x,3),round(size.y,3),round(size.z,3)],surface};
   });
   scene.add(base);base.updateMatrixWorld(true);frameScene(camera,base);resize();
+  const visualProof=proveVisibleOutfit(renderer,scene,camera,outfit,outfitScenes);
+  resize();frameScene(camera,base);
   const expressionHits={jaw:setExpression(base,'jawOpen',0),blinkL:setExpression(base,'eyeBlinkLeft',0),blinkR:setExpression(base,'eyeBlinkRight',0),smileL:setExpression(base,'mouthSmileLeft',0),smileR:setExpression(base,'mouthSmileRight',0)};
   if(expressionHits.jaw<2||expressionHits.blinkL<2||expressionHits.blinkR<2)throw new Error('多网格 ARKit 表情合同未实际连接');
 
-  setStatus('正在执行真实 WebGL2 稳定性采样…','loading');
+  setStatus('服装像素可见性已通过，正在执行真实 WebGL2 稳定性采样…','loading');
   const start=performance.now();
   let previous=0,visibilityInterrupted=false;
   const deltas=[];
@@ -164,14 +249,14 @@ async function main(){
     avgFps:round(avgFps),p95FrameMs:round(p95),p99FrameMs:round(p99),samples:deltas.length,
     loadMs:round(loadMs),contextLosses,visibilityInterrupted,
     device:{userAgent:navigator.userAgent,platform:navigator.platform||'',touchPoints:navigator.maxTouchPoints||0,devicePixelRatio:window.devicePixelRatio||1,renderPixelRatio:quality.pixelRatio,memoryGB:navigator.deviceMemory||null,cores:navigator.hardwareConcurrency||null,viewport:[innerWidth,innerHeight]},
-    candidate:{baseBytes:manifest.base.bytes,hairId:hair[0],hairBytes:hair[1].bytes,clothingId:outfit[0][0],clothingIds:outfit.map(entry=>entry[0]),clothingBytes:outfitBytes,visibleOutfit,movedBones:candidateState.skeleton.moved,appliedJointMorphs:candidateState.skeleton.appliedMorphs,expressionHits},
+    candidate:{baseBytes:manifest.base.bytes,hairId:hair[0],hairBytes:hair[1].bytes,clothingId:outfit[0][0],clothingIds:outfit.map(entry=>entry[0]),clothingBytes:outfitBytes,visibleOutfit,visualProof,movedBones:candidateState.skeleton.moved,appliedJointMorphs:candidateState.skeleton.appliedMorphs,expressionHits},
     rendererInfo:{geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,triangles:renderer.info.render.triangles,calls:renderer.info.render.calls},
-    thresholds:{minAverageFps:30,maxP95FrameMs:50,maxContextLosses:0}
+    thresholds:{minAverageFps:30,maxP95FrameMs:50,maxContextLosses:0,minVisiblePixelDelta:'0.12% of tested region, minimum 24 pixels'}
   };
   window.__UNIFIED_MOBILE_QA_RESULT=Object.freeze(result);
   try{sessionStorage.setItem('liaotian_unified_mobile_qa_v1',JSON.stringify(result));}catch{}
   metricsEl.textContent=JSON.stringify(result,null,2);
-  setStatus(result.eligibleForMobilePromotion?'真机候选通过：可作为移动端晋级证据':'候选已跑完：未满足移动端晋级条件',result.eligibleForMobilePromotion?'pass':'fail');
+  setStatus(result.eligibleForMobilePromotion?'真机候选通过：服装真实可见，可作为移动端晋级证据':'候选已跑完：未满足移动端晋级条件',result.eligibleForMobilePromotion?'pass':'fail');
 }
 
 main().catch(error=>{
