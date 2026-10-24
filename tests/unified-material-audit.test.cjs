@@ -1,74 +1,81 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+const baseRecipe=require('../role-unified-human-recipe.js');
+const calibration=require('../role-skin-pbr-calibration.js');
 
-const TARGET_NODES=Object.freeze(['Body','Eyes','Teeth','Tongue','Eyebrows','Eyelashes']);
+const EXPECTED_BASE=Object.freeze([0.94206,0.5212,0.34816,1]);
+const close=(a,b,tolerance=.006)=>Math.abs(Number(a)-Number(b))<=tolerance;
 
-function textureInfo(json,index){
-  if(!Number.isInteger(index)||index<0)return null;
-  const texture=json.textures?.[index]||null;
-  const image=Number.isInteger(texture?.source)?json.images?.[texture.source]||null:null;
-  return texture?{
-    index,
-    name:texture.name||'',
-    source:Number.isInteger(texture.source)?texture.source:null,
-    imageName:image?.name||'',
-    mimeType:image?.mimeType||'',
-    uri:image?.uri||'',
-    bufferView:Number.isInteger(image?.bufferView)?image.bufferView:null
-  }:null;
+function srgbChannelToLinear(value){const x=Math.max(0,Math.min(1,Number(value)||0));return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;}
+function hexToLinear(hex){const raw=String(hex||'').replace('#','');assert.match(raw,/^[0-9a-f]{6}$/i);return [0,2,4].map(i=>srgbChannelToLinear(parseInt(raw.slice(i,i+2),16)/255));}
+function materialForNode(json,nodeName){
+  const node=(json.nodes||[]).find(item=>String(item?.name||'')===nodeName);assert.ok(node,`missing ${nodeName} node`);
+  const mesh=json.meshes?.[node.mesh];assert.ok(mesh,`${nodeName} missing mesh binding`);
+  return (mesh.primitives||[]).map(primitive=>json.materials?.[primitive.material]).filter(Boolean);
+}
+function imageNameForTexture(json,textureInfo){
+  const index=textureInfo?.index;if(!Number.isInteger(index))return'';
+  const texture=json.textures?.[index];if(!texture)return'';
+  const image=json.images?.[texture.source];return String(image?.name||image?.uri||'');
 }
 
-function materialInfo(json,index){
-  if(!Number.isInteger(index)||index<0)return null;
-  const material=json.materials?.[index];if(!material)return null;
-  const pbr=material.pbrMetallicRoughness||{};
-  return{
-    index,
-    name:material.name||'',
-    baseColorFactor:Array.isArray(pbr.baseColorFactor)?pbr.baseColorFactor:null,
-    baseColorTexture:textureInfo(json,pbr.baseColorTexture?.index),
-    metallicFactor:Number.isFinite(pbr.metallicFactor)?pbr.metallicFactor:null,
-    roughnessFactor:Number.isFinite(pbr.roughnessFactor)?pbr.roughnessFactor:null,
-    metallicRoughnessTexture:textureInfo(json,pbr.metallicRoughnessTexture?.index),
-    normalTexture:textureInfo(json,material.normalTexture?.index),
-    occlusionTexture:textureInfo(json,material.occlusionTexture?.index),
-    emissiveTexture:textureInfo(json,material.emissiveTexture?.index),
-    emissiveFactor:Array.isArray(material.emissiveFactor)?material.emissiveFactor:null,
-    alphaMode:material.alphaMode||'OPAQUE',
-    alphaCutoff:Number.isFinite(material.alphaCutoff)?material.alphaCutoff:null,
-    doubleSided:material.doubleSided===true,
-    extensions:Object.keys(material.extensions||{}).sort()
-  };
-}
-
-test('audit production unified-human PBR material bindings without changing runtime behavior',async()=>{
+test('production Skin PBR contract keeps author albedo normal map and physically plausible roughness',async()=>{
   const {parseGlb}=await import('../scripts/human-glb-contract.mjs');
   const {json}=parseGlb(fs.readFileSync('assets/humans/unified/base_body.glb'));
-  assert.ok(Array.isArray(json.materials)&&json.materials.length>0,'production base body must contain materials');
-  assert.ok(Array.isArray(json.meshes)&&json.meshes.length>0,'production base body must contain meshes');
-  const bindings=[];
-  for(const targetName of TARGET_NODES){
-    const nodeIndex=(json.nodes||[]).findIndex(node=>String(node?.name||'')===targetName);
-    assert.ok(nodeIndex>=0,`missing ${targetName} node`);
-    const node=json.nodes[nodeIndex];
-    assert.ok(Number.isInteger(node.mesh)&&json.meshes?.[node.mesh],`${targetName} missing mesh binding`);
-    const mesh=json.meshes[node.mesh];
-    const primitiveMaterials=(mesh.primitives||[]).map((primitive,primitiveIndex)=>({
-      primitiveIndex,
-      material:materialInfo(json,primitive.material)
-    }));
-    assert.ok(primitiveMaterials.length>0,`${targetName} mesh has no primitives`);
-    assert.ok(primitiveMaterials.every(row=>row.material),`${targetName} has primitive without valid material`);
-    bindings.push({node:targetName,nodeIndex,meshIndex:node.mesh,meshName:mesh.name||'',primitiveMaterials});
+  const skin=materialForNode(json,'Body').find(material=>material?.name==='Skin');
+  assert.ok(skin,'Body must bind the Skin material');
+  const pbr=skin.pbrMetallicRoughness||{};
+  assert.equal(imageNameForTexture(json,pbr.baseColorTexture),'skin_albedo.png');
+  assert.equal(imageNameForTexture(json,skin.normalTexture),'skin_normal.png');
+  assert.equal(pbr.metallicFactor,0);
+  assert.ok(close(pbr.roughnessFactor,.52,.001));
+  assert.equal(pbr.baseColorFactor.length,4);
+  EXPECTED_BASE.forEach((value,index)=>assert.ok(close(pbr.baseColorFactor[index],value,.001),`Skin baseColorFactor[${index}] drifted`));
+});
+
+test('eye PBR contract keeps Eye Iris and transparent Cornea as separate materials',async()=>{
+  const {parseGlb}=await import('../scripts/human-glb-contract.mjs');
+  const {json}=parseGlb(fs.readFileSync('assets/humans/unified/base_body.glb'));
+  const materials=materialForNode(json,'Eyes');
+  const eye=materials.find(material=>material?.name==='Eye');
+  const iris=materials.find(material=>material?.name==='Iris');
+  const cornea=materials.find(material=>material?.name==='Cornea');
+  assert.ok(eye&&iris&&cornea,'Eyes must keep separate Eye/Iris/Cornea materials');
+  assert.equal(imageNameForTexture(json,eye.pbrMetallicRoughness?.baseColorTexture),'eye.png');
+  assert.equal(imageNameForTexture(json,iris.pbrMetallicRoughness?.baseColorTexture),'eye.png');
+  assert.equal(cornea.alphaMode,'BLEND');
+  assert.ok(Number(cornea.pbrMetallicRoughness?.roughnessFactor)<.08);
+});
+
+test('calibrated natural skin tint reproduces the author Skin base factor instead of darkening it',()=>{
+  const natural=hexToLinear(calibration.CALIBRATED_SKIN_TINTS['自然肤色']);
+  EXPECTED_BASE.slice(0,3).forEach((value,index)=>assert.ok(close(natural[index],value,.006),`natural skin channel ${index} is not anchored to production Skin`));
+  const legacy=hexToLinear('#d7a17f');
+  assert.ok(legacy[0]<EXPECTED_BASE[0]-.2&&legacy[1]<EXPECTED_BASE[1]-.1,'legacy natural tint must remain detectably darker than author Skin');
+});
+
+test('skin palette preserves relative tone ordering while staying valid PBR color multipliers',()=>{
+  const pale=hexToLinear(calibration.CALIBRATED_SKIN_TINTS['偏白']);
+  const natural=hexToLinear(calibration.CALIBRATED_SKIN_TINTS['自然肤色']);
+  const wheat=hexToLinear(calibration.CALIBRATED_SKIN_TINTS['小麦肤色']);
+  const deep=hexToLinear(calibration.CALIBRATED_SKIN_TINTS['深肤色']);
+  for(let i=0;i<3;i++){
+    assert.ok(pale[i]>=natural[i]);
+    assert.ok(natural[i]>=wheat[i]);
+    assert.ok(wheat[i]>=deep[i]);
+    for(const value of [pale[i],natural[i],wheat[i],deep[i]])assert.ok(value>=0&&value<=1);
   }
-  const summary={
-    materialCount:json.materials.length,
-    textureCount:(json.textures||[]).length,
-    imageCount:(json.images||[]).length,
-    extensionsUsed:[...(json.extensionsUsed||[])].sort(),
-    extensionsRequired:[...(json.extensionsRequired||[])].sort(),
-    bindings
-  };
-  console.log('MATERIAL_AUDIT '+JSON.stringify(summary));
+});
+
+test('recipe calibration wraps the single unified recipe without changing morph clothing or accessory decisions',()=>{
+  const api=calibration.wrapRecipeApi(baseRecipe);
+  const input={gender:'female',age:32,body:'丰满',face:'鹅蛋脸',skin:'小麦肤色',hair:'马尾',outfit:'成熟优雅',accessory:'小耳环'};
+  const before=baseRecipe.mapRecipe(input),after=api.mapRecipe(input);
+  assert.equal(after.skinTint,'#d6936c');
+  assert.deepEqual(after.morphs,before.morphs);
+  assert.deepEqual(after.clothing,before.clothing);
+  assert.equal(after.hair,before.hair);
+  assert.equal(after.accessory,before.accessory);
+  assert.equal(api.mapRecipe({...input,skin:'自然肤色'}).skinTint,'#f8bf9f');
 });
