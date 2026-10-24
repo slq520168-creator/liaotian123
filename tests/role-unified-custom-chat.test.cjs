@@ -20,6 +20,28 @@ test('composite face rig controls every morph-bearing base mesh together',()=>{
   for(const mesh of [body,teeth,tongue]){assert.ok(mesh.morphTargetInfluences[0]>0);assert.ok(mesh.morphTargetInfluences[1]>0);assert.equal(mesh.morphTargetInfluences[2],.4);assert.equal(mesh.morphTargetInfluences[3],.4);}
 });
 
+test('creator expression baseline remains visible while realtime blink and lip sync still layer on top',()=>{
+  const names=['mouthClose','mouthSmileLeft','mouthSmileRight','browInnerUp','eyeBlinkLeft','eyeBlinkRight'];
+  const mesh={name:'Body',children:[],morphTargetDictionary:Object.fromEntries(names.map((n,i)=>[n,i])),morphTargetInfluences:names.map(()=>0)};
+  const head={rotation:{x:0,y:0,z:0}};
+  const baseline={mouthSmileLeft:.34,mouthSmileRight:.34,browInnerUp:.06};
+  const rig=custom.createCompositeFaceRig(root([mesh]),head,face,baseline);
+  rig.render({state:'idle',blink:.4,visemes:{}});
+  assert.equal(mesh.morphTargetInfluences[1],.34);assert.equal(mesh.morphTargetInfluences[2],.34);assert.equal(mesh.morphTargetInfluences[3],.06);assert.equal(mesh.morphTargetInfluences[4],.4);assert.equal(mesh.morphTargetInfluences[5],.4);
+  rig.render({state:'speaking',blink:0,visemes:{PP:1}});
+  assert.equal(mesh.morphTargetInfluences[0],1);
+  assert.ok(Math.abs(mesh.morphTargetInfluences[1]-.119)<1e-9);assert.ok(Math.abs(mesh.morphTargetInfluences[2]-.119)<1e-9);
+  assert.equal(mesh.morphTargetInfluences[3],.06);
+});
+
+test('expression merge attenuates mouth-only baseline while speaking and preserves brow/eye baseline',()=>{
+  const merged=custom.mergeExpressionBaseline({mouthSmileLeft:.1,eyeBlinkLeft:.7},{mouthSmileLeft:.4,browInnerUp:.08,eyeSquintLeft:.05},{state:'speaking'});
+  assert.equal(merged.mouthSmileLeft,.14);
+  assert.equal(merged.browInnerUp,.08);
+  assert.equal(merged.eyeSquintLeft,.05);
+  assert.equal(merged.eyeBlinkLeft,.7);
+});
+
 test('composite face reset restores closed mouth and original head rotation',()=>{
   const body=morphMesh('Body'),tongue=morphMesh('Tongue');
   const head={rotation:{x:.11,y:-.07,z:.03}};
