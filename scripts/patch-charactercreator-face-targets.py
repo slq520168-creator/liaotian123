@@ -67,8 +67,8 @@ def main() -> None:
     new_files = old_files + '\nTARGET_FILES.update(dict(ARKIT_MORPHS + META_VISEME_MORPHS))'
     text = replace_once(text, old_files, new_files, 'extend target files')
 
-    old_zero = '{"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5}'
-    new_zero = '{"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5, "arkit": 5e-5, "viseme": 5e-5}'
+    old_zero = 'ZERO_BELOW = {"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5}'
+    new_zero = 'ZERO_BELOW = {"face": 5e-5, "expr": 5e-5, "corr": 2e-4, "bdet": 5e-5, "dyn": 5e-5, "arkit": 5e-5, "viseme": 5e-5}'
     text = replace_once(text, old_zero, new_zero, 'extend sparse thresholds')
 
     old_full = '        full = os.path.join(MPFB_TARGETS, rel + ".target.gz")\n        assert os.path.isfile(full), "target missing: %s" % full'
@@ -93,7 +93,7 @@ def main() -> None:
     # references. Blender may duplicate targetNames into primitive.extras; those
     # copies must be removed so mesh.extras.targetNames remains the single
     # canonical ordering shared by targets and weights. The generated asset is a
-    # neutral Basis, so exported default morph weights are always normalized to 0.
+    # neutral Basis, so exported mesh and node default morph weights are always 0.
     prune_block = r'''
 
 def _cc_keep_runtime_morph(name, policy):
@@ -124,7 +124,8 @@ def _cc_prune_runtime_morphs(path, mode):
     g, binary = read_glb(path)
     changed = False
     summary = []
-    for mesh in g.get("meshes", []):
+    mesh_counts = {}
+    for mesh_index, mesh in enumerate(g.get("meshes", [])):
         names = list((mesh.get("extras") or {}).get("targetNames") or [])
         if not names:
             continue
@@ -143,6 +144,7 @@ def _cc_prune_runtime_morphs(path, mode):
         keep = [i for i, name in enumerate(names) if _cc_keep_runtime_morph(name, policy)]
         assert keep, "runtime morph pruning removed every target from %s" % mesh_name
         kept_names = [names[i] for i in keep]
+        mesh_counts[mesh_index] = (len(names), len(kept_names), mesh_name)
         for primitive in mesh.get("primitives", []):
             targets = primitive.get("targets") or []
             assert len(targets) == len(names), "%s: targetNames/targets mismatch before prune" % mesh_name
@@ -175,6 +177,23 @@ def _cc_prune_runtime_morphs(path, mode):
             changed = True
         assert list((mesh.get("extras") or {}).get("targetNames") or []) == kept_names, "%s: canonical targetNames mismatch after prune" % mesh_name
         summary.append((mesh_name, len(names), len(kept_names), policy))
+
+    # glTF nodes may override mesh.weights. Neutralize those too so a runtime
+    # cannot reactivate the sampled morph values even when the mesh is neutral.
+    for node in g.get("nodes", []):
+        mesh_index = node.get("mesh")
+        if mesh_index not in mesh_counts or "weights" not in node:
+            continue
+        original_count, kept_count, mesh_name = mesh_counts[mesh_index]
+        node_weights = list(node["weights"])
+        assert len(node_weights) in (original_count, kept_count), "%s: node weights mismatch before normalization" % mesh_name
+        had_nonzero = any(abs(float(value)) > 1e-7 for value in node_weights)
+        node["weights"] = [0.0] * kept_count
+        if len(node_weights) != kept_count or had_nonzero:
+            changed = True
+        assert len(node["weights"]) == kept_count, "%s: node weights mismatch after normalization" % mesh_name
+        assert not any(abs(float(value)) > 1e-12 for value in node["weights"]), "%s: non-zero node morph weight after normalization" % mesh_name
+
     if changed:
         write_glb(path, g, binary)
     print("BUILD runtime morph prune", os.path.basename(path), summary)
