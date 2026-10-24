@@ -1,9 +1,15 @@
 (() => {
   'use strict';
 
-  const BODY_DETAILS=Object.freeze({chestSize:'胸部体积',chestFirmness:'胸部紧实度'});
-  const DIRECTIONS=Object.freeze({chestSize:Object.freeze(['更小','更大']),chestFirmness:Object.freeze(['更柔软','更紧实'])});
-  const DEFAULT_BODY_DETAILS=Object.freeze({chestSize:0,chestFirmness:0});
+  const BODY_DETAILS=Object.freeze({chestSize:'胸部体积',chestFirmness:'胸部紧实度',chestHeight:'胸部位置',chestSpacing:'胸部间距',chestProjection:'胸部突出度'});
+  const DIRECTIONS=Object.freeze({
+    chestSize:Object.freeze(['更小','更大']),
+    chestFirmness:Object.freeze(['更柔软','更紧实']),
+    chestHeight:Object.freeze(['更低','更高']),
+    chestSpacing:Object.freeze(['更近','更开']),
+    chestProjection:Object.freeze(['更平缓','更突出'])
+  });
+  const DEFAULT_BODY_DETAILS=Object.freeze(Object.fromEntries(Object.keys(BODY_DETAILS).map(key=>[key,0])));
   const BLOCK=/【角色自定义设定】\n[\s\S]*?\n【自定义设定结束】/;
   const clamp=value=>Math.max(-100,Math.min(100,Math.round(Number(value)||0)));
   const normalize=value=>Object.freeze(Object.fromEntries(Object.keys(BODY_DETAILS).map(key=>[key,clamp(value?.[key])])));
@@ -51,9 +57,9 @@
     if(!active||!body)return false;
     let section=body.querySelector('#creatorBodyDetailsSection');
     if(section)return true;
-    section=doc.createElement('section');section.id='creatorBodyDetailsSection';section.dataset.realMorphControls='breast_cup,breast_firm';
+    section=doc.createElement('section');section.id='creatorBodyDetailsSection';section.dataset.realMorphControls='breast_cup,breast_firm,bdet_breast_height,bdet_breast_dist,bdet_breast_point';
     const title=doc.createElement('h4');title.textContent='身体精调';
-    const note=doc.createElement('div');note.className='creator-note';note.textContent='真实胸部 morph；会同步作用到身体和当前服装。0 = 基础人体。';note.style.margin='7px 0';
+    const note=doc.createElement('div');note.className='creator-note';note.textContent='真实胸部 morph；体积、紧实度、位置、间距和突出度都会同步作用到身体和当前服装。0 = 基础人体。';note.style.margin='7px 0';
     const sliders=doc.createElement('div');sliders.className='creator-sliders';
     const selected=current(personality,win);
     for(const[key,label]of Object.entries(BODY_DETAILS)){
