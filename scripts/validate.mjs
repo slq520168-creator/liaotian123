@@ -32,8 +32,8 @@ for(const token of [
   'vendor/meshoptimizer/meshopt_decoder.mjs',
   'setMeshoptDecoder',
   'assets/humans/reference-mpfb.glb',
-  'ACTIVE_MOBILE=4',
-  'ACTIVE_DESKTOP=6',
+  'ACTIVE_MOBILE=1',
+  'ACTIVE_DESKTOP=2',
   'function prioritize(card)',
   'IntersectionObserver',
   '正在加载 3D',
@@ -89,4 +89,4 @@ run(['--disable-warning=ExperimentalWarning', 'scripts/test-chat-contract.mjs'])
 run(['scripts/test-chat-transport.mjs']);
 run(['scripts/test-role-code.mjs']);
 run(['scripts/test-site-update.mjs']);
-console.log('检查通过：自托管Three.js/Meshopt全身3D预设、统一自定义3D候选完整合同与生产硬门槛、移动端四卡预览上限与点击优先、可见错误态、创作中心、普通/3D聊天门槛、安全动作、ARKit表情、语音风格、3D真人资产合同、Vitruvian真实morph映射、正式资产导入、运行时manifest、真实骨骼比例、真实外观rig、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
+console.log('检查通过：自托管Three.js/Meshopt全身3D预设、统一自定义3D候选完整合同与生产硬门槛、移动端单预览/桌面双预览上限与点击优先、可见错误态、创作中心、普通/3D聊天门槛、安全动作、ARKit表情、语音风格、3D真人资产合同、Vitruvian真实morph映射、正式资产导入、运行时manifest、真实骨骼比例、真实外观rig、角色JSON、静态资源、聊天契约、角色代码与站点更新。');
