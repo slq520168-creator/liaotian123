@@ -253,6 +253,9 @@
       "afro01": 2081712
     },
     "clothing": {
+      "briefs": 232840,
+      "panties": 189600,
+      "bra": 300072,
       "dress": 747572,
       "jeans": 430856,
       "tshirt": 393364,
@@ -262,6 +265,15 @@
       "shorts": 247272,
       "shoes": 852980
     }
+  },
+  "safetyUnderwear": {
+    "male": [
+      "briefs"
+    ],
+    "female": [
+      "panties",
+      "bra"
+    ]
   },
   "licenseInventory": true,
   "mobile": {
@@ -275,7 +287,8 @@
       "baseBytes": 9130596,
       "largestHairBytes": 2081712,
       "largestClothingBytes": 864992,
-      "worstInitialBytes": 12077300
+      "safetyUnderwearBytes": 489672,
+      "worstInitialBytes": 12566972
     }
   },
   "modularCompatibility": {
@@ -339,6 +352,27 @@
       }
     ],
     "clothing": [
+      {
+        "id": "briefs",
+        "bytes": 232840,
+        "skins": 1,
+        "joints": 53,
+        "morphTargets": 60
+      },
+      {
+        "id": "panties",
+        "bytes": 189600,
+        "skins": 1,
+        "joints": 53,
+        "morphTargets": 60
+      },
+      {
+        "id": "bra",
+        "bytes": 300072,
+        "skins": 1,
+        "joints": 53,
+        "morphTargets": 60
+      },
       {
         "id": "dress",
         "bytes": 747572,
