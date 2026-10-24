@@ -83,7 +83,7 @@
     }
 
     function captureSummary(){
-      const labels=[...(studio()?.querySelectorAll?.('.creator-summary span')||[])].slice(0,12).map(node=>node.textContent);
+      const labels=[...(studio()?.querySelectorAll?.('.creator-summary span:not([data-identity-summary])')||[])].slice(0,12).map(node=>node.textContent);
       shadow=summaryPatch(labels,shadow||{});return shadow;
     }
 
@@ -92,7 +92,9 @@
       if(!shadow)resetShadow();
       const parsed=visual.fromPersonality?.(personality()?.value)||{};
       const eye=win.__ROLE_CREATOR_EYE_COLOR||shadow?.eyeColor||win.RoleEyeColor?.parseEyeColor?.(personality()?.value)||parsed.eyeColor;
+      const identity=win.RoleCreatorIdentity?.current?.(doc)||{gender:field('roleGender')?.value||parsed.gender,age:field('roleAge')?.value||parsed.age};
       return visual.sanitize({...parsed,...shadow,
+        gender:identity.gender,age:identity.age,
         heightCm:field('rbHeight')?.value??shadow?.heightCm,weightJin:field('rbWeight')?.value??shadow?.weightJin,
         body:field('rbBody')?.value||shadow?.body,face:field('rbFace')?.value||shadow?.face,skin:field('rbSkin')?.value||shadow?.skin,
         hair:field('rbHair')?.value||shadow?.hair,outfit:field('rbOutfit')?.value||shadow?.outfit,relationship:field('rbRelation')?.value||shadow?.relationship,
@@ -101,8 +103,8 @@
     }
 
     function makeCharacter(recipe){
-      if(!previewChar)previewChar={id:PREVIEW_ID,name:'实时预览',isPreset:false,personality:'',visualRecipe:recipe};
-      previewChar.personality=personality()?.value||'';previewChar.visualRecipe=recipe;return previewChar;
+      if(!previewChar)previewChar={id:PREVIEW_ID,name:'实时预览',isPreset:false,personality:'',visualRecipe:recipe,gender:recipe?.gender||'unspecified',age:recipe?.age||24};
+      previewChar.personality=personality()?.value||'';previewChar.visualRecipe=recipe;previewChar.gender=recipe?.gender||'unspecified';previewChar.age=recipe?.age||24;return previewChar;
     }
 
     function ensureRenderer(){
@@ -180,6 +182,7 @@
     function onInput(event){
       const target=event.target;if(!target)return;
       if(target.dataset?.faceDetail){shadow||=resetShadow();shadow.faceDetails={...(shadow.faceDetails||{}),[target.dataset.faceDetail]:Math.max(-100,Math.min(100,Math.round(Number(target.value)||0)))};queue(180);return;}
+      if(target.id==='roleGender'||target.id==='roleAge'){queue(120);return;}
       if(target.dataset?.number||/^rb(Height|Weight|Body|Face|Skin|Hair|Outfit|Relation)$/.test(target.id||'')){queue(220);return;}
       if(target.id==='rolePersonality'&&field('roleBuilder')?.classList?.contains('creator-show-advanced')){shadow=null;queue(320);}
     }

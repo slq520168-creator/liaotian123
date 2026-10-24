@@ -46,3 +46,11 @@ test('preview is a sibling of creator studio and stops model work when the modal
   assert(source.includes("if(!modalOpen(doc)){stop(true)"));
   assert(source.includes("stage.id='roleCreatorPreviewStage'"));
 });
+
+test('preview consumes the existing gender and age fields through the single identity authority',()=>{
+  const source=fs.readFileSync('role-creator-3d-preview.js','utf8');
+  assert(source.includes('win.RoleCreatorIdentity?.current?.(doc)'));
+  assert(source.includes("target.id==='roleGender'||target.id==='roleAge'"));
+  assert(source.includes('gender:identity.gender,age:identity.age'));
+  assert(source.includes(".creator-summary span:not([data-identity-summary])"));
+});
