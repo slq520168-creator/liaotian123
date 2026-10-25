@@ -7,7 +7,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
 (() => {
   'use strict';
-  const version='20261026-create3d42';
+  const version='20261026-create3d43';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';
@@ -20,30 +20,20 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
   window.LIAOTIAN_3D_ONLY=true;
   window.LIAOTIAN_3D_ROLE_STORAGE_KEY=STORAGE_KEY;
 
-  /* 首屏直接禁止旧普通角色表单露出；只允许新的 3D 大厅和实时预览。 */
+  /* 首屏直接禁止旧普通角色表单露出；只允许新的 3D 大厅。 */
   const creatorShellStyle=document.createElement('style');
   creatorShellStyle.id='creator3dOnlyShellStyle';
   creatorShellStyle.textContent='#createRoleForm>:not(#roleCreatorStudio):not(#roleCreator3dPreview){display:none!important}#createRoleForm.creator-3d-only{display:block!important}';
   document.head.appendChild(creatorShellStyle);
 
-  const parseList=(key,store=localStorage)=>{
-    try{const raw=JSON.parse(store.getItem(key)||'null');return Array.isArray(raw)?raw:null;}catch{return null;}
-  };
+  const parseList=(key,store=localStorage)=>{try{const raw=JSON.parse(store.getItem(key)||'null');return Array.isArray(raw)?raw:null;}catch{return null;}};
   const has3DSpec=value=>typeof value?.personality==='string'&&value.personality.includes(SPEC_START)&&value.personality.includes(SPEC_END);
   const is3DRaw=value=>Boolean(value&&typeof value==='object'&&(value.roleKind===ROLE_KIND||has3DSpec(value)));
   const normalizeStored3D=list=>(Array.isArray(list)?list:[]).filter(is3DRaw).map(item=>({...item,roleKind:ROLE_KIND}));
 
-  function pruneObjectStorage(key,allowed,store=localStorage){
-    try{const value=JSON.parse(store.getItem(key)||'{}');if(!value||typeof value!=='object'||Array.isArray(value))return;store.setItem(key,JSON.stringify(Object.fromEntries(Object.entries(value).filter(([id])=>allowed.has(id)))));}catch{}
-  }
-  function removeLegacyModeState(store=localStorage){
-    try{const keys=[];for(let i=0;i<store.length;i++){const key=store.key(i);if(key)keys.push(key);}for(const key of keys)if(key.startsWith(LEGACY_MODE_PREFIX)||key.startsWith(LEGACY_MODE_INIT_PREFIX))store.removeItem(key);}catch{}
-  }
-  function migrate3DRoles(store=localStorage){
-    let saved=parseList(STORAGE_KEY,store);if(!saved)saved=normalizeStored3D(parseList(LEGACY_KEY,store)||[]);else saved=normalizeStored3D(saved);
-    try{store.setItem(STORAGE_KEY,JSON.stringify(saved));store.setItem(LEGACY_KEY,JSON.stringify(saved));removeLegacyModeState(store);const allowed=new Set([...PRESET_3D_IDS,...saved.map(item=>String(item.id||'')).filter(Boolean)]);pruneObjectStorage('liaotian_chat_histories',allowed,store);pruneObjectStorage('liaotian_role_memories',allowed,store);const active=store.getItem('liaotian_active_char');if(active&&!allowed.has(active))store.removeItem('liaotian_active_char');}catch{}
-    return saved;
-  }
+  function pruneObjectStorage(key,allowed,store=localStorage){try{const value=JSON.parse(store.getItem(key)||'{}');if(!value||typeof value!=='object'||Array.isArray(value))return;store.setItem(key,JSON.stringify(Object.fromEntries(Object.entries(value).filter(([id])=>allowed.has(id)))));}catch{}}
+  function removeLegacyModeState(store=localStorage){try{const keys=[];for(let i=0;i<store.length;i++){const key=store.key(i);if(key)keys.push(key);}for(const key of keys)if(key.startsWith(LEGACY_MODE_PREFIX)||key.startsWith(LEGACY_MODE_INIT_PREFIX))store.removeItem(key);}catch{}}
+  function migrate3DRoles(store=localStorage){let saved=parseList(STORAGE_KEY,store);if(!saved)saved=normalizeStored3D(parseList(LEGACY_KEY,store)||[]);else saved=normalizeStored3D(saved);try{store.setItem(STORAGE_KEY,JSON.stringify(saved));store.setItem(LEGACY_KEY,JSON.stringify(saved));removeLegacyModeState(store);const allowed=new Set([...PRESET_3D_IDS,...saved.map(item=>String(item.id||'')).filter(Boolean)]);pruneObjectStorage('liaotian_chat_histories',allowed,store);pruneObjectStorage('liaotian_role_memories',allowed,store);const active=store.getItem('liaotian_active_char');if(active&&!allowed.has(active))store.removeItem('liaotian_active_char');}catch{}return saved;}
   function install3DOnlyAuthority(){
     if(typeof PRESET_CHARACTERS!=='undefined'&&Array.isArray(PRESET_CHARACTERS)){const allowed=new Set(PRESET_3D_IDS),kept=PRESET_CHARACTERS.filter(char=>allowed.has(String(char?.id||'')));for(const char of kept)char.roleKind=ROLE_KIND;PRESET_CHARACTERS.splice(0,PRESET_CHARACTERS.length,...kept);}
     migrate3DRoles(localStorage);

@@ -1,73 +1,115 @@
 (() => {
   'use strict';
 
-  const PREVIEW_ID='creator_preview';
-  const DEBOUNCE_MS=160;
+  const PREVIEW_ID='custom_creator_preview';
+  const DEBOUNCE_MS=180;
   const BASE_ASSET=Object.freeze({url:'assets/humans/unified/base_body.glb',scale:1,y:0,rotationY:0,framing:'full',minMorphTargets:52});
-  const JOINTS_PATH='assets/humans/unified/base_body.joints.json';
-  const HAIR_PATH=id=>`assets/humans/unified/hair_${id}.glb`;
-  const CLOTHING_PATH=id=>`assets/humans/unified/clothing_${id}.glb`;
-  const CLOTHING_TINT_BLEND=.72;
   const json=value=>JSON.stringify(value??null);
-  const clean=value=>String(value??'').trim();
-  let jointsPromise=null;
 
   function structuralSignature(mapped={}){return json({hair:mapped.hair||'',clothing:mapped.clothing||[],accessory:mapped.accessory||'none',expressionMorphs:mapped.expressionMorphs||{}});}
   function morphSignature(mapped={}){return json(mapped.morphs||{});}
   function tintSignature(mapped={}){return json({skin:mapped.skinTint||'',hair:mapped.hairTint||'',clothing:mapped.clothingTint||'',targets:mapped.clothingTintTargets||[],eye:mapped.eyeTint||''});}
   function moduleRoots(mapped={},modules=[]){let index=0;const result={hair:null,clothing:{},complete:true};if(mapped.hair){result.hair=modules[index++]||null;if(!result.hair)result.complete=false;}for(const id of mapped.clothing||[]){const root=modules[index++]||null;result.clothing[id]=root;if(!root)result.complete=false;}if(index!==modules.length)result.complete=false;return result;}
   function modalOpen(doc){return Boolean(doc?.getElementById('createModalOverlay')?.classList?.contains('active'));}
-  function disposeScene(win,root){win.RoleHumanRenderer?.disposeObject?.(root);}
-
-  function captureAuthorColor(material){if(!material?.color)return null;material.userData=material.userData&&typeof material.userData==='object'?material.userData:{};const saved=material.userData.liaotianAuthorBaseColor;if(Array.isArray(saved)&&saved.length===3&&saved.every(Number.isFinite))return saved;const base=[Number(material.color.r),Number(material.color.g),Number(material.color.b)];if(!base.every(Number.isFinite))return null;material.userData.liaotianAuthorBaseColor=base;return base;}
-  function tintClothingMaterial(material,hex,blend=CLOTHING_TINT_BLEND){if(!hex||!material?.color?.set||!/^Cloth_[A-Za-z0-9_-]+$/.test(String(material.name||'')))return false;const base=captureAuthorColor(material);if(!base)return false;let target=null;try{target=typeof material.color.clone==='function'?material.color.clone():null;if(!target?.set)return false;target.set(hex);}catch{return false;}const amount=Math.max(0,Math.min(1,Number(blend)||0)),keep=1-amount,r=base[0]*keep+(Number(target.r)||0)*amount,g=base[1]*keep+(Number(target.g)||0)*amount,b=base[2]*keep+(Number(target.b)||0)*amount;try{if(typeof material.color.setRGB==='function')material.color.setRGB(r,g,b);else{material.color.r=r;material.color.g=g;material.color.b=b;}material.needsUpdate=true;return true;}catch{return false;}}
-  function tintModule(root,hex){if(!hex||!root?.traverse)return 0;const seen=new Set();let changed=0;root.traverse(node=>{const materials=Array.isArray(node?.material)?node.material:(node?.material?[node.material]:[]);for(const material of materials){if(!material||seen.has(material)||!material.color?.set)continue;seen.add(material);try{if(/^Cloth_[A-Za-z0-9_-]+$/.test(String(material.name||''))){if(tintClothingMaterial(material,hex))changed++;continue;}material.color.set(hex);material.needsUpdate=true;changed++;}catch{}}});return changed;}
-  function tintSkin(root,hex){if(!hex||!root?.traverse)return 0;const seen=new Set();let changed=0;root.traverse(node=>{const materials=Array.isArray(node?.material)?node.material:(node?.material?[node.material]:[]);for(const material of materials){if(!material||seen.has(material))continue;seen.add(material);const name=String(material.name||'').toLowerCase();if(!material.color||!/(^skin$|skin|body|face|head)/.test(name))continue;try{material.color.set(hex);const gain=Number(material.userData?.tint?.gain);if(gain>0&&gain!==1&&typeof material.color.multiplyScalar==='function')material.color.multiplyScalar(gain);material.needsUpdate=true;changed++;}catch{}}});return changed;}
-  function requireSkinTint(root,hex){const changed=tintSkin(root,hex);if(hex&&changed<1)throw new Error('真实3D皮肤材质不可用');return changed;}
-
-  function walk(root,visit){if(!root||typeof visit!=='function')return;const stack=[root],seen=new Set();while(stack.length){const node=stack.pop();if(!node||seen.has(node))continue;seen.add(node);visit(node);for(let i=(node.children?.length||0)-1;i>=0;i--)stack.push(node.children[i]);}}
-  function collectFaceMeshes(root,faceApi){const out=[];if(typeof faceApi?.buildMorphIndex!=='function')return out;walk(root,node=>{if(!node?.morphTargetDictionary||!Array.isArray(node.morphTargetInfluences))return;const index=faceApi.buildMorphIndex(node.morphTargetDictionary);if(Object.keys(index).length)out.push(Object.freeze({mesh:node,index:Object.freeze({...index})}));});return out;}
-  function mergeExpressionBaseline(weights={},baseline={},frame={}){const speaking=frame?.state==='speaking',out={...weights};for(const[name,valueRaw]of Object.entries(baseline||{})){let value=Math.max(0,Math.min(1,Number(valueRaw)||0));if(!value)continue;if(speaking&&/^(mouth|jaw|tongue)/.test(name))value*=.35;out[name]=Math.max(Number(out[name])||0,value);}return out;}
-  function createCompositeFaceRig(root,headObject,faceApi,expressionBaseline={}){if(!faceApi?.weightsFromPresence||!faceApi?.applyWeights)return null;const entries=collectFaceMeshes(root,faceApi);if(!entries.length)return null;const rotation=headObject?.rotation,baseRotation={x:Number(rotation?.x)||0,y:Number(rotation?.y)||0,z:Number(rotation?.z)||0},baseline=Object.freeze({...expressionBaseline});return {root,mesh:entries[0].mesh,meshes:Object.freeze(entries.map(entry=>entry.mesh)),headObject,expressionBaseline:baseline,render(frame={}){const weights=mergeExpressionBaseline(faceApi.weightsFromPresence(frame),baseline,frame);let applied=false;for(const entry of entries)applied=Boolean(faceApi.applyWeights(entry.mesh,weights,entry.index))||applied;faceApi.applyHeadPose?.(headObject,frame,baseRotation);return applied;},reset(){const blank=faceApi.blankFace?.()||{};for(const entry of entries)faceApi.applyWeights(entry.mesh,blank,entry.index);if(headObject?.rotation){headObject.rotation.x=baseRotation.x;headObject.rotation.y=baseRotation.y;headObject.rotation.z=baseRotation.z;}return true;}};}
-
-  async function loadJoints(win){if(!jointsPromise){jointsPromise=win.fetch(JOINTS_PATH,{cache:'force-cache',credentials:'same-origin'}).then(response=>{if(!response.ok)throw new Error(`3D骨骼数据加载失败 (${response.status})`);return response.json();}).then(data=>{if(!data?.morphs||!data?.bones)throw new Error('3D骨骼合同不完整');return data;}).catch(error=>{jointsPromise=null;throw error;});}return jointsPromise;}
-  async function loadModule(renderer,url){const loader=new renderer.modules.GLTFLoader();if(renderer.modules.MeshoptDecoder&&typeof loader.setMeshoptDecoder==='function')loader.setMeshoptDecoder(renderer.modules.MeshoptDecoder);return loader.loadAsync(url);}
 
   function createController(win=typeof window!=='undefined'?window:null){
     const doc=win?.document;if(!doc)return null;
-    let renderer=null,previewChar=null,currentMapped=null,shadow=null,timer=0,refreshToken=0,observer=null,booted=false,staticPromise=null;
-    const field=id=>doc.getElementById(id),studio=()=>field('roleCreatorStudio'),modal=()=>field('createModalOverlay'),personality=()=>field('rolePersonality');
+    let previewChar=null,timer=0,token=0,observer=null,booted=false,lastSignature='';
+    const field=id=>doc.getElementById(id),modal=()=>field('createModalOverlay'),personality=()=>field('rolePersonality');
 
-    function ensureStyle(){if(doc.getElementById('roleCreator3dPreviewStyles'))return;const style=doc.createElement('style');style.id='roleCreator3dPreviewStyles';style.textContent=`.creator-3d-preview{grid-column:1/-1;border:1px solid rgba(92,76,87,.14);border-radius:16px;background:linear-gradient(180deg,#f4eff2,#e9e2e7);overflow:hidden;margin:0 0 8px}.creator-3d-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:rgba(255,255,255,.76);border-bottom:1px solid rgba(80,60,70,.08)}.creator-3d-preview-head b{font-size:13px}.creator-3d-preview-status{font-size:10px;color:#75636c;text-align:right}.creator-3d-preview-canvas{height:min(44vh,430px);min-height:300px;position:relative}.creator-3d-preview.pending .creator-3d-preview-canvas{min-height:210px}.creator-3d-preview .role-human-stage,.creator-3d-preview .role-human-stage.active{display:block!important;width:100%!important;height:100%!important;min-height:0!important;max-height:none!important;border:0!important}.creator-3d-preview .role-human-stage.error{display:block!important}.creator-3d-preview .role-human-canvas-host{width:100%!important;height:100%!important}@media(max-width:560px){.creator-3d-preview{border-radius:13px;position:sticky;top:0;z-index:2}.creator-3d-preview-canvas{height:38vh;min-height:260px;max-height:350px}.creator-3d-preview.pending .creator-3d-preview-canvas{min-height:180px}}`;doc.head.appendChild(style);}
-    function ensureHost(){const target=studio();if(!target)return null;ensureStyle();let host=field('roleCreator3dPreview');if(host)return host;host=doc.createElement('section');host.id='roleCreator3dPreview';host.className='creator-3d-preview pending';host.setAttribute('aria-label','创建角色实时3D全身预览');const head=doc.createElement('div');head.className='creator-3d-preview-head';const title=doc.createElement('b');title.textContent='完整 3D 人物';const status=doc.createElement('span');status.id='roleCreator3dPreviewStatus';status.className='creator-3d-preview-status';status.textContent='正在准备真实3D…';const canvas=doc.createElement('div');canvas.id='roleCreator3dPreviewCanvas';canvas.className='creator-3d-preview-canvas';head.append(title,status);host.append(head,canvas);target.parentNode?.insertBefore(host,target);return host;}
-    function setStatus(text,state=''){const host=ensureHost(),status=field('roleCreator3dPreviewStatus');if(!host)return;host.classList.toggle('pending',state==='pending');host.dataset.state=state||'';if(status)status.textContent=text||'';}
+    function ensureStyle(){
+      if(doc.getElementById('creatorSharedFullscreenStyles'))return;
+      const style=doc.createElement('style');style.id='creatorSharedFullscreenStyles';
+      style.textContent=`
+        #roleCreator3dPreview{display:none!important}
+        body.creator-fullscreen-3d .chat-header,
+        body.creator-fullscreen-3d .messages-container,
+        body.creator-fullscreen-3d .input-container{visibility:hidden!important;pointer-events:none!important}
+        #createModalOverlay.active{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;pointer-events:none!important}
+        #createModalOverlay.active>.modal{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;pointer-events:none!important}
+        #createModalOverlay.active .modal-header{position:absolute!important;top:0!important;left:0!important;right:0!important;z-index:60!important;min-height:62px!important;padding:calc(10px + env(safe-area-inset-top)) 16px 10px!important;border:0!important;background:rgba(255,255,255,.82)!important;-webkit-backdrop-filter:blur(14px) saturate(1.12);backdrop-filter:blur(14px) saturate(1.12);pointer-events:auto!important}
+        #createModalOverlay.active #createRoleForm{position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:60!important;width:100%!important;max-height:min(48dvh,520px)!important;margin:0!important;padding:10px 12px calc(12px + env(safe-area-inset-bottom))!important;border:0!important;border-radius:0!important;background:rgba(255,255,255,.84)!important;-webkit-backdrop-filter:blur(16px) saturate(1.12);backdrop-filter:blur(16px) saturate(1.12);overflow:auto!important;overscroll-behavior:contain;pointer-events:auto!important}
+        #createModalOverlay.active #roleCreatorStudio{display:block!important;width:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
+        #createModalOverlay.active .cw-nav{bottom:calc(-12px - env(safe-area-inset-bottom))!important}
+        @media(max-width:560px){#createModalOverlay.active #createRoleForm{max-height:46dvh!important;padding-left:10px!important;padding-right:10px!important}}
+      `;
+      doc.head.appendChild(style);
+    }
 
-    async function staticQualification(){if(staticPromise)return staticPromise;staticPromise=(async()=>{const gate=win.RoleUnifiedProductionGate;if(!gate?.fetchManifest||!gate?.staticQualification)return {ok:false,reasons:['3D资产检查器未加载']};try{const manifest=await gate.fetchManifest(win,{version:win.LIAOTIAN_BUILD_VERSION||''}),result=gate.staticQualification(manifest);return {...result,manifest};}catch(error){return {ok:false,reasons:[clean(error?.message||error)]};}})();return staticPromise;}
+    function readRecipe(){
+      const visual=win.RoleVisualRecipe;if(!visual?.sanitize)return null;
+      const parsed=visual.fromPersonality?.(personality()?.value)||{};
+      const draft=(()=>{try{return JSON.parse(win.localStorage?.getItem('liaotian_3d_creator_draft_v2')||'null')||{};}catch{return {};}})();
+      const source={...parsed,...draft,
+        gender:field('roleGender')?.value||draft.gender||parsed.gender,
+        age:field('roleAge')?.value||draft.age||parsed.age,
+        heightCm:field('rbHeight')?.value??draft.heightCm??parsed.heightCm,
+        weightJin:field('rbWeight')?.value??draft.weightJin??parsed.weightJin,
+        body:field('rbBody')?.value||draft.body||parsed.body,
+        face:field('rbFace')?.value||draft.face||parsed.face,
+        skin:field('rbSkin')?.value||draft.skin||parsed.skin,
+        hair:field('rbHair')?.value||draft.hair||parsed.hair,
+        outfit:field('rbOutfit')?.value||draft.outfit||parsed.outfit,
+        relationship:field('rbRelation')?.value||draft.relationship||parsed.relationship
+      };
+      return typeof visual.lockBase==='function'?visual.lockBase(source):visual.sanitize(source);
+    }
 
-    function resetShadow(){const visual=win.RoleVisualRecipe,parsed=visual?.fromPersonality?.(personality()?.value)||{};shadow={...parsed};const baseId=parsed.baseId||field('roleCreatorStudio')?.dataset?.baseId;if(baseId)shadow.baseId=baseId;return shadow;}
-    function readRecipe(){const visual=win.RoleVisualRecipe;if(!visual?.sanitize)return null;if(!shadow)resetShadow();const parsed=visual.fromPersonality?.(personality()?.value)||{},identity=win.RoleCreatorIdentity?.current?.(doc)||{gender:field('roleGender')?.value||parsed.gender,age:field('roleAge')?.value||parsed.age};const source={...parsed,...shadow,gender:identity.gender,age:identity.age,heightCm:field('rbHeight')?.value??shadow?.heightCm,weightJin:field('rbWeight')?.value??shadow?.weightJin,body:field('rbBody')?.value||shadow?.body,face:field('rbFace')?.value||shadow?.face,skin:field('rbSkin')?.value||shadow?.skin,hair:field('rbHair')?.value||shadow?.hair,outfit:field('rbOutfit')?.value||shadow?.outfit,relationship:field('rbRelation')?.value||shadow?.relationship};return typeof visual.lockBase==='function'?visual.lockBase(source):visual.sanitize(source);}
-    function makeCharacter(recipe){if(!previewChar)previewChar={id:PREVIEW_ID,name:'创建中的3D人物',isPreset:true,roleKind:'3d',personality:'',humanAsset:{...BASE_ASSET},visualRecipe:recipe,gender:recipe?.gender||'female',age:recipe?.age||24};previewChar.personality=personality()?.value||'';previewChar.visualRecipe=recipe;previewChar.gender=recipe?.gender||'female';previewChar.age=recipe?.age||24;previewChar.humanAsset={...BASE_ASSET};return previewChar;}
-    function ensureRenderer(){if(renderer)return renderer;const Renderer=win.RoleHumanRenderer?.HumanRenderer,container=field('roleCreator3dPreviewCanvas');if(typeof Renderer!=='function'||!container)return null;renderer=new Renderer({container});const baseEnsure=renderer.ensureStage.bind(renderer);renderer.ensureStage=function(){const stage=baseEnsure();if(stage){stage.id='roleCreatorPreviewStage';stage.setAttribute('aria-label','完整3D人物实时预览');}return stage;};renderer.currentCharacter=()=>previewChar;return renderer;}
-    function stop(clear=true){if(timer){win.clearTimeout(timer);timer=0;}refreshToken++;if(clear)renderer?.clearModel?.();else renderer?.loop?.stop?.();currentMapped=null;}
+    function makeCharacter(recipe){
+      if(!previewChar)previewChar={id:PREVIEW_ID,name:'创建中的3D角色',isPreset:false,roleKind:'3d',personality:'',humanAsset:{...BASE_ASSET},visualRecipe:recipe};
+      previewChar.personality=personality()?.value||'';
+      previewChar.visualRecipe=recipe;
+      previewChar.gender=recipe?.gender||'female';
+      previewChar.age=recipe?.age||24;
+      previewChar.humanAsset={...BASE_ASSET};
+      return previewChar;
+    }
 
-    function installPreviewRender(instance){if(!instance?.loop||instance.__creatorPreviewRenderInstalled)return;instance.__creatorPreviewRenderInstalled=true;instance.loop.render=(frame={},meta={})=>{if(!instance.root||instance.contextLost||!instance.renderer||!instance.scene||!instance.camera||!instance.faceRig)return;win.RoleSafeSkeletonMotion?.apply?.(instance.root,previewChar?.visualRecipe?.action||'放松呼吸',frame,meta?.time??(win.performance?.now?.()||Date.now()));instance.faceRig.render(frame||{});instance.renderer.render(instance.scene,instance.camera);};}
+    function primaryRenderer(){return win.__ROLE_HUMAN_RENDERER||null;}
 
-    async function applyFull(instance,char,mapped,token){instance.clearModel?.();const ok=await instance.loadCharacter(char);if(token!==refreshToken)return false;if(!ok||!instance.root)throw new Error('基础3D人体加载失败');instance.loop?.stop?.();const root=instance.root,oldFaceRig=instance.faceRig,runtime=win.RoleUnifiedHumanRuntime;if(!runtime?.attachModule||!runtime?.applyCandidateState)throw new Error('3D人体运行时未加载');runtime.applyMorphWeights(root,{}, {reset:true});const attached=[],specs=[];if(mapped.hair)specs.push({kind:'hair',id:mapped.hair,url:HAIR_PATH(mapped.hair)});for(const id of mapped.clothing||[])specs.push({kind:'clothing',id,url:CLOTHING_PATH(id)});const tintTargets=new Set(mapped.clothingTintTargets||[]);for(const item of specs){const gltf=await loadModule(instance,item.url);if(token!==refreshToken){disposeScene(win,gltf.scene);return false;}if(item.kind==='hair'&&mapped.hairTint&&tintModule(gltf.scene,mapped.hairTint)<1){disposeScene(win,gltf.scene);throw new Error('真实3D发型材质不可用');}if(item.kind==='clothing'&&tintTargets.has(item.id)&&mapped.clothingTint&&tintModule(gltf.scene,mapped.clothingTint)<1){disposeScene(win,gltf.scene);throw new Error(`真实3D服装材质不可用: ${item.id}`);}const required=item.kind==='hair'?['gender_female','gender_male','weight_min','weight_max','height_short','height_tall','face_forehead_decr','face_forehead_incr','face_ear_size_decr','face_ear_size_incr']:['gender_female','gender_male','weight_min','weight_max','height_short','height_tall'];runtime.attachModule(root,gltf.scene,mapped.morphs||{},required);attached.push(gltf.scene);}const joints=await loadJoints(win);if(token!==refreshToken)return false;const state=runtime.applyCandidateState(root,attached,joints,mapped.morphs||{});if(!state.morphs?.applied||state.skeleton?.moved<20||state.skeleton?.missingBones?.length)throw new Error('3D身体几何应用失败');let accessory=null;if((mapped.accessory||'none')!=='none'){accessory=win.RoleAccessoryGeometry?.attach?.(root,instance.modules?.THREE,mapped.accessory);if(!accessory)throw new Error('真实3D配饰挂载失败');}oldFaceRig?.reset?.();const composite=createCompositeFaceRig(root,oldFaceRig?.headObject,win.RoleFaceRig,mapped.expressionMorphs||{});if(!composite)throw new Error('3D脸部表情运行时不可用');composite.reset();instance.faceRig=composite;requireSkinTint(root,mapped.skinTint);if(mapped.eyeTint&&win.RoleEyeColor?.requireNamedMaterialTint)win.RoleEyeColor.requireNamedMaterialTint(root,'Iris',mapped.eyeTint);instance.__creatorPreviewModules=attached;instance.__creatorPreviewAccessory=accessory;instance.__creatorPreviewState=state;instance.frameModel?.(root,'full');instance.resize?.();installPreviewRender(instance);instance.loop?.start?.();return true;}
+    async function refresh(force=false){
+      timer=0;if(!modalOpen(doc))return false;
+      const renderer=primaryRenderer(),recipe=readRecipe();
+      if(!renderer||!recipe)return false;
+      const mapped=win.RoleUnifiedHumanRecipe?.mapRecipe?.(recipe)||recipe;
+      const signature=json({baseId:recipe.baseId||'',structural:structuralSignature(mapped),morph:morphSignature(mapped),tint:tintSignature(mapped),action:recipe.action||'',expression:recipe.expression||''});
+      if(!force&&signature===lastSignature&&renderer.currentId===PREVIEW_ID){renderer.loop?.start?.();return true;}
+      const current=++token,char=makeCharacter(recipe);
+      try{
+        const ok=await renderer.loadCharacter(char);
+        if(current!==token||!modalOpen(doc))return false;
+        if(!ok||!renderer.root)throw new Error('3D人物加载失败');
+        lastSignature=signature;
+        renderer.frameModel?.(renderer.root,'full');renderer.resize?.();renderer.loop?.start?.();
+        return true;
+      }catch(error){console.warn('创建器复用全屏3D舞台失败。',error);return false;}
+    }
 
-    async function incremental(instance,next,previous,token){if(!instance?.root||!Array.isArray(instance.__creatorPreviewModules))return false;const runtime=win.RoleUnifiedHumanRuntime,roots=moduleRoots(next,instance.__creatorPreviewModules);if(!runtime||!roots.complete)return false;let reframe=false;if(morphSignature(next)!==morphSignature(previous)){const joints=await loadJoints(win);if(token!==refreshToken||!instance.root)return true;const state=runtime.applyCandidateState(instance.root,instance.__creatorPreviewModules,joints,next.morphs||{});if(!state.morphs?.applied||state.skeleton?.moved<20||state.skeleton?.missingBones?.length)throw new Error('3D身体实时更新失败');instance.__creatorPreviewState=state;reframe=true;}if(next.skinTint!==previous?.skinTint)requireSkinTint(instance.root,next.skinTint);if(next.hairTint!==previous?.hairTint&&next.hair){if(!roots.hair||tintModule(roots.hair,next.hairTint)<1)throw new Error('3D发色实时更新失败');}if(next.clothingTint!==previous?.clothingTint||json(next.clothingTintTargets)!==json(previous?.clothingTintTargets)){for(const id of new Set(next.clothingTintTargets||[])){const root=roots.clothing[id];if(!root||tintModule(root,next.clothingTint)<1)throw new Error(`3D服装颜色实时更新失败: ${id}`);}}if(next.eyeTint!==previous?.eyeTint&&next.eyeTint&&win.RoleEyeColor?.requireNamedMaterialTint)win.RoleEyeColor.requireNamedMaterialTint(instance.root,'Iris',next.eyeTint);if(reframe){instance.frameModel?.(instance.root,'full');instance.resize?.();}instance.loop?.start?.();return true;}
+    function queue(delay=DEBOUNCE_MS){if(timer)win.clearTimeout(timer);timer=win.setTimeout(()=>refresh(false),Math.max(0,delay));}
+    function stopAndRestore(){if(timer){win.clearTimeout(timer);timer=0;}token++;lastSignature='';previewChar=null;doc.body.classList.remove('creator-fullscreen-3d');win.requestAnimationFrame(()=>{const renderer=primaryRenderer();renderer?.syncCharacter?.();renderer?.resize?.();});}
+    function onModal(){if(modalOpen(doc)){ensureStyle();doc.body.classList.add('creator-fullscreen-3d');win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>refresh(true)));}else stopAndRestore();}
 
-    async function refresh(){timer=0;const host=ensureHost();if(!host||!modalOpen(doc))return;const qualified=await staticQualification();if(!qualified.ok){stop(true);setStatus(`3D资源不可用：${(qualified.reasons||[]).slice(0,2).join('、')}`,'pending');return;}const recipe=readRecipe(),mapper=win.RoleUnifiedHumanRecipe;if(!recipe||!mapper?.mapRecipe){setStatus('3D配方尚未就绪','pending');return;}const mapped=mapper.mapRecipe(recipe),char=makeCharacter(recipe),instance=ensureRenderer();if(!instance){setStatus('3D渲染器尚未就绪','pending');return;}const token=++refreshToken;setStatus('正在加载真实3D…','loading');try{let ok=false;if(instance.root&&currentMapped&&structuralSignature(mapped)===structuralSignature(currentMapped))ok=await incremental(instance,mapped,currentMapped,token);if(token!==refreshToken)return;if(!ok)ok=await applyFull(instance,char,mapped,token);if(token!==refreshToken)return;if(!ok||!instance.root)throw new Error('真实3D预览没有生成');currentMapped=mapped;setStatus('真实全身3D · 选择会立即变化','ready');}catch(error){if(token!==refreshToken)return;instance.clearModel?.();currentMapped=null;setStatus(`3D加载失败：${clean(error?.message||error)}`,'pending');}}
-    function queue(delay=DEBOUNCE_MS){if(timer)win.clearTimeout(timer);timer=win.setTimeout(refresh,Math.max(0,delay));}
-    function onRecipe(event){const recipe=event?.detail?.recipe;if(!recipe||typeof recipe!=='object')return;shadow={...recipe};queue(40);}
-    function onClick(event){const choice=event.target?.closest?.('#roleCreatorStudio [data-key]');if(choice){shadow||=resetShadow();shadow[choice.dataset.key]=choice.dataset.value;queue(DEBOUNCE_MS);}}
-    function onInput(event){const target=event.target;if(!target)return;if(target.id==='roleGender'||target.id==='roleAge'||/^rb(Height|Weight|Body|Face|Skin|Hair|Outfit|Relation)$/.test(target.id||''))queue(120);}
-    function onModal(){if(!modalOpen(doc)){stop(true);setStatus('打开创建角色后显示完整3D','idle');return;}win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>{resetShadow();queue(0);}));}
-    function install(){if(booted)return true;if(!studio()||!modal())return false;booted=true;ensureHost();doc.addEventListener('click',onClick);doc.addEventListener('input',onInput);doc.addEventListener('change',onInput);win.addEventListener('rolecreatorpage',onRecipe);win.addEventListener('rolecreatorstep',onRecipe);win.addEventListener('unifiedproductionready',()=>{if(modalOpen(doc))queue(0);});win.addEventListener('unifiedproductionpending',()=>{if(modalOpen(doc))queue(0);});if(typeof win.MutationObserver==='function'){observer=new win.MutationObserver(onModal);observer.observe(modal(),{attributes:true,attributeFilter:['class']});}onModal();return true;}
-    function dispose(){stop(true);observer?.disconnect?.();observer=null;renderer?.dispose?.();renderer=null;field('roleCreator3dPreview')?.remove?.();win.removeEventListener?.('rolecreatorpage',onRecipe);win.removeEventListener?.('rolecreatorstep',onRecipe);}
-    return Object.freeze({install,dispose,refresh,queue,readRecipe,resetShadow,ensureHost,ensureRenderer,staticQualification,stop,get renderer(){return renderer;},get previewCharacter(){return previewChar;}});
+    function install(){
+      if(booted)return true;if(!modal())return false;booted=true;ensureStyle();field('roleCreator3dPreview')?.remove?.();
+      doc.addEventListener('click',event=>{if(event.target?.closest?.('#roleCreatorStudio'))queue(80);});
+      doc.addEventListener('input',event=>{if(event.target?.closest?.('#createModalOverlay'))queue(140);});
+      doc.addEventListener('change',event=>{if(event.target?.closest?.('#createModalOverlay'))queue(100);});
+      win.addEventListener('rolecreatorstep',()=>queue(80));win.addEventListener('rolecreatorpage',()=>queue(80));
+      if(typeof win.MutationObserver==='function'){observer=new win.MutationObserver(onModal);observer.observe(modal(),{attributes:true,attributeFilter:['class']});}
+      onModal();return true;
+    }
+
+    function dispose(){if(timer)win.clearTimeout(timer);observer?.disconnect?.();observer=null;stopAndRestore();}
+    return Object.freeze({install,dispose,refresh,queue,readRecipe,primaryRenderer,get previewCharacter(){return previewChar;}});
   }
 
-  function boot(win=typeof window!=='undefined'?window:null){if(!win?.document)return false;if(win.__ROLE_CREATOR_3D_PREVIEW)return true;const start=()=>{const controller=createController(win);if(!controller?.install?.())return false;win.__ROLE_CREATOR_3D_PREVIEW=controller;return true;};if(start())return true;let attempts=0;const retry=()=>{if(start())return;if(++attempts<100)win.setTimeout(retry,80);};retry();return false;}
-  const api=Object.freeze({PREVIEW_ID,DEBOUNCE_MS,BASE_ASSET,JOINTS_PATH,structuralSignature,morphSignature,tintSignature,moduleRoots,modalOpen,captureAuthorColor,tintClothingMaterial,tintModule,tintSkin,requireSkinTint,walk,collectFaceMeshes,mergeExpressionBaseline,createCompositeFaceRig,createController,boot});
-  if(typeof window!=='undefined'){window.RoleCreator3DPreview=api;boot(window);}if(typeof module!=='undefined'&&module.exports)module.exports=api;
+  function boot(win=typeof window!=='undefined'?window:null){
+    if(!win?.document)return false;if(win.__ROLE_CREATOR_3D_PREVIEW)return true;
+    const start=()=>{if(!win.__ROLE_HUMAN_RENDERER||!win.RoleVisualRecipe)return false;const controller=createController(win);if(!controller?.install?.())return false;win.__ROLE_CREATOR_3D_PREVIEW=controller;return true;};
+    if(start())return true;let attempts=0;const retry=()=>{if(start())return;if(++attempts<100)win.setTimeout(retry,80);};retry();return false;
+  }
+
+  const api=Object.freeze({PREVIEW_ID,DEBOUNCE_MS,BASE_ASSET,structuralSignature,morphSignature,tintSignature,moduleRoots,modalOpen,createController,boot});
+  if(typeof window!=='undefined'){window.RoleCreator3DPreview=api;boot(window);}
+  if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
