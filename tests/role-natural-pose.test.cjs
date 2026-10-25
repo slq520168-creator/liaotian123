@@ -8,8 +8,9 @@ async function makeRig(){
   const root=new THREE.Group();
   const leftUpper=new THREE.Bone(),leftLower=new THREE.Bone(),rightUpper=new THREE.Bone(),rightLower=new THREE.Bone();
   leftUpper.name='upperarm_l';leftLower.name='lowerarm_l';rightUpper.name='upperarm_r';rightLower.name='lowerarm_r';
-  leftUpper.position.set(-.3,1.5,0);leftLower.position.set(-1,0,0);
-  rightUpper.position.set(.3,1.5,0);rightLower.position.set(1,0,0);
+  /* Match assets/humans/unified/base_body.joints.json: left arm is +X, right arm is -X. */
+  leftUpper.position.set(.3,1.5,0);leftLower.position.set(1,0,0);
+  rightUpper.position.set(-.3,1.5,0);rightLower.position.set(-1,0,0);
   leftUpper.add(leftLower);rightUpper.add(rightLower);root.add(leftUpper,rightUpper);root.updateMatrixWorld(true);
   return {THREE,root,leftUpper,leftLower,rightUpper,rightLower};
 }
@@ -19,12 +20,12 @@ function worldDirection(THREE,upper,lower){
   const a=new THREE.Vector3(),b=new THREE.Vector3();upper.getWorldPosition(a);lower.getWorldPosition(b);return b.sub(a).normalize();
 }
 
-test('natural pose lowers both upper arms beside the body in world space',async()=>{
+test('natural pose lowers both upper arms beside the body in world space using the real rig axis convention',async()=>{
   const {THREE,root,leftUpper,leftLower,rightUpper,rightLower}=await makeRig();
   assert.equal(pose.applyNaturalPose(root,THREE),true);
   const left=worldDirection(THREE,leftUpper,leftLower),right=worldDirection(THREE,rightUpper,rightLower);
   assert.ok(left.y<-.9);assert.ok(right.y<-.9);
-  assert.ok(left.x<0&&Math.abs(left.x)<.35);assert.ok(right.x>0&&Math.abs(right.x)<.35);
+  assert.ok(left.x>0&&Math.abs(left.x)<.2);assert.ok(right.x<0&&Math.abs(right.x)<.2);
 });
 
 test('reset restores the original arm bind pose',async()=>{
@@ -38,7 +39,7 @@ test('reset restores the original arm bind pose',async()=>{
 test('renderer patch applies natural arm pose before the existing render chain',async()=>{
   const {THREE,root,leftUpper,leftLower}=await makeRig();
   let calls=0;
-  class HumanRenderer{constructor(){this.root=root;this.modules={THREE};}renderFrame(){calls++;}}
+  class HumanRenderer{constructor(){this.root=root;this.modules={THREE};}renderFrame(){calls++;}async loadCharacter(){return true;}}
   assert.equal(pose.patchRenderer({HumanRenderer}),true);
   const renderer=new HumanRenderer();renderer.renderFrame({});
   assert.equal(calls,1);assert.ok(worldDirection(THREE,leftUpper,leftLower).y<-.9);
@@ -60,8 +61,9 @@ test('production loads natural pose before safe skeleton motion so the visible f
   assert.ok(natural<safe,'natural pose must wrap the renderer before safe motion wraps it');
 });
 
-test('chat text contract removes bubble background, border, outline and shadow',()=>{
+test('chat text contract removes all message framing',()=>{
   const css=fs.readFileSync('chat-compact-ui.css','utf8');
+  assert(css.includes('#messages .message-row'));
   assert(css.includes('#messages .message-bubble'));
-  for(const rule of ['border:0!important','outline:0!important','box-shadow:none!important','background:none!important'])assert(css.includes(rule));
+  for(const rule of ['border:0!important','outline:0!important','box-shadow:none!important','background:transparent!important'])assert(css.includes(rule));
 });
