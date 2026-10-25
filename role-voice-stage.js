@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION = '20261026-voice2';
+  const VERSION = '20261026-voice3';
   const VOICE_PREFIX = 'liaotian_role_voice_';
   const AUTO_VOICE_KEY = 'liaotian_voice_auto';
   const by = id => document.getElementById(id);
@@ -50,7 +50,9 @@
   function syncVoiceSelection() {
     if (!voiceSelect) return;
     const saved = getSavedVoice();
-    if (saved && [...voiceSelect.options].some(option => option.value === saved)) voiceSelect.value = saved;
+    const options = [...voiceSelect.options];
+    if (saved && options.some(option => option.value === saved)) voiceSelect.value = saved;
+    else if (options.length) voiceSelect.selectedIndex = 0;
     if (voiceButton) {
       voiceButton.classList.toggle('active', voiceAuto);
       voiceButton.textContent = voiceAuto ? '🔊开' : '🔇关';
@@ -225,7 +227,9 @@
     const base = switchCharacter;
     const wrapped = function(...args) {
       stopSpeaking();
-      return base.apply(this, args);
+      const result = base.apply(this, args);
+      syncVoiceSelection();
+      return result;
     };
     wrapped.__liveStage = true; switchCharacter = wrapped;
   }
