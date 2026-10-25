@@ -22,7 +22,7 @@
   });
   const EMPTY_FACE_DETAILS=Object.freeze(Object.fromEntries(Object.keys(FACE_DETAILS).map(key=>[key,0])));
   const EMPTY_BODY_DETAILS=Object.freeze(Object.fromEntries(Object.keys(BODY_DETAILS).map(key=>[key,0])));
-  const DEFAULTS=Object.freeze({version:VERSION,baseId:'female_soft',gender:'female',age:24,heightCm:164,weightJin:104,body:'匀称',bodyDetails:EMPTY_BODY_DETAILS,face:'甜美脸',faceDetails:EMPTY_FACE_DETAILS,skin:'偏白',hair:'自然长发',hairColor:'深棕',outfit:'甜美',outfitColor:'柔粉',accessory:'小耳环',action:'放松呼吸',expression:'微笑',voiceStyle:'温柔',relationship:'慢慢熟悉',personality:Object.freeze(['自然','有主见']),chat:Object.freeze(['短句自然','少反问','记得细节']),extra:''});
+  const DEFAULTS=Object.freeze({version:VERSION,baseId:'female_soft',gender:'unspecified',age:24,heightCm:165,weightJin:110,body:'匀称',bodyDetails:EMPTY_BODY_DETAILS,face:'自然耐看',faceDetails:EMPTY_FACE_DETAILS,skin:'自然肤色',hair:'自然长发',hairColor:'自然黑',outfit:'日常休闲',outfitColor:'经典黑',accessory:'无',action:'自然站立',expression:'自然',voiceStyle:'自然',relationship:'慢慢熟悉',personality:Object.freeze(['自然','有主见']),chat:Object.freeze(['短句自然','少反问','记得细节']),extra:''});
 
   function clampInt(value,min,max,fallback){const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,Math.round(n))):fallback;}
   function clampSigned(value){return clampInt(value,-100,100,0);}
