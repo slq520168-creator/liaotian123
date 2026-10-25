@@ -31,17 +31,13 @@
     const recipe = recipeForCharacter(char, recipeApi);
     if (!recipe) return false;
     let applied = false;
-
     const proportionRig = ensureProportionRig(renderer, proportionApi);
     const proportions = proportionRig?.applySpec?.(recipe) || null;
     if (proportions?.applied) applied = true;
-
     if (renderer.bodyRig?.applySpec) applied = Boolean(renderer.bodyRig.applySpec(recipe)) || applied;
-
     const appearanceRig = ensureAppearanceRig(renderer, appearanceApi);
     const appearance = appearanceRig?.applySpec?.(recipe) || null;
     if (appearance?.applied) applied = true;
-
     renderer.visualRecipe = recipe;
     renderer.proportionResult = proportions;
     renderer.appearanceResult = appearance;
@@ -51,6 +47,11 @@
   function creatorModalOpen() {
     if (typeof document === 'undefined') return false;
     return Boolean(document.getElementById('createModalOverlay')?.classList?.contains('active'));
+  }
+
+  function creatorUsesSharedRenderer() {
+    if (typeof document === 'undefined') return false;
+    return Boolean(creatorModalOpen() && document.body?.classList?.contains?.('creator-fullscreen-3d'));
   }
 
   function isCustomRoleId(charId) {
@@ -90,11 +91,8 @@
       if (!current || String(current.id || '') !== expectedId || creatorModalOpen() || rendererAsset(renderer, current)) return;
       Promise.resolve(sync.apply(renderer, args)).catch(() => {});
     };
-    if (typeof requestIdleCallback === 'function') {
-      renderer.__creatorDeferredCleanup = {kind:'idle', id:requestIdleCallback(cleanup, {timeout:900})};
-    } else {
-      renderer.__creatorDeferredCleanup = {kind:'timer', id:setTimeout(cleanup, 180)};
-    }
+    if (typeof requestIdleCallback === 'function') renderer.__creatorDeferredCleanup = {kind:'idle', id:requestIdleCallback(cleanup, {timeout:900})};
+    else renderer.__creatorDeferredCleanup = {kind:'timer', id:setTimeout(cleanup, 180)};
   }
 
   let creatorFullSaveJob = null;
@@ -128,11 +126,8 @@
       }
       try { baseSave(); } catch (error) {}
     };
-    if (typeof requestIdleCallback === 'function') {
-      creatorFullSaveJob = {kind:'idle', id:requestIdleCallback(save, {timeout:1400})};
-    } else {
-      creatorFullSaveJob = {kind:'timer', id:setTimeout(save, 240)};
-    }
+    if (typeof requestIdleCallback === 'function') creatorFullSaveJob = {kind:'idle', id:requestIdleCallback(save, {timeout:1400})};
+    else creatorFullSaveJob = {kind:'timer', id:setTimeout(save, 240)};
   }
 
   function flushCreatorPendingSwitch() {
@@ -167,10 +162,7 @@
       const wrappedSave = function(...args) {
         if (creatorModalOpen() && window.__ROLE_CREATOR_PENDING_SWITCH) {
           const ok = fastPersistCustomCatalog();
-          if (!ok) {
-            window.__ROLE_CREATOR_PENDING_SWITCH = null;
-            return false;
-          }
+          if (!ok) { window.__ROLE_CREATOR_PENDING_SWITCH = null; return false; }
           scheduleCreatorFullSave(() => baseSave.apply(this, args));
           return true;
         }
@@ -191,8 +183,12 @@
     const wrapped = function(...args) {
       const char = this.currentCharacter?.();
       if (creatorModalOpen()) {
-        this.cancelPendingLoad?.();
         cancelDeferredCleanup(this);
+        if (creatorUsesSharedRenderer()) {
+          this.loop?.start?.();
+          return Promise.resolve(this.root ? true : false);
+        }
+        this.cancelPendingLoad?.();
         this.loop?.stop?.();
         return Promise.resolve(false);
       }
@@ -217,17 +213,16 @@
     if (!modal || typeof MutationObserver === 'undefined') return false;
     const syncAfterClose = () => {
       if (creatorModalOpen()) {
-        renderer.cancelPendingLoad?.();
         cancelDeferredCleanup(renderer);
+        if (creatorUsesSharedRenderer()) { renderer.loop?.start?.(); return; }
+        renderer.cancelPendingLoad?.();
         renderer.loop?.stop?.();
         return;
       }
       requestAnimationFrame(() => {
         if (creatorModalOpen()) return;
         flushCreatorPendingSwitch();
-        requestAnimationFrame(() => {
-          if (!creatorModalOpen()) renderer.syncCharacter?.();
-        });
+        requestAnimationFrame(() => { if (!creatorModalOpen()) renderer.syncCharacter?.(); });
       });
     };
     const observer = new MutationObserver(syncAfterClose);
@@ -243,61 +238,27 @@
     const Renderer = window.RoleHumanRenderer?.HumanRenderer;
     const proto = Renderer?.prototype;
     if (!proto?.loadCharacter) return false;
-
     const currentClear = proto.clearModel;
     if (typeof currentClear === 'function' && !currentClear.__structuredRecipe) {
       const clearWrapped = function(...args) {
-        this.proportionRig?.reset?.();
-        this.proportionRig = null;
-        this.proportionResult = null;
-        this.appearanceRig?.reset?.();
-        this.appearanceRig = null;
-        this.appearanceResult = null;
+        this.proportionRig?.reset?.();this.proportionRig = null;this.proportionResult = null;
+        this.appearanceRig?.reset?.();this.appearanceRig = null;this.appearanceResult = null;
         return currentClear.apply(this, args);
       };
-      clearWrapped.__structuredRecipe = true;
-      proto.clearModel = clearWrapped;
+      clearWrapped.__structuredRecipe = true;proto.clearModel = clearWrapped;
     }
-
     const currentLoad = proto.loadCharacter;
     if (!currentLoad.__visualRecipe) {
-      const wrapped = async function(char) {
-        const ok = await currentLoad.call(this, char);
-        if (ok) applyStructuredRecipe(this, char, window.RoleVisualRecipe, window.RoleAppearanceRig, window.RoleProportionRig);
-        return ok;
-      };
-      wrapped.__visualRecipe = true;
-      proto.loadCharacter = wrapped;
+      const wrapped = async function(char) { const ok = await currentLoad.call(this, char);if (ok) applyStructuredRecipe(this, char, window.RoleVisualRecipe, window.RoleAppearanceRig, window.RoleProportionRig);return ok; };
+      wrapped.__visualRecipe = true;proto.loadCharacter = wrapped;
     }
-
     installCreatorPerformanceGate(proto);
-    const renderer = window.__ROLE_HUMAN_RENDERER;
-    if (renderer) bindCreatorModal(renderer);
-    requestAnimationFrame(() => {
-      const activeRenderer = window.__ROLE_HUMAN_RENDERER;
-      if (!activeRenderer) return;
-      bindCreatorModal(activeRenderer);
-      if (!creatorModalOpen()) activeRenderer.syncCharacter?.();
-    });
+    const renderer = window.__ROLE_HUMAN_RENDERER;if (renderer) bindCreatorModal(renderer);
+    requestAnimationFrame(() => { const activeRenderer = window.__ROLE_HUMAN_RENDERER;if (!activeRenderer) return;bindCreatorModal(activeRenderer);if (!creatorModalOpen()) activeRenderer.syncCharacter?.(); });
     return true;
   }
 
-  const api = Object.freeze({
-    recipeForCharacter, ensureAppearanceRig, ensureProportionRig, applyStructuredRecipe,
-    creatorModalOpen, isCustomRoleId, rendererAsset, hideRendererStage, cancelDeferredCleanup, deferTextCleanup,
-    cancelCreatorFullSave, fastPersistCustomCatalog, scheduleCreatorFullSave, flushCreatorPendingSwitch, installCreatorCommitFastPath,
-    installCreatorPerformanceGate, bindCreatorModal, install
-  });
-  if (typeof window !== 'undefined') {
-    window.RoleRenderRecipeBridge = api;
-    if (!install()) {
-      let attempts = 0;
-      const retry = () => {
-        if (install() || ++attempts > 50) return;
-        setTimeout(retry, 80);
-      };
-      retry();
-    }
-  }
+  const api = Object.freeze({recipeForCharacter,ensureAppearanceRig,ensureProportionRig,applyStructuredRecipe,creatorModalOpen,creatorUsesSharedRenderer,isCustomRoleId,rendererAsset,hideRendererStage,cancelDeferredCleanup,deferTextCleanup,cancelCreatorFullSave,fastPersistCustomCatalog,scheduleCreatorFullSave,flushCreatorPendingSwitch,installCreatorCommitFastPath,installCreatorPerformanceGate,bindCreatorModal,install});
+  if (typeof window !== 'undefined') {window.RoleRenderRecipeBridge = api;if (!install()) {let attempts = 0;const retry = () => {if (install() || ++attempts > 50) return;setTimeout(retry, 80);};retry();}}
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
