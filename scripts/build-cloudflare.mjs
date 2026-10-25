@@ -36,9 +36,20 @@ await cp(new URL('node_modules/meshoptimizer/meshopt_decoder.mjs',root),new URL(
 try{await cp(new URL('node_modules/meshoptimizer/LICENSE.md',root),new URL('LICENSE.md',meshoptOut));}catch{}
 
 const configSource=await readFile(new URL('config/app.js',root),'utf8');
+const buildVersionMatch=configSource.match(/const version='([^']+)'/);
+if(!buildVersionMatch)throw new Error('Missing build version in config/app.js');
+const buildVersion=buildVersionMatch[1];
 const referencedRuntime=[...configSource.matchAll(/['"](role-[a-z0-9-]+\.js)['"]/gi)].map(match=>match[1]);
 for(const name of referencedRuntime)await access(new URL(name,out));
 for(const path of ['vendor/three/build/three.module.js','vendor/three/build/three.core.js','vendor/three/examples/jsm/loaders/GLTFLoader.js','vendor/three/examples/jsm/utils/BufferGeometryUtils.js','vendor/three/examples/jsm/utils/SkeletonUtils.js','vendor/meshoptimizer/meshopt_decoder.mjs'])await access(new URL(path,out));
+
+await writeFile(new URL('version.json',out),JSON.stringify({version:buildVersion})+'\n');
+const appOut=new URL('app.js',out);
+let appSource=await readFile(appOut,'utf8');
+const versionPattern=/const SITE_VERSION = '[^']+';/;
+if(!versionPattern.test(appSource))throw new Error('Missing SITE_VERSION in app.js');
+appSource=appSource.replace(versionPattern,`const SITE_VERSION = '${buildVersion}';`);
+await writeFile(appOut,appSource);
 
 await writeFile(new URL('_headers',out),
   '/*.html\n  Cache-Control: no-cache\n'+
