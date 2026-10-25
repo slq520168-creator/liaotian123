@@ -1,5 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const fs=require('node:fs');
 const pose=require('../role-natural-pose.js');
 
 async function makeRig(){
@@ -45,8 +46,22 @@ test('renderer patch applies natural arm pose before the existing render chain',
 });
 
 test('pose implementation uses quaternions instead of hard-coded Euler arm angles',()=>{
-  const fs=require('node:fs');const source=fs.readFileSync('role-natural-pose.js','utf8');
+  const source=fs.readFileSync('role-natural-pose.js','utf8');
   assert(source.includes('setFromUnitVectors'));
   assert(source.includes('getWorldQuaternion'));
   assert.equal(/upperarm_[lr].*rotation\.[xyz]\s*=/.test(source),false);
+});
+
+test('production loads natural pose before safe skeleton motion so the visible frame keeps arms down',()=>{
+  const source=fs.readFileSync('config/app.js','utf8');
+  const natural=source.indexOf("'role-natural-pose.js'");
+  const safe=source.indexOf("'role-safe-skeleton-motion.js'");
+  assert.ok(natural>=0&&safe>=0);
+  assert.ok(natural<safe,'natural pose must wrap the renderer before safe motion wraps it');
+});
+
+test('chat text contract removes bubble background, border, outline and shadow',()=>{
+  const css=fs.readFileSync('chat-compact-ui.css','utf8');
+  assert(css.includes('#messages .message-bubble'));
+  for(const rule of ['border:0!important','outline:0!important','box-shadow:none!important','background:none!important'])assert(css.includes(rule));
 });

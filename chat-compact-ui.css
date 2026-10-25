@@ -50,19 +50,32 @@
   font-size:11px!important;
 }
 
-/* 聊天文字不使用任何气泡边框、描边或阴影。 */
-.message-bubble,
-.message-row.bot .message-bubble,
-.message-row.user .message-bubble{
+/* 聊天文字只保留文字本身：禁止任何气泡框、底色、描边、阴影和伪元素外框。 */
+#messages .message-content,
+#messages .message-bubble,
+#messages .message-row.bot .message-bubble,
+#messages .message-row.user .message-bubble{
   border:0!important;
   outline:0!important;
   box-shadow:none!important;
-  background:transparent!important;
+  background:none!important;
   border-radius:0!important;
+}
+#messages .message-bubble{
   padding:2px 0!important;
 }
-.message-row.bot .message-bubble{color:var(--bot-msg-text)!important}
-.message-row.user .message-bubble{color:var(--user-msg-text)!important}
+#messages .message-bubble::before,
+#messages .message-bubble::after,
+#messages .message-content::before,
+#messages .message-content::after{
+  content:none!important;
+  display:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  background:none!important;
+}
+#messages .message-row.bot .message-bubble{color:var(--bot-msg-text)!important}
+#messages .message-row.user .message-bubble{color:var(--user-msg-text)!important}
 
 @media (max-width:520px){
   .chat-tools{gap:4px!important}
