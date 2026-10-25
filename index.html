@@ -15,11 +15,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261003-logo1">
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="preconnect" href="https://afzcohtnljnmucrkgcaz.supabase.co" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20261020-freeze1">
+  <link rel="stylesheet" href="styles.css?v=20261026-create3d44">
 </head>
 <body>
   <div class="app-container">
-    <!-- 侧边栏：角色列表与管理 -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <img class="site-logo" src="assets/brand/logo-96.png" alt="角色聊天 Logo" width="36" height="36">
@@ -29,7 +28,7 @@
 
       <div class="sidebar-actions">
         <button class="btn btn-primary btn-block" id="openCreateModalBtn">
-          <span class="icon">+</span> 创建新角色
+          <span class="icon">+</span> 创建3D角色
         </button>
         <button class="btn btn-outline btn-block" id="uploadRoleCodeBtn" type="button">上传角色代码</button>
         <p id="roleCodeStatus" class="form-hint" role="status"></p>
@@ -39,25 +38,19 @@
 
       <div class="sidebar-characters">
         <div class="character-section">
-          <h3 id="presetRoleTitle">角色</h3>
-          <div class="character-list" id="presetCharacterList">
-            <!-- 预设角色由 JS 动态渲染 -->
-          </div>
+          <h3 id="presetRoleTitle">3D角色</h3>
+          <div class="character-list" id="presetCharacterList"></div>
         </div>
 
         <div class="character-section">
-          <h3>我的角色</h3>
-          <div class="character-list" id="customCharacterList">
-            <!-- 自定义角色由 JS 动态渲染 -->
-          </div>
+          <h3>我的3D角色</h3>
+          <div class="character-list" id="customCharacterList"></div>
         </div>
       </div>
     </aside>
 
-    <!-- 侧边栏遮罩 (移动端) -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- 主聊天界面 -->
     <main class="chat-main">
       <header class="chat-header">
         <button class="icon-btn menu-btn" id="openSidebarBtn" title="打开角色菜单" aria-label="打开角色菜单" aria-expanded="false">
@@ -83,15 +76,11 @@
       </header>
 
       <div class="messages-container" id="messagesContainer">
-        <div class="messages" id="messages">
-          <!-- 消息历史由 JS 渲染 -->
-        </div>
+        <div class="messages" id="messages"></div>
       </div>
 
       <div class="input-container">
-        <div class="quick-replies" id="quickReplies">
-          <!-- 快捷对话选项 -->
-        </div>
+        <div class="quick-replies" id="quickReplies"></div>
         <div class="chat-tools">
           <button class="tool-btn" id="emojiBtn" type="button" aria-expanded="false" aria-controls="emojiPicker">😊 表情</button>
           <div class="chat-tool-group" id="chatStyleControls"></div>
@@ -141,12 +130,12 @@
         </div>
         <div class="form-group">
           <label for="roleCodeEditor">编写或粘贴角色代码</label>
-          <textarea class="role-code-editor" id="roleCodeEditor" rows="10" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="soft" placeholder="填写角色数据，例如 { name: '小雨', personality: '成熟坦率，喜欢读书' }；也支持 JSON 和 JS 对象" required></textarea>
+          <textarea class="role-code-editor" id="roleCodeEditor" rows="10" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="soft" placeholder="填写3D角色数据；支持 JSON 和 JS 对象" required></textarea>
         </div>
         <p class="form-hint" id="roleCodeEditorStatus" role="alert"></p>
         <div class="modal-footer">
           <button class="btn btn-secondary" id="cancelRoleCodeBtn" type="button">取消</button>
-          <button class="btn btn-primary" id="generateRoleCodeBtn" type="submit" title="生成角色（Ctrl/Cmd + Enter）">生成角色</button>
+          <button class="btn btn-primary" id="generateRoleCodeBtn" type="submit" title="生成角色（Ctrl/Cmd + Enter）">生成3D角色</button>
         </div>
       </form>
     </div>
@@ -182,92 +171,40 @@
     </div>
   </div>
 
-  <!-- 创建角色弹窗 -->
   <div class="modal-overlay" id="createModalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="createRoleTitle">
       <div class="modal-header">
-        <h2 id="createRoleTitle">创建新角色</h2>
-        <button class="icon-btn close-modal-btn" id="closeModalBtn" aria-label="关闭创建角色">&times;</button>
+        <h2 id="createRoleTitle">3D 人物大厅</h2>
+        <button class="icon-btn close-modal-btn" id="closeModalBtn" aria-label="关闭3D人物大厅">&times;</button>
       </div>
-      <form id="createRoleForm" class="modal-body">
-        <div class="form-group">
-          <label for="roleName">角色姓名 <span class="required">*</span></label>
-          <input type="text" id="roleName" placeholder="例如：云舟" required maxlength="12">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="roleGender">角色性别</label>
-            <select id="roleGender">
-              <option value="unspecified">不指定</option>
-              <option value="male">男</option>
-              <option value="female">女</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="roleAge">角色年龄</label>
-            <input type="number" id="roleAge" min="18" max="100" value="24" required>
-          </div>
-        </div>
-
-        <div class="form-group form-span-full">
-          <label>角色头像 <span class="required">*</span></label>
-          <div class="avatar-picker">
-            <div class="avatar-upload-row">
-              <img id="roleAvatarPreview" class="avatar avatar-upload-preview" src="assets/avatars/nuannuan-portrait.jpg" alt="所选角色头像">
-              <div class="avatar-upload-controls">
-                <button type="button" id="chooseRoleAvatarBtn" class="btn btn-outline">从相册选择</button>
-                <input type="file" id="roleAvatarUpload" accept="image/*" aria-label="选择角色头像照片" hidden>
-                <p id="roleAvatarStatus" class="form-hint" role="status" aria-live="polite"></p>
-              </div>
-            </div>
-            <div class="preset-avatars" id="presetAvatarPicker"></div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="roleTag">角色标签 <span class="required">*</span></label>
-          <input type="text" id="roleTag" placeholder="例如：高冷学霸、幽默老友、古风侠客" required maxlength="20">
-        </div>
-
-        <div class="form-group">
-          <label for="roleGreeting">首句问候语 <span class="required">*</span></label>
-          <input type="text" id="roleGreeting" placeholder="例如：今天有什么有趣的事要和我分享吗？" required maxlength="300">
-        </div>
-
-        <div class="form-group form-span-full">
-          <label for="rolePersonality">性格特征与人设描述 <span class="required">*</span></label>
-          <textarea id="rolePersonality" rows="4" placeholder="性格、背景与相处习惯" required maxlength="12000"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="roleVoice">说话习惯</label>
-          <input type="text" id="roleVoice" placeholder="例如：直白温柔，有一点幽默，不爱说大道理" maxlength="240">
-        </div>
-
-        <div class="form-group">
-          <label for="roleInterests">爱好与日常</label>
-          <input type="text" id="roleInterests" placeholder="例如：电影、旅行、做饭，喜欢聊生活里的小事" maxlength="240">
-        </div>
-
-        <div class="form-group form-span-full">
-          <label for="roleRelationship">相处方式</label>
-          <textarea id="roleRelationship" rows="2" placeholder="例如：像熟悉的朋友，记得我说过的话；需要安静时不追问" maxlength="300"></textarea>
-        </div>
-
-        <p class="form-hint form-span-full" id="createRoleStatus" role="alert"></p>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
-          <button type="submit" class="btn btn-primary" id="createRoleSubmitBtn">创建角色</button>
+      <form id="createRoleForm" class="modal-body creator-3d-only">
+        <div id="roleCreatorCompat" hidden aria-hidden="true" style="display:none!important">
+          <input type="text" id="roleName" required maxlength="12">
+          <select id="roleGender"><option value="unspecified">不指定</option><option value="male">男</option><option value="female">女</option></select>
+          <input type="number" id="roleAge" min="18" max="100" value="24" required>
+          <img id="roleAvatarPreview" src="assets/avatars/nuannuan-portrait.jpg" alt="">
+          <button type="button" id="chooseRoleAvatarBtn">选择头像</button>
+          <input type="file" id="roleAvatarUpload" accept="image/*" hidden>
+          <p id="roleAvatarStatus"></p>
+          <div id="presetAvatarPicker"></div>
+          <input type="text" id="roleTag" required maxlength="20">
+          <input type="text" id="roleGreeting" required maxlength="300">
+          <textarea id="rolePersonality" required maxlength="12000"></textarea>
+          <input type="text" id="roleVoice" maxlength="240">
+          <input type="text" id="roleInterests" maxlength="240">
+          <textarea id="roleRelationship" maxlength="300"></textarea>
+          <p id="createRoleStatus" role="alert"></p>
+          <button type="button" id="cancelModalBtn">取消</button>
+          <button type="submit" id="createRoleSubmitBtn">保存</button>
         </div>
       </form>
     </div>
   </div>
 
-  <script src="config/app.js?v=20261020-freeze1" defer></script>
-  <script src="roles.js?v=20261003-mature2" defer></script>
-  <script src="memory.js?v=20261003-6" defer></script>
-  <script src="role-code.js?v=20261020-freeze1" defer></script>
-  <script src="app.js?v=20261020-freeze1" defer></script>
+  <script src="config/app.js?v=20261026-create3d44" defer></script>
+  <script src="roles.js?v=20261026-create3d44" defer></script>
+  <script src="memory.js?v=20261026-create3d44" defer></script>
+  <script src="role-code.js?v=20261026-create3d44" defer></script>
+  <script src="app.js?v=20261026-create3d44" defer></script>
 </body>
 </html>
