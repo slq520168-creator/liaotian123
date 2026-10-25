@@ -7,6 +7,8 @@ test('production creator is 3D-only lobby wizard',()=>{
   assert(config.includes("'role-creator-wizard.js'"));
   assert(config.includes("'role-code-3d.js'"));
   assert(config.includes("'role-3d-bases.js'"));
+  assert(config.includes("'role-creator-3d-preview-v2.js'"));
+  assert(!config.includes("'role-creator-3d-preview.js'"));
   assert(!config.includes("'role-creator-studio.js'"));
   assert(!config.includes("'role-code-compat.js'"));
   const source=fs.readFileSync('role-creator-wizard.js','utf8');
@@ -28,10 +30,11 @@ test('custom role code activates a real 3D base role instead of ordinary text ro
   assert(source.includes("char.roleKind!=='3d'"));
 });
 
-test('wizard changes are bridged into production 3D preview contract',()=>{
+test('wizard changes are bridged into the visible production 3D preview',()=>{
   const source=fs.readFileSync('role-creator-wizard-preview.js','utf8');
   assert(source.includes('choice.dataset.key=choice.dataset.choice'));
-  const preview=fs.readFileSync('role-creator-3d-preview.js','utf8');
+  const preview=fs.readFileSync('role-creator-3d-preview-v2.js','utf8');
   assert(preview.includes("#roleCreatorStudio [data-key]"));
-  assert(preview.includes("frameModel?.(baseRoot,'full')")||preview.includes("frameModel?.(renderer.root,'full')")||preview.includes("frameModel?.(baseRoot, 'full')"));
+  assert(preview.includes("win.addEventListener('rolecreatorpage',onRecipe)"));
+  assert(preview.includes("frameModel?.(root,'full')"));
 });
