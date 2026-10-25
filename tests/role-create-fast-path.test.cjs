@@ -20,13 +20,17 @@ test('3D role IndexedDB backup is coalesced instead of writing on every sidebar 
   assert(!source.includes("new MutationObserver(()=>persistCustomRoles()).observe(customList"));
 });
 
-test('creator pauses WebGL and defers disposal of the previous 3D model off the submit frame', () => {
+test('fullscreen creator keeps the shared WebGL renderer alive and only pauses legacy modal mode', () => {
   const source = fs.readFileSync('role-render-recipe-bridge.js', 'utf8');
   assert(source.includes('function creatorModalOpen()'));
+  assert(source.includes('function creatorUsesSharedRenderer()'));
+  assert(source.includes("document.body?.classList?.contains?.('creator-fullscreen-3d')"));
+  assert(source.includes('if (creatorUsesSharedRenderer())'));
+  assert(source.includes('this.loop?.start?.()'));
+  assert(source.includes('renderer.loop?.start?.()'));
   assert(source.includes('this.cancelPendingLoad?.()'));
   assert(source.includes('hideRendererStage(this)'));
   assert(source.includes('requestIdleCallback(cleanup, {timeout:900})'));
-  assert(source.includes('deferTextCleanup(this, char, currentSync, args)'));
   assert(source.includes("observer.observe(modal, {attributes:true, attributeFilter:['class']})"));
 });
 

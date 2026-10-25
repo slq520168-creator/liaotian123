@@ -30,11 +30,14 @@ test('custom role code activates a real 3D base role instead of ordinary text ro
   assert(source.includes("char.roleKind!=='3d'"));
 });
 
-test('wizard changes are bridged into the visible production 3D preview',()=>{
+test('wizard changes drive the one fullscreen production 3D renderer',()=>{
   const source=fs.readFileSync('role-creator-wizard-preview.js','utf8');
   assert(source.includes('choice.dataset.key=choice.dataset.choice'));
   const preview=fs.readFileSync('role-creator-3d-preview-v2.js','utf8');
-  assert(preview.includes("#roleCreatorStudio [data-key]"));
-  assert(preview.includes("win.addEventListener('rolecreatorpage',onRecipe)"));
-  assert(preview.includes("frameModel?.(root,'full')"));
+  assert(preview.includes("win.addEventListener('rolecreatorpage',()=>queue(80))"));
+  assert(preview.includes("win.addEventListener('rolecreatorstep',()=>queue(80))"));
+  assert(preview.includes("renderer.frameModel?.(renderer.root,'full')"));
+  assert(preview.includes('win.__ROLE_HUMAN_RENDERER'));
+  assert.equal(/new\s+Renderer\s*\(/.test(preview),false);
+  assert.equal(preview.includes('roleCreator3dPreviewCanvas'),false);
 });
