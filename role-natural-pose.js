@@ -27,8 +27,10 @@
     const shoulder=new THREE.Vector3(),elbow=new THREE.Vector3();upper.getWorldPosition(shoulder);lower.getWorldPosition(elbow);
     const current=elbow.sub(shoulder);if(current.lengthSq()<1e-8)return null;current.normalize();
     const left=String(upper.name||'').endsWith('_l');
-    const sideSign=left?-1:1;
-    const target=new THREE.Vector3(sideSign*.16,-.986,.035).normalize();
+    /* unified rig 左臂位于 +X、右臂位于 -X。旧实现符号写反，会把自然下垂目标算到身体另一侧。 */
+    const sideSign=left?1:-1;
+    /* 手臂接近身体自然下垂，只保留很小的外展和轻微向前。 */
+    const target=new THREE.Vector3(sideSign*.075,-.994,.075).normalize();
     const deltaWorld=new THREE.Quaternion().setFromUnitVectors(current,target);
     const parentWorld=new THREE.Quaternion();upper.parent?.getWorldQuaternion?.(parentWorld);
     const localDelta=parentWorld.clone().invert().multiply(deltaWorld).multiply(parentWorld);
@@ -47,16 +49,25 @@
   function applyNaturalPose(root,THREE){
     const state=prepare(root,THREE);if(!state)return false;
     state.left.upper.quaternion.copy(state.left.natural);state.right.upper.quaternion.copy(state.right.natural);
+    root.updateMatrixWorld?.(true);
     return true;
   }
 
   function reset(root){const state=states.get(root);if(!state)return false;state.left.upper.quaternion.copy(state.left.rest);state.right.upper.quaternion.copy(state.right.rest);root.updateMatrixWorld?.(true);return true;}
 
   function patchRenderer(rendererApi=typeof window!=='undefined'?window.RoleHumanRenderer:null){
-    const proto=rendererApi?.HumanRenderer?.prototype;if(!proto?.renderFrame||proto.renderFrame.__naturalArmPose)return false;
-    const base=proto.renderFrame;
-    const wrapped=function(frame={}){if(this.root&&this.modules?.THREE)applyNaturalPose(this.root,this.modules.THREE);return base.call(this,frame);};
-    wrapped.__naturalArmPose=true;proto.renderFrame=wrapped;return true;
+    const proto=rendererApi?.HumanRenderer?.prototype;if(!proto?.renderFrame)return false;
+    if(!proto.renderFrame.__naturalArmPose){
+      const baseRender=proto.renderFrame;
+      const wrappedRender=function(frame={}){if(this.root&&this.modules?.THREE)applyNaturalPose(this.root,this.modules.THREE);return baseRender.call(this,frame);};
+      wrappedRender.__naturalArmPose=true;proto.renderFrame=wrappedRender;
+    }
+    if(proto.loadCharacter&&!proto.loadCharacter.__naturalArmPose){
+      const baseLoad=proto.loadCharacter;
+      const wrappedLoad=async function(...args){const ok=await baseLoad.apply(this,args);if(ok&&this.root&&this.modules?.THREE)applyNaturalPose(this.root,this.modules.THREE);return ok;};
+      wrappedLoad.__naturalArmPose=true;proto.loadCharacter=wrappedLoad;
+    }
+    return true;
   }
 
   function boot(){if(typeof window==='undefined')return false;if(patchRenderer())return true;let tries=0;const retry=()=>{if(patchRenderer())return;if(++tries<80)setTimeout(retry,80);};retry();return false;}
