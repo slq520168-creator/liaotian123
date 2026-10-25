@@ -50,20 +50,33 @@
   font-size:11px!important;
 }
 
-/* 聊天文字只保留文字本身：禁止任何气泡框、底色、描边、阴影和伪元素外框。 */
+/* 聊天正文只保留文字：消息行、内容层、气泡层全部禁止框、底色、圆角、阴影。 */
+#messages .message-row,
 #messages .message-content,
 #messages .message-bubble,
+#messages .message-row.bot,
+#messages .message-row.user,
+#messages .message-row.bot .message-content,
+#messages .message-row.user .message-content,
 #messages .message-row.bot .message-bubble,
 #messages .message-row.user .message-bubble{
   border:0!important;
+  border-width:0!important;
+  border-color:transparent!important;
   outline:0!important;
   box-shadow:none!important;
-  background:none!important;
+  background:transparent!important;
+  background-image:none!important;
   border-radius:0!important;
+  filter:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
 }
 #messages .message-bubble{
   padding:2px 0!important;
 }
+#messages .message-row::before,
+#messages .message-row::after,
 #messages .message-bubble::before,
 #messages .message-bubble::after,
 #messages .message-content::before,
