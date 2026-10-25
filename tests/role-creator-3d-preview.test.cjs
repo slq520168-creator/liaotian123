@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const preview=require('../role-creator-3d-preview-v2.js');
 
-test('structural preview reloads only for real module accessory or expression changes',()=>{
+test('structural signatures still distinguish real 3D module changes',()=>{
   const base={hair:'long01',clothing:['briefs','tshirt','jeans','shoes'],accessory:'none',expressionMorphs:{mouthSmileLeft:.2},morphs:{weight_max:.1},skinTint:'#aaa',hairTint:'#111',clothingTint:'#222',eyeTint:'#333'};
   assert.equal(preview.structuralSignature({...base,skinTint:'#bbb'}),preview.structuralSignature(base));
   assert.equal(preview.structuralSignature({...base,hairTint:'#999'}),preview.structuralSignature(base));
@@ -13,7 +13,7 @@ test('structural preview reloads only for real module accessory or expression ch
   assert.notEqual(preview.structuralSignature({...base,expressionMorphs:{mouthSmileLeft:.5}}),preview.structuralSignature(base));
 });
 
-test('module roots preserve actual loader order for direct tint updates',()=>{
+test('module roots helper preserves actual module order',()=>{
   const hair={id:'hair'},briefs={id:'briefs'},shirt={id:'shirt'},jeans={id:'jeans'},shoes={id:'shoes'};
   const mapped={hair:'long01',clothing:['briefs','tshirt','jeans','shoes']};
   const roots=preview.moduleRoots(mapped,[hair,briefs,shirt,jeans,shoes]);
@@ -21,32 +21,23 @@ test('module roots preserve actual loader order for direct tint updates',()=>{
   assert.equal(preview.moduleRoots(mapped,[hair,briefs]).complete,false);
 });
 
-test('creator preview uses static asset qualification instead of the chat production gate',()=>{
+test('creator uses one existing fullscreen renderer with no embedded WebGL preview',()=>{
   const source=fs.readFileSync('role-creator-3d-preview-v2.js','utf8');
-  assert(source.includes('gate.fetchManifest'));
-  assert(source.includes('gate.staticQualification(manifest)'));
   assert(source.includes("url:'assets/humans/unified/base_body.glb'"));
-  assert(source.includes('runtime.applyCandidateState'));
-  assert(source.includes('renderer.modules.GLTFLoader'));
-  assert(source.includes('win.RoleAccessoryGeometry?.attach'));
-  assert(source.includes('win.RoleSafeSkeletonMotion?.apply'));
-  assert.equal(source.includes('win.RoleUnifiedCustomChat'),false);
-  assert.equal(source.includes("['global','device'].includes"),false);
+  assert(source.includes('win.__ROLE_HUMAN_RENDERER'));
+  assert(source.includes("doc.body.classList.add('creator-fullscreen-3d')"));
+  assert(source.includes("field('roleCreator3dPreview')?.remove?.()"));
+  assert.equal(/new\s+Renderer\s*\(/.test(source),false);
+  assert.equal(source.includes('roleCreator3dPreviewCanvas'),false);
+  assert.equal(source.includes('renderer.modules.GLTFLoader'),false);
 });
 
-test('preview remains a full body sibling of the six step creator and stops when modal closes',()=>{
+test('creator remains fullscreen and restores the active chat character when it closes',()=>{
   const source=fs.readFileSync('role-creator-3d-preview-v2.js','utf8');
-  assert(source.includes("target.parentNode?.insertBefore(host,target)"));
-  assert(source.includes("frameModel?.(root,'full')"));
-  assert(source.includes("if(!modalOpen(doc)){stop(true)"));
-  assert(source.includes("stage.id='roleCreatorPreviewStage'"));
-  assert(source.includes("title.textContent='完整 3D 人物'"));
-});
-
-test('creator recipe events drive the exact visible 3D recipe',()=>{
-  const source=fs.readFileSync('role-creator-3d-preview-v2.js','utf8');
-  assert(source.includes("win.addEventListener('rolecreatorpage',onRecipe)"));
-  assert(source.includes("win.addEventListener('rolecreatorstep',onRecipe)"));
-  assert(source.includes('shadow={...recipe}'));
+  assert(source.includes("#createModalOverlay.active>.modal{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important"));
+  assert(source.includes("renderer?.syncCharacter?.()"));
+  assert(source.includes("renderer.frameModel?.(renderer.root,'full')"));
+  assert(source.includes("win.addEventListener('rolecreatorpage',()=>queue(80))"));
+  assert(source.includes("win.addEventListener('rolecreatorstep',()=>queue(80))"));
   assert(source.includes("typeof visual.lockBase==='function'?visual.lockBase(source):visual.sanitize(source)"));
 });
