@@ -7,7 +7,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
 (() => {
   'use strict';
-  const version='20261026-create3d44';
+  const version='20261026-create3d45';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';

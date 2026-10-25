@@ -56,8 +56,11 @@ let indexSource=await readFile(indexOut,'utf8');
 indexSource=indexSource.replace(/((?:src|href)="[^"]+\.(?:js|css))\?v=[^"]+(" )?/gi,(match,prefix,suffix)=>`${prefix}?v=${buildVersion}${suffix||''}`);
 await writeFile(indexOut,indexSource);
 
+/* 入口 HTML 绝不能被旧缓存继续复用，否则旧普通角色创建器会重新露出。 */
 await writeFile(new URL('_headers',out),
-  '/*.html\n  Cache-Control: no-cache\n'+
+  '/\n  Cache-Control: no-store, no-cache, must-revalidate, max-age=0\n'+
+  '/index.html\n  Cache-Control: no-store, no-cache, must-revalidate, max-age=0\n'+
+  '/*.html\n  Cache-Control: no-store, no-cache, must-revalidate, max-age=0\n'+
   '/version.json\n  Cache-Control: no-store\n'+
   '/config/app.js\n  Cache-Control: no-store\n'+
   '/vendor/*\n  Cache-Control: public, max-age=300, must-revalidate\n'+

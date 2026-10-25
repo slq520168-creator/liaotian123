@@ -16,3 +16,9 @@ test('Cloudflare build derives update version from the active app build version'
   assert.match(build,/SITE_VERSION/);
   assert.match(build,/buildVersion/);
 });
+
+test('root and html entrypoints are no-store so legacy creator HTML cannot survive a release',()=>{
+  assert.match(build,/['"]\/\\n  Cache-Control: no-store, no-cache, must-revalidate, max-age=0/);
+  assert.match(build,/\/index\.html\\n  Cache-Control: no-store, no-cache, must-revalidate, max-age=0/);
+  assert.match(build,/\/\*\.html\\n  Cache-Control: no-store, no-cache, must-revalidate, max-age=0/);
+});
