@@ -1,25 +1,52 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const pose = require('../role-natural-pose.js');
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const pose=require('../role-natural-pose.js');
 
-test('unsafe natural-pose layer is hard disabled', () => {
-  assert.equal(pose.ENABLED, false);
-  assert.equal(pose.DISABLED_REASON, 'unverified-bind-rest-pose');
-  assert.deepEqual(pose.POSE, {});
+async function makeRig(){
+  const THREE=await import('three');
+  const root=new THREE.Group();
+  const leftUpper=new THREE.Bone(),leftLower=new THREE.Bone(),rightUpper=new THREE.Bone(),rightLower=new THREE.Bone();
+  leftUpper.name='upperarm_l';leftLower.name='lowerarm_l';rightUpper.name='upperarm_r';rightLower.name='lowerarm_r';
+  leftUpper.position.set(-.3,1.5,0);leftLower.position.set(-1,0,0);
+  rightUpper.position.set(.3,1.5,0);rightLower.position.set(1,0,0);
+  leftUpper.add(leftLower);rightUpper.add(rightLower);root.add(leftUpper,rightUpper);root.updateMatrixWorld(true);
+  return {THREE,root,leftUpper,leftLower,rightUpper,rightLower};
+}
+
+function worldDirection(THREE,upper,lower){
+  upper.updateMatrixWorld(true);lower.updateMatrixWorld(true);
+  const a=new THREE.Vector3(),b=new THREE.Vector3();upper.getWorldPosition(a);lower.getWorldPosition(b);return b.sub(a).normalize();
+}
+
+test('natural pose lowers both upper arms beside the body in world space',async()=>{
+  const {THREE,root,leftUpper,leftLower,rightUpper,rightLower}=await makeRig();
+  assert.equal(pose.applyNaturalPose(root,THREE),true);
+  const left=worldDirection(THREE,leftUpper,leftLower),right=worldDirection(THREE,rightUpper,rightLower);
+  assert.ok(left.y<-.9);assert.ok(right.y<-.9);
+  assert.ok(left.x<0&&Math.abs(left.x)<.35);assert.ok(right.x>0&&Math.abs(right.x)<.35);
 });
 
-test('applying the disabled pose never mutates bone rotations', () => {
-  const arm = {name:'LeftArm',isBone:true,rotation:{x:.2,y:-.3,z:.4}};
-  const before = {...arm.rotation};
-  const root = {traverse(visitor){ visitor(arm); }};
-  assert.equal(pose.findBone(root, 'LeftArm'), arm);
-  assert.equal(pose.applyNaturalPose(root), false);
-  assert.deepEqual(arm.rotation, before);
+test('reset restores the original arm bind pose',async()=>{
+  const {THREE,root,leftUpper,leftLower,rightUpper,rightLower}=await makeRig();
+  const beforeL=worldDirection(THREE,leftUpper,leftLower).clone(),beforeR=worldDirection(THREE,rightUpper,rightLower).clone();
+  pose.applyNaturalPose(root,THREE);assert.equal(pose.reset(root),true);
+  const afterL=worldDirection(THREE,leftUpper,leftLower),afterR=worldDirection(THREE,rightUpper,rightLower);
+  assert.ok(afterL.distanceTo(beforeL)<1e-9);assert.ok(afterR.distanceTo(beforeR)<1e-9);
 });
 
-test('disabled pose layer never patches renderer loadCharacter', () => {
-  class HumanRenderer { async loadCharacter(){ return true; } }
-  const original = HumanRenderer.prototype.loadCharacter;
-  assert.equal(pose.patchRenderer({HumanRenderer}), false);
-  assert.equal(HumanRenderer.prototype.loadCharacter, original);
+test('renderer patch applies natural arm pose before the existing render chain',async()=>{
+  const {THREE,root,leftUpper,leftLower}=await makeRig();
+  let calls=0;
+  class HumanRenderer{constructor(){this.root=root;this.modules={THREE};}renderFrame(){calls++;}}
+  assert.equal(pose.patchRenderer({HumanRenderer}),true);
+  const renderer=new HumanRenderer();renderer.renderFrame({});
+  assert.equal(calls,1);assert.ok(worldDirection(THREE,leftUpper,leftLower).y<-.9);
+  assert.equal(HumanRenderer.prototype.renderFrame.__naturalArmPose,true);
+});
+
+test('pose implementation uses quaternions instead of hard-coded Euler arm angles',()=>{
+  const fs=require('node:fs');const source=fs.readFileSync('role-natural-pose.js','utf8');
+  assert(source.includes('setFromUnitVectors'));
+  assert(source.includes('getWorldQuaternion'));
+  assert.equal(/upperarm_[lr].*rotation\.[xyz]\s*=/.test(source),false);
 });
