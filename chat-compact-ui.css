@@ -49,6 +49,21 @@
   padding:3px 7px!important;
   font-size:11px!important;
 }
+
+/* 聊天文字不使用任何气泡边框、描边或阴影。 */
+.message-bubble,
+.message-row.bot .message-bubble,
+.message-row.user .message-bubble{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  border-radius:0!important;
+  padding:2px 0!important;
+}
+.message-row.bot .message-bubble{color:var(--bot-msg-text)!important}
+.message-row.user .message-bubble{color:var(--user-msg-text)!important}
+
 @media (max-width:520px){
   .chat-tools{gap:4px!important}
   .chat-tools .tool-btn,.chat-tools select{font-size:10px!important;padding-inline:5px!important}

@@ -7,7 +7,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
 (() => {
   'use strict';
-  const version='20261026-create3d40';
+  const version='20261026-create3d41';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';
@@ -19,6 +19,12 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
   window.LIAOTIAN_BUILD_VERSION=version;
   window.LIAOTIAN_3D_ONLY=true;
   window.LIAOTIAN_3D_ROLE_STORAGE_KEY=STORAGE_KEY;
+
+  /* 首屏直接禁止旧普通角色表单露出；只允许新的 3D 大厅和实时预览。 */
+  const creatorShellStyle=document.createElement('style');
+  creatorShellStyle.id='creator3dOnlyShellStyle';
+  creatorShellStyle.textContent='#createRoleForm>:not(#roleCreatorStudio):not(#roleCreator3dPreview){display:none!important}#createRoleForm.creator-3d-only{display:block!important}';
+  document.head.appendChild(creatorShellStyle);
 
   const parseList=(key,store=localStorage)=>{
     try{const raw=JSON.parse(store.getItem(key)||'null');return Array.isArray(raw)?raw:null;}catch{return null;}
@@ -49,7 +55,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
   for(const href of ['role-experience.css','role-voice-stage.css','chat-compact-ui.css']){const link=document.createElement('link');link.rel='stylesheet';link.href=href+'?v='+version;document.head.appendChild(link);}
   window.addEventListener('load',()=>{
-    for(const src of ['role-experience.js','role-presence.js','role-3d-bases.js','role-visual-recipe.js','role-unified-human-recipe.js','role-skin-pbr-calibration.js','role-unified-human-runtime.js','role-accessory-geometry.js','role-face-rig.js','role-direct-viseme-rig.js','role-render-loop.js','role-body-rig.js','role-proportion-rig.js','role-appearance-rig.js','role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-stage-lighting.js','role-runtime-performance-budget.js','role-runtime-performance-attach.js','role-composite-direct-viseme.js','role-safe-skeleton-motion.js','role-fullscreen-stage.js','role-stage-controls.js','role-render-recipe-bridge.js','role-chat-mode.js','role-speech-chunker.js','role-voice-stage.js','role-voice-style.js','role-code-3d.js','role-persistence.js','role-builder.js','role-eye-color.js','role-creator-wizard.js','role-body-details.js','role-creator-identity.js','role-mobile-qa-diagnostics.js','role-unified-production-gate.js','role-creator-wizard-preview.js','role-creator-3d-preview-v2.js','role-creator-only-ui.js']){
+    for(const src of ['role-experience.js','role-presence.js','role-3d-bases.js','role-visual-recipe.js','role-unified-human-recipe.js','role-skin-pbr-calibration.js','role-unified-human-runtime.js','role-accessory-geometry.js','role-face-rig.js','role-direct-viseme-rig.js','role-render-loop.js','role-body-rig.js','role-proportion-rig.js','role-appearance-rig.js','role-meshopt-support.js','role-human-manifest.js','role-asset-policy.js','role-human-asset-capability.js','role-human-renderer.js','role-stage-lighting.js','role-runtime-performance-budget.js','role-runtime-performance-attach.js','role-composite-direct-viseme.js','role-safe-skeleton-motion.js','role-natural-pose.js','role-fullscreen-stage.js','role-stage-controls.js','role-render-recipe-bridge.js','role-chat-mode.js','role-speech-chunker.js','role-voice-stage.js','role-voice-style.js','role-code-3d.js','role-persistence.js','role-builder.js','role-eye-color.js','role-creator-wizard.js','role-body-details.js','role-creator-identity.js','role-mobile-qa-diagnostics.js','role-unified-production-gate.js','role-creator-wizard-preview.js','role-creator-3d-preview-v2.js','role-creator-only-ui.js']){
       const script=document.createElement('script');script.src=src+'?v='+version;script.async=false;document.body.appendChild(script);
     }
   },{once:true});

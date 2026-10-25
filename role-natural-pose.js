@@ -1,35 +1,70 @@
 (() => {
   'use strict';
 
-  // Safety shim only. The previous implementation added hard-coded Euler rotations
-  // to MPFB arm/forearm/hand bones without validating the model bind/rest pose.
-  // That produced raised arms, crossed hands and T-pose-like failures on production.
-  // Keep this file inert so old cached loaders cannot re-enable the unsafe behavior.
-  const ENABLED = false;
-  const DISABLED_REASON = 'unverified-bind-rest-pose';
-  const POSE = Object.freeze({});
+  const ARM_BONES=Object.freeze({left:['upperarm_l','lowerarm_l'],right:['upperarm_r','lowerarm_r']});
+  const states=new WeakMap();
 
-  function findBone(root, name) {
-    let found = null;
-    root?.traverse?.(node => {
-      if (!found && node?.isBone && String(node.name || '') === name) found = node;
-    });
-    return found;
+  function findBone(root,name){let found=null;root?.traverse?.(node=>{if(!found&&node?.isBone&&String(node.name||'')===name)found=node;});return found;}
+
+  function capture(root){
+    if(!root)return null;
+    const cached=states.get(root);if(cached)return cached;
+    const leftUpper=findBone(root,ARM_BONES.left[0]),leftLower=findBone(root,ARM_BONES.left[1]);
+    const rightUpper=findBone(root,ARM_BONES.right[0]),rightLower=findBone(root,ARM_BONES.right[1]);
+    if(!leftUpper||!leftLower||!rightUpper||!rightLower)return null;
+    const state={
+      left:{upper:leftUpper,lower:leftLower,rest:leftUpper.quaternion?.clone?.()},
+      right:{upper:rightUpper,lower:rightLower,rest:rightUpper.quaternion?.clone?.()}
+    };
+    if(!state.left.rest||!state.right.rest)return null;
+    states.set(root,state);return state;
   }
 
-  function applyNaturalPose() {
-    return false;
+  function lowerArm(side,THREE){
+    const upper=side?.upper,lower=side?.lower,rest=side?.rest;
+    if(!upper||!lower||!rest||!THREE)return false;
+    upper.quaternion.copy(rest);
+    upper.updateMatrixWorld?.(true);
+    lower.updateMatrixWorld?.(true);
+    const shoulder=new THREE.Vector3(),elbow=new THREE.Vector3();
+    upper.getWorldPosition(shoulder);lower.getWorldPosition(elbow);
+    const current=elbow.sub(shoulder);
+    if(current.lengthSq()<1e-8)return false;
+    current.normalize();
+    const sideSign=current.x===0?(String(upper.name).endsWith('_l')?-1:1):Math.sign(current.x);
+    const target=new THREE.Vector3(sideSign*.20,-.975,.045).normalize();
+    const deltaWorld=new THREE.Quaternion().setFromUnitVectors(current,target);
+    const parentWorld=new THREE.Quaternion();
+    upper.parent?.getWorldQuaternion?.(parentWorld);
+    const localDelta=parentWorld.clone().invert().multiply(deltaWorld).multiply(parentWorld);
+    upper.quaternion.premultiply(localDelta).normalize();
+    upper.updateMatrixWorld?.(true);
+    return true;
   }
 
-  function patchRenderer() {
-    return false;
+  function applyNaturalPose(root,THREE){
+    const state=capture(root);if(!state||!THREE)return false;
+    root.updateMatrixWorld?.(true);
+    const left=lowerArm(state.left,THREE),right=lowerArm(state.right,THREE);
+    root.updateMatrixWorld?.(true);
+    return left&&right;
   }
 
-  function boot() {
-    return false;
+  function reset(root){const state=states.get(root);if(!state)return false;state.left.upper.quaternion.copy(state.left.rest);state.right.upper.quaternion.copy(state.right.rest);root.updateMatrixWorld?.(true);return true;}
+
+  function patchRenderer(rendererApi=typeof window!=='undefined'?window.RoleHumanRenderer:null){
+    const proto=rendererApi?.HumanRenderer?.prototype;if(!proto?.renderFrame||proto.renderFrame.__naturalArmPose)return false;
+    const base=proto.renderFrame;
+    const wrapped=function(frame={}){
+      if(this.root&&this.modules?.THREE)applyNaturalPose(this.root,this.modules.THREE);
+      return base.call(this,frame);
+    };
+    wrapped.__naturalArmPose=true;proto.renderFrame=wrapped;return true;
   }
 
-  const api = Object.freeze({ENABLED, DISABLED_REASON, POSE, findBone, applyNaturalPose, patchRenderer, boot});
-  if (typeof window !== 'undefined') window.RoleNaturalPose = api;
-  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  function boot(){if(typeof window==='undefined')return false;if(patchRenderer())return true;let tries=0;const retry=()=>{if(patchRenderer())return;if(++tries<80)setTimeout(retry,80);};retry();return false;}
+
+  const api=Object.freeze({ARM_BONES,findBone,capture,lowerArm,applyNaturalPose,reset,patchRenderer,boot});
+  if(typeof window!=='undefined'){window.RoleNaturalPose=api;boot();}
+  if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
