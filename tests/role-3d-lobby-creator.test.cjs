@@ -20,6 +20,15 @@ test('all eight bases represent genuinely different geometry recipes',()=>{
   }
 });
 
+test('fixed 3D base owns geometry while appearance remains customizable',()=>{
+  const locked=bases.materialize('male_athletic',{gender:'female',heightCm:150,weightJin:90,body:'偏瘦',face:'甜美脸',skin:'偏白',hair:'马尾',outfit:'通勤',accessory:'细框眼镜'});
+  const base=bases.get('male_athletic');
+  for(const key of ['baseId','gender','age','heightCm','weightJin','body','face','skin'])assert.equal(locked[key],key==='baseId'?base.id:base[key]);
+  assert.equal(locked.hair,'马尾');
+  assert.equal(locked.outfit,'通勤');
+  assert.equal(locked.accessory,'细框眼镜');
+});
+
 test('creator is six-step 3D lobby and no longer exposes face/body sculpt pages',()=>{
   const source=fs.readFileSync('role-creator-wizard.js','utf8');
   assert(source.includes("const steps=[['base','选择人物'],['hair','发型'],['outfit','服装'],['accessory','配饰'],['motion','动作声音'],['finish','完成']]"));
@@ -29,13 +38,16 @@ test('creator is six-step 3D lobby and no longer exposes face/body sculpt pages'
   assert(!source.includes('faceControls()'));
 });
 
-test('selected base persists through the visual recipe and role code path',()=>{
+test('selected base persists and imported code cannot override base geometry',()=>{
   const visual=fs.readFileSync('role-visual-recipe.js','utf8');
   const code=fs.readFileSync('role-code-3d.js','utf8');
   assert(visual.includes("baseId:pick(input.baseId,BASE_IDS"));
   assert(visual.includes("lineValue(lines,'3D底座：')"));
   assert(code.includes("baseId:['baseId','base3d','3dBase','3D底座','底座']"));
-  assert(code.includes('window.Role3DBases?.apply?.'));
+  assert(code.includes('bases?.materialize?.(requested,appearance)'));
+  assert(!code.includes('heightCm:item?.heightCm'));
+  assert(!code.includes('body:item?.body'));
+  assert(!code.includes('face:item?.face'));
 });
 
 test('production loads base registry before visual recipe and ships it to Cloudflare',()=>{

@@ -12,10 +12,12 @@
   ]);
   const BY_ID=Object.freeze(Object.fromEntries(BASES.map(item=>[item.id,item])));
   const IDS=Object.freeze(BASES.map(item=>item.id));
+  const APPEARANCE_KEYS=Object.freeze(['hair','hairColor','outfit','outfitColor','accessory','action','expression','voiceStyle','relationship']);
   function get(id){return BY_ID[id]||BASES[0];}
   function apply(id,overrides={}){const base=get(id);return {...base,...overrides,baseId:base.id};}
-  function geometrySignature(base){const item=typeof base==='string'?get(base):base;return JSON.stringify([item.gender,item.heightCm,item.weightJin,item.body,item.face,item.skin]);}
-  const api=Object.freeze({BASES,BY_ID,IDS,get,apply,geometrySignature});
+  function materialize(id,overrides={}){const base=get(id),out={...base,baseId:base.id};for(const key of APPEARANCE_KEYS)if(overrides&&overrides[key]!=null)out[key]=overrides[key];return out;}
+  function geometrySignature(base){const item=typeof base==='string'?get(base):base;return JSON.stringify([item.gender,item.age,item.heightCm,item.weightJin,item.body,item.face,item.skin]);}
+  const api=Object.freeze({BASES,BY_ID,IDS,APPEARANCE_KEYS,get,apply,materialize,geometrySignature});
   if(typeof window!=='undefined')window.Role3DBases=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
