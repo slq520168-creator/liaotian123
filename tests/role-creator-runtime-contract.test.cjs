@@ -31,3 +31,12 @@ test('editing an existing 3D role restores its stored visualRecipe before any ab
   assert(source.includes('let raw=stored||parsed'));
   assert(source.indexOf('let raw=stored||parsed')<source.indexOf("localStorage.getItem(DRAFT)"));
 });
+
+test('3D-only creator cleanup is idempotent and cannot self-trigger an endless MutationObserver loop',()=>{
+  const source=fs.readFileSync('role-creator-only-ui.js','utf8');
+  assert(source.includes('function sameChildren(parent,nodes)'));
+  assert(source.includes('if(!sameChildren(form,kept)){form.replaceChildren(...kept);changed=true;}'));
+  assert(source.includes('observer.disconnect();'));
+  assert(source.includes("observer.observe(form,{childList:true,subtree:false});"));
+  assert(!source.includes("queueMicrotask(()=>{queued=false;removeLegacyCreatorUi();});"));
+});

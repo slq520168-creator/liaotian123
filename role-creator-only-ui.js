@@ -6,6 +6,12 @@
     'roleTag','roleGreeting','rolePersonality','roleVoice','roleInterests','roleRelationship','createRoleStatus','cancelModalBtn','createRoleSubmitBtn'
   ]);
 
+  function sameChildren(parent,nodes){
+    if(!parent)return false;
+    const current=Array.from(parent.children||[]);
+    return current.length===nodes.length&&current.every((node,index)=>node===nodes[index]);
+  }
+
   function removeLegacyCreatorUi() {
     const form=document.getElementById('createRoleForm');
     if(!form)return false;
@@ -14,17 +20,35 @@
     const builder=document.getElementById('roleBuilder');
     if(!studio)return false;
 
+    let changed=false;
     let compat=document.getElementById('roleCreatorCompat');
-    if(!compat){compat=document.createElement('div');compat.id='roleCreatorCompat';}
-    compat.hidden=true;compat.setAttribute('aria-hidden','true');compat.style.setProperty('display','none','important');
-    for(const id of COMPAT_IDS){const node=document.getElementById(id);if(node&&node!==compat&&form.contains(node)&&node.parentNode!==compat)compat.appendChild(node);}
+    if(!compat){compat=document.createElement('div');compat.id='roleCreatorCompat';changed=true;}
+    if(!compat.hidden){compat.hidden=true;changed=true;}
+    if(compat.getAttribute('aria-hidden')!=='true'){compat.setAttribute('aria-hidden','true');changed=true;}
+    if(compat.style.getPropertyValue('display')!=='none'||compat.style.getPropertyPriority('display')!=='important'){
+      compat.style.setProperty('display','none','important');changed=true;
+    }
+    for(const id of COMPAT_IDS){
+      const node=document.getElementById(id);
+      if(node&&node!==compat&&form.contains(node)&&node.parentNode!==compat){compat.appendChild(node);changed=true;}
+    }
 
-    if(builder){builder.hidden=true;builder.setAttribute('aria-hidden','true');builder.style.setProperty('display','none','important');}
-    const kept=[preview,studio,builder,compat].filter(Boolean);
-    form.replaceChildren(...kept);
-    form.classList.add('creator-3d-only');
-    const title=document.getElementById('createRoleTitle');if(title)title.textContent='3D 人物大厅';
-    return true;
+    if(builder){
+      if(!builder.hidden){builder.hidden=true;changed=true;}
+      if(builder.getAttribute('aria-hidden')!=='true'){builder.setAttribute('aria-hidden','true');changed=true;}
+      if(builder.style.getPropertyValue('display')!=='none'||builder.style.getPropertyPriority('display')!=='important'){
+        builder.style.setProperty('display','none','important');changed=true;
+      }
+    }
+
+    const kept=[preview,studio];
+    if(builder?.parentElement===form)kept.push(builder);
+    kept.push(compat);
+    if(!sameChildren(form,kept)){form.replaceChildren(...kept);changed=true;}
+    if(!form.classList.contains('creator-3d-only')){form.classList.add('creator-3d-only');changed=true;}
+    const title=document.getElementById('createRoleTitle');
+    if(title&&title.textContent!=='3D 人物大厅'){title.textContent='3D 人物大厅';changed=true;}
+    return changed;
   }
 
   function patchCreatorCamera() {
@@ -51,13 +75,22 @@
     const form=document.getElementById('createRoleForm');
     if(form&&typeof MutationObserver==='function'){
       let queued=false;
-      const observer=new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;removeLegacyCreatorUi();});});
+      const observer=new MutationObserver(()=>{
+        if(queued)return;
+        queued=true;
+        queueMicrotask(()=>{
+          queued=false;
+          observer.disconnect();
+          removeLegacyCreatorUi();
+          observer.observe(form,{childList:true,subtree:false});
+        });
+      });
       observer.observe(form,{childList:true,subtree:false});
     }
     let tries=0;const retry=()=>{removeLegacyCreatorUi();if(patchCreatorCamera())return;if(++tries<80)setTimeout(retry,80);};retry();
   }
 
-  const api=Object.freeze({COMPAT_IDS,removeLegacyCreatorUi,patchCreatorCamera,install});
+  const api=Object.freeze({COMPAT_IDS,sameChildren,removeLegacyCreatorUi,patchCreatorCamera,install});
   if(typeof window!=='undefined')window.RoleCreatorOnlyUI=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();}
