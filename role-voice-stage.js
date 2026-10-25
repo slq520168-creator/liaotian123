@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION = '20261026-voice3';
+  const VERSION = '20261026-voice4';
   const VOICE_PREFIX = 'liaotian_role_voice_';
   const AUTO_VOICE_KEY = 'liaotian_voice_auto';
   const by = id => document.getElementById(id);
@@ -262,7 +262,6 @@
 
   function boot() {
     if (typeof characters === 'undefined' || typeof switchCharacter !== 'function' || typeof requestCharacterReply !== 'function') return setTimeout(boot, 80);
-    document.querySelectorAll('#siteUpdateNotice,.site-update').forEach(node => node.remove());
     removeLegacyFakeStage();
     patchCharacterSwitch(); patchReplies(); installVoiceControls();
     presence?.idle();

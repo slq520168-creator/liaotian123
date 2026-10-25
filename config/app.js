@@ -6,11 +6,8 @@ window.LIAOTIAN_HUMAN_ASSETS = window.LIAOTIAN_HUMAN_ASSETS || {};
 window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES || [];
 
 (() => {
-  const version='20261026-create3d31';
+  const version='20261026-create3d32';
   window.LIAOTIAN_BUILD_VERSION=version;
-  const hideUpdate=document.createElement('style');
-  hideUpdate.textContent='#siteUpdateNotice,.site-update{display:none!important}';
-  document.head.appendChild(hideUpdate);
   for(const href of ['role-experience.css','role-voice-stage.css','chat-compact-ui.css']){
     const link=document.createElement('link');link.rel='stylesheet';link.href=href+'?v='+version;document.head.appendChild(link);
   }

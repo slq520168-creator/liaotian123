@@ -3,9 +3,19 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-const version = JSON.parse(fs.readFileSync(new URL('../version.json', import.meta.url), 'utf8')).version;
-assert(source.includes("const SITE_VERSION = '" + version + "'"));
-for (const file of ['app.js', 'role-code.js']) assert(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').includes(file + '?v=' + version));
+const configSource = fs.readFileSync(new URL('../config/app.js', import.meta.url), 'utf8');
+const buildSource = fs.readFileSync(new URL('./build-cloudflare.mjs', import.meta.url), 'utf8');
+const voiceSource = fs.readFileSync(new URL('../role-voice-stage.js', import.meta.url), 'utf8');
+const versionMatch = configSource.match(/const version='([^']+)'/);
+assert(versionMatch, 'config/app.js 必须提供唯一生产版本');
+const version = versionMatch[1];
+assert(buildSource.includes("const buildVersionMatch=configSource.match"), 'Cloudflare 构建必须从 config/app.js 读取版本');
+assert(buildSource.includes("writeFile(new URL('version.json',out)"), '部署版 version.json 必须由生产版本生成');
+assert(buildSource.includes('const SITE_VERSION ='), '部署版 app.js 必须同步 SITE_VERSION');
+assert(buildSource.includes("const indexOut=new URL('index.html',out)"), '部署版 index.html 必须统一静态资源版本');
+assert(!configSource.includes('#siteUpdateNotice,.site-update'), '生产配置不能隐藏更新提示');
+assert(!voiceSource.includes("querySelectorAll('#siteUpdateNotice,.site-update')"), '语音模块不能删除更新提示');
+
 const functions = source.slice(source.indexOf('function restoreUpdateComposer()'), source.indexOf('function warmReplyConnection()'));
 const storage = new Map(), elements = new Map(), navigations = [];
 let quota = false;
@@ -52,4 +62,4 @@ assert.equal(storage.get('liaotian_role_code_target'), 'custom_writer');
 context.userInput.value = ''; context.restoreUpdateComposer();
 assert.equal(context.userInput.value, '尚未发送的消息');
 assert(!storage.has('liaotian_update_composer'));
-console.log('页面更新通过：版本一致、不跳外站、回复中保护、空间不足留输入、更新前后保留聊天输入与角色代码草稿。');
+console.log('页面更新通过：单一生产版本、提示可见、不跳外站、回复中保护、更新前后保留输入与角色代码草稿。');

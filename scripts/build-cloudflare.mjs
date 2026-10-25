@@ -51,6 +51,11 @@ if(!versionPattern.test(appSource))throw new Error('Missing SITE_VERSION in app.
 appSource=appSource.replace(versionPattern,`const SITE_VERSION = '${buildVersion}';`);
 await writeFile(appOut,appSource);
 
+const indexOut=new URL('index.html',out);
+let indexSource=await readFile(indexOut,'utf8');
+indexSource=indexSource.replace(/((?:src|href)="[^"]+\.(?:js|css))\?v=[^"]+(" )?/gi,(match,prefix,suffix)=>`${prefix}?v=${buildVersion}${suffix||''}`);
+await writeFile(indexOut,indexSource);
+
 await writeFile(new URL('_headers',out),
   '/*.html\n  Cache-Control: no-cache\n'+
   '/version.json\n  Cache-Control: no-store\n'+
