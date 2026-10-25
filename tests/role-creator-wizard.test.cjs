@@ -23,7 +23,7 @@ test('custom role code activates a real 3D base role instead of ordinary text ro
   const source=fs.readFileSync('role-code-3d.js','utf8');
   assert(source.includes("roleKind:'3d'"));
   assert(source.includes('visualRecipe:r'));
-  assert(source.includes('window.Role3DBases?.apply?.'));
+  assert(source.includes('bases?.materialize?.(requested,appearance)'));
   assert(source.includes('baseId:r.baseId'));
   assert(source.includes("char.roleKind!=='3d'"));
 });
