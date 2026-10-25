@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION = '20261023-presence1';
+  const VERSION = '20261026-voice2';
   const VOICE_PREFIX = 'liaotian_role_voice_';
   const AUTO_VOICE_KEY = 'liaotian_voice_auto';
   const by = id => document.getElementById(id);
@@ -9,7 +9,7 @@
 
   let voiceSelect = null, voiceButton = null, micButton = null, voiceNote = null;
   let voices = [], recognition = null, listening = false, voiceAuto = false;
-  let queuedVisemes = [];
+  let queuedVisemes = [], speechRun = 0;
   try { voiceAuto = localStorage.getItem(AUTO_VOICE_KEY) === '1'; } catch (error) {}
 
   function currentChar() {
@@ -69,6 +69,7 @@
   }
 
   function stopSpeaking() {
+    speechRun += 1;
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     presence?.idle();
     queuedVisemes = [];
@@ -90,6 +91,20 @@
     return normalized.length;
   };
 
+  function speechChunks(content, hasAlignedVisemes) {
+    if (hasAlignedVisemes) return [content];
+    const chunks = window.RoleSpeechChunker?.split?.(content);
+    return Array.isArray(chunks) && chunks.length ? chunks : [content];
+  }
+
+  function buildUtterance(content, char, voice) {
+    const utterance = new SpeechSynthesisUtterance(content);
+    if (voice) { utterance.voice = voice; utterance.lang = voice.lang; } else utterance.lang = 'zh-CN';
+    utterance.rate = 1;
+    utterance.pitch = char?.gender === 'male' ? .94 : char?.gender === 'female' ? 1.04 : 1;
+    return utterance;
+  }
+
   function speak(text, char, preview = false) {
     if (!voiceAuto && !preview) return;
     if (!('speechSynthesis' in window)) {
@@ -98,22 +113,42 @@
     }
     const content = preview ? ('你好，我是' + (char?.name || '当前角色') + '。以后可以用这个声音和你聊天。') : cleanSpeech(text);
     if (!content) return;
+
+    const run = ++speechRun;
     speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(content);
+    const visemes = takeVisemes();
+    const chunks = speechChunks(content, visemes.length > 0);
     const voice = selectedVoice();
-    if (voice) { utterance.voice = voice; utterance.lang = voice.lang; } else utterance.lang = 'zh-CN';
-    utterance.rate = 1;
-    utterance.pitch = char?.gender === 'male' ? .94 : char?.gender === 'female' ? 1.04 : 1;
-    utterance.onstart = () => {
-      presence?.speak({visemes: takeVisemes()});
-      if (voiceNote) voiceNote.textContent = '正在说话…';
-    };
-    utterance.onend = utterance.onerror = () => {
+    let started = false;
+
+    const finish = () => {
+      if (run !== speechRun) return;
       presence?.idle();
       queuedVisemes = [];
       if (voiceNote) voiceNote.textContent = '';
     };
-    speechSynthesis.speak(utterance);
+
+    const play = index => {
+      if (run !== speechRun || index >= chunks.length) return;
+      const utterance = buildUtterance(chunks[index], char, voice);
+      utterance.onstart = () => {
+        if (run !== speechRun) return;
+        if (!started) {
+          started = true;
+          presence?.speak({visemes});
+          if (voiceNote) voiceNote.textContent = '正在说话…';
+        }
+      };
+      utterance.onend = () => {
+        if (run !== speechRun) return;
+        if (index + 1 < chunks.length) setTimeout(() => play(index + 1), 0);
+        else finish();
+      };
+      utterance.onerror = () => finish();
+      speechSynthesis.speak(utterance);
+    };
+
+    play(0);
   }
 
   function installVoiceControls() {
