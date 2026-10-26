@@ -53,12 +53,24 @@
     }finally{saving=false;if(button){button.disabled=false;button.textContent='保存并进入我的 3D 角色';}}
   }
 
+  let advancing=false;
+  async function advance(){
+    if(advancing||saving)return false;
+    advancing=true;const button=by('cwNext');if(button)button.disabled=true;
+    try{
+      // A completed model in the shared stage is required on every page.
+      const ready=await window.__ROLE_CREATOR_3D_PREVIEW?.refresh?.(true);
+      if(!ready)return false;
+      state.step=Math.min(steps.length-1,state.step+1);render();saveDraft();return true;
+    }finally{advancing=false;if(button)button.disabled=false;}
+  }
+
   const studio=document.createElement('section');studio.id='roleCreatorStudio';studio.className='creator-wizard';legacy.insertAdjacentElement('afterend',studio);legacy.style.display='none';
   const style=document.createElement('style');style.textContent=`#roleBuilder{display:none!important}.creator-wizard{grid-column:1/-1;border:1px solid rgba(211,94,139,.18);border-radius:16px;background:#fff;padding:12px;max-height:48vh;overflow:auto}.cw-head{display:flex;justify-content:space-between;align-items:center}.cw-head div{display:grid}.cw-head b{font-size:16px}.cw-head small,.cw-head span{font-size:11px;color:#7c6872}.cw-progress{height:5px;background:#eee5e9;border-radius:9px;margin:9px 0 12px;overflow:hidden}.cw-progress i{display:block;height:100%;background:#d55f8c}.cw-page{min-height:220px}.cw-page h4{margin:10px 0 7px}.cw-grid,.cw-bases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.cw-card,.cw-base{min-height:54px;border:1px solid #eadde2;background:#fff;border-radius:11px;padding:8px;text-align:left}.cw-base{min-height:66px;display:grid;gap:3px}.cw-base small{font-size:10px;color:#806d76}.cw-card.selected,.cw-base.selected{border-color:#d55f8c;background:#fff4f8;box-shadow:0 0 0 1px rgba(213,95,140,.12)}.cw-help{font-size:11px;line-height:1.45;color:#796771}.cw-fields.one{display:grid;grid-template-columns:1fr;gap:8px}.cw-fields label{display:grid;gap:5px;font-size:12px}.cw-nav{display:flex;justify-content:space-between;gap:8px;position:sticky;bottom:-12px;background:#fff;padding:10px 0 2px}.cw-finish{text-align:center;padding:10px 2px}.cw-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:10px 0}.cw-tags span{border:1px solid #eadde2;border-radius:999px;padding:5px 8px;font-size:11px}@media(min-width:700px){.cw-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.cw-bases{grid-template-columns:repeat(4,minmax(0,1fr))}}`;document.head.appendChild(style);
   window.RoleCreatorWizard=Object.freeze({readRecipe:recipe});
   loadSaved();render();saveDraft();
   form.addEventListener('submit',event=>{if(committing)return;event.preventDefault();event.stopImmediatePropagation();if(state.step===steps.length-1)finalize();},true);
-  studio.addEventListener('click',e=>{const base=e.target.closest('[data-base]');if(base){applyBase(base.dataset.base);return;}const c=e.target.closest('[data-choice]');if(c){set(c.dataset.choice,c.dataset.value);return;}if(e.target.id==='cwPrev'){state.step=Math.max(0,state.step-1);render();saveDraft();return;}if(e.target.id==='cwNext'){saveDraft();state.step=Math.min(steps.length-1,state.step+1);render();return;}if(e.target.id==='cwVoicePreview'){window.RoleVoiceStage?.preview?.({id:'custom_creator_preview',name:by('roleName')?.value.trim()||'你的3D角色',gender:recipe().gender,visualRecipe:recipe()});return;}if(e.target.id==='cwCreate')finalize();});
+  studio.addEventListener('click',e=>{const base=e.target.closest('[data-base]');if(base){applyBase(base.dataset.base);return;}const c=e.target.closest('[data-choice]');if(c){set(c.dataset.choice,c.dataset.value);return;}if(e.target.id==='cwPrev'){state.step=Math.max(0,state.step-1);render();saveDraft();return;}if(e.target.id==='cwNext'){advance();return;}if(e.target.id==='cwVoicePreview'){window.RoleVoiceStage?.preview?.({id:'custom_creator_preview',name:by('roleName')?.value.trim()||'你的3D角色',gender:recipe().gender,visualRecipe:recipe()});return;}if(e.target.id==='cwCreate')finalize();});
   studio.addEventListener('input',e=>{if(e.target.id==='cwName'){e.target.setCustomValidity('');by('roleName').value=e.target.value;saveDraft();}if(e.target.id==='cwPersonality'){by('rolePersonality').value=e.target.value;saveDraft();}});
   studio.addEventListener('change',e=>{if(e.target.id==='cwRelationship'){state.relationship=e.target.value;fields.relationship.value=e.target.value;emit(fields.relationship);saveDraft();}});
   new MutationObserver(()=>{if(modal.classList.contains('active')){state.step=0;loadSaved();render();saveDraft();}}).observe(modal,{attributes:true,attributeFilter:['class']});

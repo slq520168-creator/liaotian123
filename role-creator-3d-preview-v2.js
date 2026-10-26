@@ -97,6 +97,7 @@
       if(timer)win.clearTimeout(timer);timer=0;if(!modalOpen(doc))return false;
       const renderer=primaryRenderer(),recipe=readRecipe();
       if(!renderer||!recipe)return false;
+      if(renderer.contextLost){feedback('3D画面正在恢复，请恢复后再继续');return false;}
       if(!win.RoleUnifiedCustomChat){feedback(win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT?.error||'正在准备3D人物资源…');return false;}
       mountSharedStage();
       const mapped=win.RoleUnifiedHumanRecipe?.mapRecipe?.(recipe)||recipe;
@@ -110,7 +111,7 @@
         if(current!==token||!modalOpen(doc))return false;
         if(!ok||!renderer.root||!renderer.__unifiedCustomKey)throw new Error(renderer.status?.textContent||'3D人物组合失败，请重新选择后重试');
         lastSignature=signature;
-        mountSharedStage();renderer.frameModel?.(renderer.root,'full');renderer.resize?.();renderer.loop?.start?.();feedback('');
+        mountSharedStage();renderer.frameModel?.(renderer.root,'full');renderer.resize?.();renderer.renderFrame?.(win.RolePresence?.getDefault?.()?.frame?.()||{});renderer.loop?.start?.();feedback('');
         return true;
       }catch(error){if(current===token)feedback(error?.message||'3D人物组合失败');console.warn('创建器复用全屏3D舞台失败。',error);return false;}
     }

@@ -9,6 +9,13 @@ const visual=require('../role-visual-recipe.js');
 const {HumanRenderer}=require('../role-human-renderer.js');
 const preview=require('../role-creator-3d-preview-v2.js');
 
+test('lost WebGL context cannot qualify a text-only step as a completed preview',async()=>{
+  const nodes={createModalOverlay:{classList:{contains:()=>true}},createRoleForm:{prepend(node){nodes[node.id]=node;}}};
+  const host={document:{getElementById:id=>nodes[id],createElement:()=>({setAttribute(){}})},RoleVisualRecipe:{sanitize:v=>v},RoleCreatorWizard:{readRecipe:()=>({baseId:'female_soft'})},__ROLE_HUMAN_RENDERER:{contextLost:true}};
+  assert.equal(await preview.createController(host).refresh(true),false);
+  assert.match(nodes.creator3dFeedback.textContent,/恢复/);
+});
+
 test('the live wizard recipe wins over incompatible legacy select values',()=>{
   const chosen={baseId:'female_soft',hair:'编发',outfit:'连帽休闲',voiceStyle:'活泼'};
   const host={document:{getElementById:id=>id==='rbHair'?{value:'自然长发'}:null},RoleVisualRecipe:{sanitize:value=>value},RoleCreatorWizard:{readRecipe:()=>chosen}};
