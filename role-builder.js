@@ -77,7 +77,7 @@
 
   const panel = buildPanel();
   injectStyles();
-  if (openCreateButton) openCreateButton.innerHTML = '<span class="icon">+</span> 设计我的角色';
+  if (openCreateButton) openCreateButton.innerHTML = '<span class="icon">+</span> '+(window.LIAOTIAN_3D_ONLY?'创建3D角色':'设计我的角色');
 
   const ids = id => document.getElementById(id);
   const controls = {
@@ -204,6 +204,7 @@
   panel.addEventListener('change', renderPreview);
 
   form.addEventListener('submit', () => {
+    if(window.LIAOTIAN_3D_ONLY)return;
     const spec = currentSpec();
     controls.height.value = String(spec.height); controls.weight.value = String(spec.weight);
     const base = stripSpec(personality.value) || `${spec.personality.join('、') || '自然、有主见'}，有自己的生活和判断，按用户明确设定自然相处。`;
@@ -215,6 +216,7 @@
   }, {capture: true});
 
   const observer = new MutationObserver(() => {
+    if(window.LIAOTIAN_3D_ONLY)return;
     if (!modal.classList.contains('active')) return;
     requestAnimationFrame(loadBuilderFromPersonality);
   });

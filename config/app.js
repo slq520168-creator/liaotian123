@@ -7,7 +7,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
 (() => {
   'use strict';
-  const version='20261026-create3d47';
+  const version='20261026-create3d48';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';
@@ -23,7 +23,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
   /* 首屏直接禁止旧普通角色表单露出；只允许新的 3D 大厅。 */
   const creatorShellStyle=document.createElement('style');
   creatorShellStyle.id='creator3dOnlyShellStyle';
-  creatorShellStyle.textContent='#createRoleForm>:not(#roleCreatorStudio):not(#roleCreator3dPreview){display:none!important}#createRoleForm.creator-3d-only{display:block!important}';
+  creatorShellStyle.textContent='#createRoleForm>:not(#roleCreatorStudio):not(#roleCreator3dPreview):not(#creator3dFeedback){display:none!important}#createRoleForm.creator-3d-only{display:block!important}';
   document.head.appendChild(creatorShellStyle);
 
   const parseList=(key,store=localStorage)=>{try{const raw=JSON.parse(store.getItem(key)||'null');return Array.isArray(raw)?raw:null;}catch{return null;}};
@@ -41,7 +41,9 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
     if(typeof saveDataToStorage==='function'&&!saveDataToStorage.__threeDOnly){const baseSave=saveDataToStorage;const wrappedSave=function(...args){const ok=baseSave.apply(this,args);try{const roles=typeof characters!=='undefined'&&Array.isArray(characters)?characters.filter(char=>char&&!char.isPreset&&char.roleKind===ROLE_KIND).map(char=>({...char,roleKind:ROLE_KIND})):[];localStorage.setItem(STORAGE_KEY,JSON.stringify(roles));localStorage.removeItem(LEGACY_KEY);removeLegacyModeState(localStorage);}catch{}return ok;};wrappedSave.__threeDOnly=true;saveDataToStorage=wrappedSave;}
     const presetTitle=document.getElementById('presetRoleTitle');if(presetTitle)presetTitle.textContent='3D角色';const customList=document.getElementById('customCharacterList');if(customList?.previousElementSibling)customList.previousElementSibling.textContent='我的3D角色';const create=document.getElementById('openCreateModalBtn');if(create)create.innerHTML='<span class="icon">+</span> 创建3D角色';document.getElementById('ordinaryChatHint')?.remove();document.getElementById('roleChatModeBtn')?.remove();
   }
-  document.addEventListener('DOMContentLoaded',install3DOnlyAuthority,{once:true});
+  // app.js can initialize while deferred scripts still see readyState=interactive.
+  // Install before its first storage read, rather than after its first render.
+  window.Role3DOnlyAuthority=Object.freeze({install:install3DOnlyAuthority});
 
   for(const href of ['role-experience.css','role-voice-stage.css','chat-compact-ui.css']){const link=document.createElement('link');link.rel='stylesheet';link.href=href+'?v='+version;document.head.appendChild(link);}
   window.addEventListener('load',()=>{

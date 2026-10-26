@@ -43,3 +43,13 @@ test('accessories are real Three.js meshes attached to head or neck bones',async
   assert.ok(necklaceMeshes>=2);
   assert.equal(accessory.attach(root,THREE,'none'),null);
 });
+
+test('glasses fit the rendered eye geometry in model space even when the head bone has a different local frame',async()=>{
+  const THREE=await import('three'),root=new THREE.Group(),head=new THREE.Bone();head.name='head';head.position.set(0,1.4,0);head.rotation.x=.35;root.add(head);
+  const eyes=new THREE.Mesh(new THREE.BoxGeometry(.09,.025,.03),new THREE.MeshStandardMaterial());eyes.material.name='Eye';eyes.position.set(0,1.55,.07);root.add(eyes);root.updateMatrixWorld(true);
+  const group=accessory.attach(root,THREE,'glasses');root.updateMatrixWorld(true);
+  const frame=group.getObjectByName('Accessory_Glasses'),box=new THREE.Box3().setFromObject(frame),center=box.getCenter(new THREE.Vector3());
+  assert.equal(group.parent,head);assert.ok(Math.abs(center.y-1.55)<.005);
+  assert.ok(box.max.x-box.min.x<.16);assert.ok(box.max.x-box.min.x>.1);
+  assert.ok(frame.getObjectByName('Glasses_Bridge').getWorldPosition(new THREE.Vector3()).z>.085);
+});

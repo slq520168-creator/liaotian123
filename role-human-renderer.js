@@ -186,6 +186,7 @@
       this.canvasHost = null;
       this.status = null;
       this.renderer = null;
+      this.enginePromise = null;
       this.scene = null;
       this.camera = null;
       this.root = null;
@@ -195,6 +196,7 @@
       this.resizeObserver = null;
       this.loadToken = 0;
       this.currentId = '';
+      this.renderCharacter = null;
       this.modules = null;
       this.baseRootY = 0;
       this.contextLost = false;
@@ -218,8 +220,9 @@
       style.id = 'roleHumanRendererStyles';
       style.textContent = `
         .role-human-stage{display:none;position:relative;width:100%;height:min(48vh,520px);min-height:300px;overflow:hidden;background:linear-gradient(180deg,#f5f1f3,#ebe5e8);border-bottom:1px solid rgba(70,50,60,.09)}
-        .role-human-stage.active{display:block}.role-human-stage canvas{display:block;width:100%;height:100%;touch-action:none}.role-human-status{position:absolute;left:12px;bottom:10px;padding:5px 8px;border-radius:999px;background:rgba(20,18,19,.52);color:#fff;font-size:11px;line-height:1;opacity:0;transition:opacity .2s;pointer-events:none}
-        .role-human-stage.loading .role-human-status,.role-human-stage.error .role-human-status{opacity:1}.role-human-stage.error{display:none}
+        .role-human-stage.active{display:block}.role-human-stage canvas{display:block;width:100%;height:100%;touch-action:none}.role-human-status{position:absolute;left:12px;bottom:10px;padding:5px 8px;border-radius:999px;background:rgba(20,18,19,.52);color:#fff;font-size:11px;line-height:1;pointer-events:none}
+        .role-human-status[hidden]{display:none}.role-human-stage.error{display:block}
+        .role-human-stage.assembling canvas{visibility:hidden}
         @media(max-width:560px){.role-human-stage{height:42vh;min-height:260px;max-height:430px}}
       `;
       if (!document.getElementById(style.id)) document.head.appendChild(style);
@@ -232,6 +235,7 @@
       this.canvasHost.style.width = '100%';
       this.canvasHost.style.height = '100%';
       this.status = document.createElement('div');
+      this.status.hidden = true;
       this.status.className = 'role-human-status';
       this.status.setAttribute('role', 'status');
       this.stage.append(this.canvasHost, this.status);
@@ -243,18 +247,23 @@
       if (!this.stage) return;
       this.stage.classList.toggle('loading', state === 'loading');
       this.stage.classList.toggle('error', state === 'error');
-      if (this.status) this.status.textContent = text || '';
+      if (this.status) {this.status.textContent = text || '';this.status.hidden = !text;}
     }
 
     async ensureEngine() {
       if (this.renderer) return;
+      if (!this.enginePromise) this.enginePromise=this.createEngine().finally(()=>{this.enginePromise=null;});
+      return this.enginePromise;
+    }
+
+    async createEngine() {
       this.modules = await loadThreeModules();
       const {THREE} = this.modules;
       const quality = window.RoleRenderLoop?.browserQuality?.() || {pixelRatio: 1, shadows: false};
       const renderOptions = {alpha: true, antialias: quality.pixelRatio <= 1.25, powerPreference: 'high-performance'};
       const canvas = document.createElement('canvas');
       const context = webGL2Context(canvas, renderOptions);
-      if (!context) throw new Error('当前设备不支持 WebGL2，已保持普通聊天模式');
+      if (!context) throw new Error('当前浏览器未能启用 WebGL2，无法显示3D人物。请使用支持 WebGL2 的浏览器。');
       this.renderer = new THREE.WebGLRenderer({...renderOptions, canvas, context});
       this.renderer.setPixelRatio(quality.pixelRatio);
       this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -342,6 +351,7 @@
       }
       this.root = null;
       this.currentId = '';
+      this.renderCharacter = null;
       if (this.stage) {
         this.stage.classList.remove('active', 'loading', 'error');
         this.setStatus('');
@@ -382,6 +392,7 @@
         this.stage.classList.add('active');
         this.root = gltf.scene;
         this.currentId = char.id;
+        this.renderCharacter = char;
         this.root.scale.setScalar(asset.scale);
         this.root.position.y = asset.y;
         this.root.rotation.y = asset.rotationY;
@@ -404,6 +415,7 @@
         if (token !== this.loadToken) return false;
         this.clearModel();
         this.ensureStage();
+        this.stage.classList.add('active');
         this.setStatus(error?.message || '真人角色加载失败', 'error');
         return false;
       }

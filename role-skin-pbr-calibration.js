@@ -2,7 +2,7 @@
   'use strict';
 
   const CALIBRATED_SKIN_TINTS=Object.freeze({
-    '偏白':'#fff7ee',
+    '偏白':'#ffd5bb',
     '自然肤色':'#f8bf9f',
     '小麦肤色':'#d6936c',
     '深肤色':'#8a5a46'

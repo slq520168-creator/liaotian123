@@ -89,14 +89,14 @@
   }
 
   function eligibleCharacter(char){
-    return Boolean(char&&!char.isPreset&&char.humanAssetId===ASSET_ID&&['production','device-qualified'].includes(String(char.humanAssetStatus||'')));
+    return Boolean(char&&!char.isPreset&&char.humanAssetId===ASSET_ID&&['production','device-qualified','base-recipe'].includes(String(char.humanAssetStatus||'')));
   }
 
   function patchRenderer(rendererApi=typeof window!=='undefined'?window.RoleHumanRenderer:null){
     const proto=rendererApi?.HumanRenderer?.prototype;if(!proto?.renderFrame||proto.renderFrame.__safeSkeletonMotion)return false;
     const base=proto.renderFrame;
     const wrapped=function(frame={}){
-      const char=this.currentCharacter?.();
+      const char=this.renderCharacter||this.currentCharacter?.();
       if(this.root&&eligibleCharacter(char)){
         const recipe=typeof window!=='undefined'?window.RoleVisualRecipe?.forCharacter?.(char):null;
         apply(this.root,recipe?.action||'自然站立',frame,typeof performance!=='undefined'?performance.now():Date.now());

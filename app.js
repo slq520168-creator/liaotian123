@@ -83,8 +83,18 @@ function safeAvatar(value, fallback = DEFAULT_AVATAR) {
 function normalizeCustomCharacter(value) {
   if (!value || typeof value !== 'object' || !/^custom_[a-z0-9_-]+$/i.test(value.id || '')) return null;
   if (!['name', 'tag', 'greeting', 'personality'].every(key => typeof value[key] === 'string' && value[key].trim())) return null;
+  // Keep the saved recipe until the 3D catalog loads and sanitizes it. Rebuilding
+  // it from prose loses settings that have their own structured fields.
+  let visualRecipe=null;
+  try {
+    if(value.visualRecipe&&typeof value.visualRecipe==='object'&&!Array.isArray(value.visualRecipe)){
+      const serialized=JSON.stringify(value.visualRecipe);
+      if(serialized.length<=16000)visualRecipe=JSON.parse(serialized);
+    }
+  } catch {}
   return {
     id: value.id, isPreset: false,
+    ...(visualRecipe?{visualRecipe}:{}),
     name: value.name.trim().slice(0, 12), tag: value.tag.trim().slice(0, 20),
     greeting: value.greeting.trim().slice(0, 300),
     personality: value.personality.trim().slice(0, CHAT_LIMITS.personality),
@@ -249,6 +259,7 @@ function renderChatStyleControl() {
 }
 
 function init() {
+  window.Role3DOnlyAuthority?.install?.();
   renderChatStyleControl();
   loadDataFromStorage();
   setupEventListeners();
@@ -874,7 +885,7 @@ function openModal(charId = '') {
   const char = characters.find(item => item.id === charId && !item.isPreset);
   editingCharacterId = char?.id || '';
   createRoleForm.reset();
-  byId('createRoleTitle').textContent = char ? '编辑角色' : '创建新角色';
+  byId('createRoleTitle').textContent = char ? '编辑3D角色' : '创建3D角色';
   byId('createRoleSubmitBtn').textContent = char ? '保存修改' : '创建角色';
   (byId('createRoleStatus') || byId('roleAvatarStatus')).textContent = '';
   const fields = {roleName: 'name', roleTag: 'tag', roleGreeting: 'greeting', rolePersonality: 'personality', roleGender: 'gender', roleAge: 'age', roleVoice: 'voice', roleInterests: 'interests', roleRelationship: 'relationship'};

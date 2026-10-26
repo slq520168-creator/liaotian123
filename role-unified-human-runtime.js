@@ -3,6 +3,38 @@
 
   const normalizeBone=value=>String(value||'').replace(/^mixamorig[:_]?/i,'').replace(/[^a-z0-9]/gi,'').toLowerCase();
   const restStates=new WeakMap();
+  const originalIndices=new WeakMap();
+
+  // _CCZONE is the author's coverage map, shared by the body and inner garments.
+  // Remove covered triangles; enlarging outer garments cannot fix intersecting layers.
+  function applyZoneMask(root,mask){
+    let removed=0,meshes=0;
+    walk(root,node=>{
+      const geometry=node?.geometry,zones=geometry?.getAttribute?.('_cczone')||geometry?.getAttribute?.('_CCZONE');
+      if(!zones)return;
+      let indices=originalIndices.get(geometry);
+      if(!indices){indices=geometry.index?Array.from(geometry.index.array):Array.from({length:geometry.attributes.position.count},(_,i)=>i);originalIndices.set(geometry,indices);}
+      const kept=[];
+      for(let i=0;i<indices.length;i+=3){
+        const a=indices[i],b=indices[i+1],c=indices[i+2];
+        if((zones.getX(a)&zones.getX(b)&zones.getX(c)&mask)!==0){removed++;continue;}
+        kept.push(a,b,c);
+      }
+      geometry.setIndex(kept);node.visible=kept.length>0;meshes++;
+    });
+    return Object.freeze({removed,meshes});
+  }
+
+  function applyWardrobeOcclusion(baseRoot,modules=[],catalog={}){
+    const items=new Map((catalog.items||[]).map(item=>[item.id,item])),zones=catalog.bodyZones||{};
+    const worn=modules.map(module=>({...module,item:items.get(module.id)}));
+    if(worn.some(module=>!module.item))throw new Error('服装缺少覆盖分区定义');
+    let bodyMask=0;for(const{item}of worn)for(const zone of item.hidesBodyZones||[])bodyMask|=Number(zones[zone])||0;
+    const moduleMeshes=new Set();for(const module of worn)walk(module.root,node=>moduleMeshes.add(node));
+    let removed=0;walk(baseRoot,node=>{if(!moduleMeshes.has(node)&&node?.isMesh)removed+=applyZoneMask({children:[node]},bodyMask).removed;});
+    for(const module of worn){let mask=0;for(const higher of worn)if(higher.item.layer>module.item.layer)mask|=Number(zones[higher.id])||0;removed+=applyZoneMask(module.root,mask).removed;}
+    return Object.freeze({removed,bodyMask});
+  }
   function walk(root,visit){if(!root||typeof visit!=='function')return;const stack=[root],seen=new Set();while(stack.length){const node=stack.pop();if(!node||seen.has(node))continue;seen.add(node);visit(node);const children=Array.isArray(node.children)?node.children:[];for(let i=children.length-1;i>=0;i--)stack.push(children[i]);}}
   function skinnedMeshes(root){const out=[];walk(root,node=>{if(node?.isSkinnedMesh&&node.skeleton)out.push(node);});return out;}
   function primarySkeleton(root){let best=null;for(const mesh of skinnedMeshes(root)){const count=Array.isArray(mesh.skeleton?.bones)?mesh.skeleton.bones.length:0;if(!best||count>best.count)best={skeleton:mesh.skeleton,mesh,count};}return best?Object.freeze(best):null;}
@@ -53,7 +85,7 @@
 
   function applyCandidateState(baseRoot,moduleRoots=[],joints,weights={}){const morphs=applyMorphWeights(baseRoot,weights,{reset:true});const modules=[];for(const moduleRoot of moduleRoots||[])modules.push(applyMorphWeights(moduleRoot,weights,{reset:true}));const skeleton=applySkeletonOffsets(baseRoot,joints,weights);return Object.freeze({morphs,modules:Object.freeze(modules),skeleton});}
 
-  const api=Object.freeze({normalizeBone,walk,skinnedMeshes,primarySkeleton,boneIndex,buildBoneRemap,remapSkinIndexAttribute,rebindMesh,resetMorphWeights,applyMorphWeights,prepareModuleSurface,moduleContract,attachModule,applySkeletonOffsets,applyCandidateState});
+  const api=Object.freeze({normalizeBone,walk,skinnedMeshes,primarySkeleton,boneIndex,buildBoneRemap,remapSkinIndexAttribute,rebindMesh,resetMorphWeights,applyMorphWeights,prepareModuleSurface,moduleContract,attachModule,applySkeletonOffsets,applyCandidateState,applyZoneMask,applyWardrobeOcclusion});
   if(typeof window!=='undefined')window.RoleUnifiedHumanRuntime=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();

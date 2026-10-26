@@ -70,7 +70,7 @@
     const shadows=Boolean(instance.renderer.shadowMap?.enabled);
     let key=null,ground=null,keyTargetAdded=false;
     if(shadows){
-      if(THREE.PCFSoftShadowMap!==undefined)instance.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+      if(THREE.PCFShadowMap!==undefined)instance.renderer.shadowMap.type=THREE.PCFShadowMap;else if(THREE.PCFSoftShadowMap!==undefined)instance.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
       key=findKeyLight(scene);
       if(key){configureKeyShadow(key,THREE);keyTargetAdded=addTarget(scene,key);}
       ground=createShadowCatcher(THREE);if(ground)scene.add(ground);

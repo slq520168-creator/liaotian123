@@ -104,6 +104,11 @@
     if (voice) { utterance.voice = voice; utterance.lang = voice.lang; } else utterance.lang = 'zh-CN';
     utterance.rate = 1;
     utterance.pitch = char?.gender === 'male' ? .94 : char?.gender === 'female' ? 1.04 : 1;
+    if(char?.id==='custom_creator_preview'){
+      const profile=window.RoleVoiceStyle?.profileFor?.(char)||{rate:1,pitchDelta:0};
+      utterance.rate=profile.rate;utterance.pitch+=profile.pitchDelta;
+      utterance.__creatorPreview=true;
+    }
     return utterance;
   }
 
@@ -268,5 +273,10 @@
     window.__ROLE_VOICE_STAGE_VERSION = VERSION;
   }
 
+  window.RoleVoiceStage=Object.freeze({
+    preview:char=>speak('',char,true),
+    enable(value=true){voiceAuto=Boolean(value);saveVoiceState();syncVoiceSelection();if(!voiceAuto)stopSpeaking();return voiceAuto;},
+    stop:stopSpeaking
+  });
   boot();
 })();

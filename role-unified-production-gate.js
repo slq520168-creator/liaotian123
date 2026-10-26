@@ -182,6 +182,14 @@
     if(win.__ROLE_UNIFIED_PRODUCTION_GATE_PROMISE)return win.__ROLE_UNIFIED_PRODUCTION_GATE_PROMISE;
     const task=(async()=>{
       const manifest=await fetchManifest(win,options),global=globalQualification(manifest),environment=environmentFromWindow(win),proof=readProof(win.sessionStorage),sessionDevice=deviceQualification(manifest,proof,environment);
+      // Fixed, locked base recipes share the same compositor as the creator.
+      // This validates asset contracts, and never manufactures a mobile QA certificate.
+      const fixedBase=staticQualification(manifest);
+      win.__ROLE_BASE_RECIPE_QUALIFICATION=Object.freeze({ok:fixedBase.ok,manifest,reasons:fixedBase.reasons});
+      if(fixedBase.ok){
+        await loadScript(win,versionedUrl('role-unified-custom-chat.js',win.LIAOTIAN_BUILD_VERSION||''));
+        win.dispatchEvent(new win.CustomEvent('baserecipeready'));
+      }
       if(sessionDevice.ok)saveCertificate(win.localStorage,certificateFrom(manifest,proof,environment));
       const certificate=readCertificate(win.localStorage),persistentDevice=certificateQualification(manifest,certificate,environment),device=sessionDevice.ok?sessionDevice:persistentDevice,qualification=global.ok?'global':device.ok?'device':'';
       if(!qualification){

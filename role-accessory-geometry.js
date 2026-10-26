@@ -44,19 +44,19 @@
   function createGlasses(THREE){
     const group=new THREE.Group();group.name='Accessory_Glasses';
     const frame=material(THREE,0x2a2528,.82,.2);
-    addMesh(group,THREE,new THREE.TorusGeometry(.052,.0045,8,28),frame,'Glasses_L',[-.057,.078,.084]);
-    addMesh(group,THREE,new THREE.TorusGeometry(.052,.0045,8,28),frame,'Glasses_R',[.057,.078,.084]);
-    addMesh(group,THREE,new THREE.BoxGeometry(.026,.006,.006),frame,'Glasses_Bridge',[0,.078,.084]);
-    addMesh(group,THREE,new THREE.BoxGeometry(.07,.004,.004),frame,'Glasses_Temple_L',[-.104,.078,.043],[0,.58,0]);
-    addMesh(group,THREE,new THREE.BoxGeometry(.07,.004,.004),frame,'Glasses_Temple_R',[.104,.078,.043],[0,-.58,0]);
+    addMesh(group,THREE,new THREE.TorusGeometry(.024,.0016,8,28),frame,'Glasses_L',[-.031,0,0]);
+    addMesh(group,THREE,new THREE.TorusGeometry(.024,.0016,8,28),frame,'Glasses_R',[.031,0,0]);
+    addMesh(group,THREE,new THREE.BoxGeometry(.014,.0025,.003),frame,'Glasses_Bridge',[0,.003,0]);
+    addMesh(group,THREE,new THREE.BoxGeometry(.002,.002,.075),frame,'Glasses_Temple_L',[-.056,0,-.036]);
+    addMesh(group,THREE,new THREE.BoxGeometry(.002,.002,.075),frame,'Glasses_Temple_R',[.056,0,-.036]);
     return group;
   }
 
   function createEarrings(THREE){
     const group=new THREE.Group();group.name='Accessory_Earrings';
     const metal=material(THREE,0xd8b85a,.92,.16);
-    addMesh(group,THREE,new THREE.TorusGeometry(.017,.0034,8,20),metal,'Earring_L',[-.091,.047,.016]);
-    addMesh(group,THREE,new THREE.TorusGeometry(.017,.0034,8,20),metal,'Earring_R',[.091,.047,.016]);
+    addMesh(group,THREE,new THREE.TorusGeometry(.008,.0015,8,20),metal,'Earring_L',[-.075,0,0]);
+    addMesh(group,THREE,new THREE.TorusGeometry(.008,.0015,8,20),metal,'Earring_R',[.075,0,0]);
     return group;
   }
 
@@ -94,11 +94,41 @@
     if(!target)return null;
     const accessory=create(THREE,key);
     if(!accessory)return null;
-    target.add(accessory);
+    const fitted=fit(root,accessory,THREE);
+    if(fitted&&typeof target.attach==='function'){root.add(accessory);root.updateMatrixWorld?.(true);target.attach(accessory);}
+    else target.add(accessory);
     return accessory;
   }
 
-  const api=Object.freeze({IDS,HEAD_NAMES,NECK_NAMES,walk,findBone,createGlasses,createEarrings,createNecklace,create,attach});
+  function eyeBounds(root,THREE){
+    if(!root?.matrixWorld||!THREE?.Box3||!THREE?.Matrix4)return null;
+    root.updateMatrixWorld?.(true);
+    const inverse=new THREE.Matrix4().copy(root.matrixWorld).invert(),box=new THREE.Box3(),point=new THREE.Vector3();
+    walk(root,node=>{
+      if(!node?.isMesh||!node.geometry?.attributes?.position)return;
+      const materials=Array.isArray(node.material)?node.material:[node.material];
+      if(!materials.some(item=>/^(Eye|Iris|Cornea)$/.test(String(item?.name||''))))return;
+      for(let i=0;i<node.geometry.attributes.position.count;i++){
+        if(node.getVertexPosition)node.getVertexPosition(i,point);else point.fromBufferAttribute(node.geometry.attributes.position,i);
+        point.applyMatrix4(node.matrixWorld).applyMatrix4(inverse);box.expandByPoint(point);
+      }
+    });
+    return box.isEmpty()?null:box;
+  }
+
+  function fit(root,accessory,THREE){
+    const box=eyeBounds(root,THREE);if(!box)return false;
+    const center=box.getCenter(new THREE.Vector3()),width=box.max.x-box.min.x;
+    const glasses=accessory.getObjectByName('Accessory_Glasses');
+    if(glasses){glasses.position.set(center.x,center.y,box.max.z+.005);glasses.scale.setScalar(Math.max(.7,Math.min(1.3,width*1.45/.112)));}
+    const earrings=accessory.getObjectByName('Accessory_Earrings');
+    if(earrings){earrings.position.set(center.x,center.y-.045,box.max.z-.065);earrings.scale.setScalar(Math.max(.7,Math.min(1.3,width/.09)));}
+    const necklace=accessory.getObjectByName('Accessory_Necklace');
+    if(necklace)necklace.position.set(center.x,center.y-.14,box.max.z-.05);
+    return true;
+  }
+
+  const api=Object.freeze({IDS,HEAD_NAMES,NECK_NAMES,walk,findBone,createGlasses,createEarrings,createNecklace,create,attach,eyeBounds,fit});
   if(typeof window!=='undefined')window.RoleAccessoryGeometry=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
