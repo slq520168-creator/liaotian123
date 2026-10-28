@@ -2,7 +2,7 @@
   'use strict';
 
   const CALIBRATED_SKIN_TINTS=Object.freeze({
-    '偏白':'#ffd5bb',
+    '偏白':'#ffd5bb','浅色':'#efc5a5','棕色':'#ac7250',
     '自然肤色':'#f8bf9f',
     '小麦肤色':'#d6936c',
     '深肤色':'#8a5a46'
@@ -13,7 +13,7 @@
     '栗棕':'#9d5a43',
     '红棕':'#ae4f40',
     '金棕':'#cd8e4f',
-    '银灰':'#bfbcc4'
+    '银灰':'#bfbcc4','红色':'#bb3451','金色':'#e1bb68','绿色':'#458460','蓝色':'#426cb5','紫色':'#8d5bb4'
   });
   const NATURAL_SKIN='自然肤色';
   const NATURAL_HAIR='自然黑';

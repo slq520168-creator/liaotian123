@@ -8,7 +8,7 @@ const runtimeJs=[
 ];
 const staticEntries=[
   'index.html','app.js','memory.js','role-code.js','roles.js','styles.css',...runtimeJs,
-  'role-experience.css','role-voice-stage.css','chat-compact-ui.css','manifest.webmanifest','apple-touch-icon.png','favicon.ico','version.json','config','roles','assets','docs'
+  'role-experience.css','role-voice-stage.css','chat-compact-ui.css','role-creator-wizard.css','manifest.webmanifest','apple-touch-icon.png','favicon.ico','version.json','config','roles','assets','docs'
 ];
 
 await rm(out,{recursive:true,force:true});

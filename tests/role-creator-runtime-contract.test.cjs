@@ -16,20 +16,19 @@ test('creator exposes only choices backed by the real 3D runtime maps',()=>{
 test('wizard derives selectable 3D choices from runtime authority instead of a duplicate catalog',()=>{
   const source=fs.readFileSync('role-creator-wizard.js','utf8');
   assert(source.includes('runtime=window.RoleUnifiedHumanRecipe'));
-  assert(source.includes("mapped('hair',runtime.HAIR)"));
-  assert(source.includes("mapped('outfit',runtime.OUTFITS)"));
-  assert(source.includes("mapped('accessory',runtime.ACCESSORIES)"));
-  assert(source.includes("mapped('expression',runtime.EXPRESSIONS)"));
-  assert(source.includes('if(!options[k]?.includes(v))return'));
+  assert(source.includes("Object.keys(runtime.HAIR)"));
+  assert(source.includes("Object.keys(runtime.OUTFITS)"));
+  assert(source.includes("Object.keys(runtime.ACCESSORIES)"));
+  assert(source.includes("api.sanitize({...state,creatorVersion:2})"));
+  assert(source.includes('const r=recipe()'));
 });
 
 test('editing an existing 3D role restores its stored visualRecipe before any abandoned draft',()=>{
   const source=fs.readFileSync('role-creator-wizard.js','utf8');
   assert(source.includes('function currentEditingRole()'));
-  assert(source.includes("typeof editingCharacterId!=='string'"));
-  assert(source.includes("current?.roleKind==='3d'?api.forCharacter?.(current):null"));
-  assert(source.includes('let raw=stored||parsed'));
-  assert(source.indexOf('let raw=stored||parsed')<source.indexOf("localStorage.getItem(DRAFT)"));
+  assert(source.includes("typeof editingCharacterId==='string'"));
+  assert(source.includes('const raw=char?api.forCharacter(char):draft?.recipe'));
+
 });
 
 test('3D-only creator cleanup is idempotent and cannot self-trigger an endless MutationObserver loop',()=>{

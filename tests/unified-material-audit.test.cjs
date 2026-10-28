@@ -76,12 +76,12 @@ test('calibrated natural hair tint reproduces the common production hair base fa
   assert.ok(legacy[0]<EXPECTED_HAIR_BASE[0]-.05&&legacy[1]<EXPECTED_HAIR_BASE[1]-.025,'legacy natural black must remain detectably darker than the author hair base');
 });
 
-test('calibrated hair palette keeps six distinct authored choices and valid PBR multipliers',()=>{
+test('calibrated hair palette keeps eleven distinct authored choices and valid PBR multipliers',()=>{
   assert.deepEqual(calibration.CALIBRATED_HAIR_TINTS,{
-    '自然黑':'#533d2d','深棕':'#6d4437','栗棕':'#9d5a43','红棕':'#ae4f40','金棕':'#cd8e4f','银灰':'#bfbcc4'
+    '自然黑':'#533d2d','深棕':'#6d4437','栗棕':'#9d5a43','红棕':'#ae4f40','金棕':'#cd8e4f','银灰':'#bfbcc4','红色':'#bb3451','金色':'#e1bb68','绿色':'#458460','蓝色':'#426cb5','紫色':'#8d5bb4'
   });
   const values=Object.values(calibration.CALIBRATED_HAIR_TINTS);
-  assert.equal(new Set(values).size,6);
+  assert.equal(new Set(values).size,11);
   for(const hex of values)for(const channel of hexToLinear(hex))assert.ok(channel>=0&&channel<=1);
 });
 

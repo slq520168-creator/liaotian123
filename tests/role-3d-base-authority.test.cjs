@@ -32,13 +32,13 @@ test('male base cannot be changed into female geometry by restored or imported f
   for(const key of visual.BASE_LOCKED_FIELDS)assert.equal(locked[key],base[key]);
 });
 
-test('creator and role-code both use fixed base authority',()=>{
+test('new creator permits sculpting while legacy code imports keep base authority',()=>{
   const fs=require('node:fs');
   const creator=fs.readFileSync('role-creator-wizard.js','utf8');
   const code=fs.readFileSync('role-code-3d.js','utf8');
-  assert(creator.includes('api.lockBase({baseId:state.baseId'));
-  assert(creator.includes('height:base.heightCm'));
-  assert(creator.includes("by('roleGender').value=base.gender"));
+  assert(creator.includes('api.sanitize({...state,creatorVersion:2})'));
+  assert(creator.includes('faceDetails:{},bodyDetails:{}'));
+  assert(creator.includes("by('roleGender').value=r.gender"));
   assert(code.includes('bases?.materialize?.(requested,appearance)'));
   assert(code.includes('recipeFrom({...char'));
 });

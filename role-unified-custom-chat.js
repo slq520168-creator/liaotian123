@@ -42,12 +42,21 @@
   function captureAuthorColor(material){if(!material?.color)return null;material.userData=material.userData&&typeof material.userData==='object'?material.userData:{};const saved=material.userData.liaotianAuthorBaseColor;if(Array.isArray(saved)&&saved.length===3&&saved.every(Number.isFinite))return saved;const base=[Number(material.color.r),Number(material.color.g),Number(material.color.b)];if(!base.every(Number.isFinite))return null;material.userData.liaotianAuthorBaseColor=base;return base;}
   function tintClothingMaterial(material,hex,blend=CLOTHING_TINT_BLEND){if(!hex||!material?.color?.set)return false;if(!/^Cloth_[A-Za-z0-9_-]+$/.test(String(material.name||'')))return false;const base=captureAuthorColor(material);if(!base)return false;let target=null;try{target=typeof material.color.clone==='function'?material.color.clone():null;if(!target?.set)return false;target.set(hex);}catch{return false;}const amount=Math.max(0,Math.min(1,Number(blend)||0)),keep=1-amount,r=base[0]*keep+(Number(target.r)||0)*amount,g=base[1]*keep+(Number(target.g)||0)*amount,b=base[2]*keep+(Number(target.b)||0)*amount;try{if(typeof material.color.setRGB==='function')material.color.setRGB(r,g,b);else{material.color.r=r;material.color.g=g;material.color.b=b;}material.needsUpdate=true;return true;}catch{return false;}}
   function tintModule(root,hex){if(!hex||!root?.traverse)return 0;const seen=new Set();let changed=0;root.traverse(node=>{const materials=Array.isArray(node?.material)?node.material:(node?.material?[node.material]:[]);for(const material of materials){if(!material||seen.has(material)||!material.color?.set)continue;seen.add(material);try{if(/^Cloth_[A-Za-z0-9_-]+$/.test(String(material.name||''))){if(tintClothingMaterial(material,hex))changed++;continue;}material.color.set(hex);material.needsUpdate=true;changed++;}catch{}}});return changed;}
-  function recipeKey(mapped){return JSON.stringify({m:mapped?.morphs||{},e:mapped?.expressionMorphs||{},h:mapped?.hair||'',ht:mapped?.hairTint||'',c:mapped?.clothing||[],ct:mapped?.clothingTint||'',a:mapped?.accessory||'none',s:mapped?.skinTint||''});}
+  function recipeKey(mapped){return JSON.stringify({m:mapped?.morphs||{},e:mapped?.expressionMorphs||{},h:mapped?.hair||'',ht:mapped?.hairTint||'',c:mapped?.clothing||[],ct:mapped?.clothingTint||'',a:mapped?.accessory||'none',s:mapped?.skinTint||'',eye:mapped?.eyeTint||''});}
 
   function compositionStructure(mapped){return JSON.stringify({hair:mapped?.hair||'',clothing:mapped?.clothing||[],accessory:mapped?.accessory||'none'});}
 
   async function updateUnifiedCandidate(renderer,char,mapped,key,token){
-    const root=renderer.root,joints=await loadJoints();
+    const root=renderer.root;
+    if(JSON.stringify(renderer.__unifiedMapped?.morphs||{})===JSON.stringify(mapped.morphs||{})&&JSON.stringify(renderer.__unifiedMapped?.expressionMorphs||{})===JSON.stringify(mapped.expressionMorphs||{})){
+      if(!isCurrentLoad(renderer,root,char.id,token))return false;
+      const modules=renderer.__unifiedCustomModules||[];let index=0;
+      if(mapped.hair)tintModule(modules[index++],mapped.hairTint);
+      const targets=new Set(mapped.clothingTintTargets||[]);for(const id of mapped.clothing||[]){const module=modules[index++];if(targets.has(id))tintModule(module,mapped.clothingTint);}
+      requireSkinTint(root,mapped.skinTint);if(mapped.eyeTint)window.RoleEyeColor?.requireNamedMaterialTint?.(root,'Iris',mapped.eyeTint);
+      renderer.renderCharacter=char;renderer.__unifiedMapped=mapped;renderer.__unifiedCustomKey=key;renderer.loop?.start?.();return true;
+    }
+    const joints=await loadJoints();
     if(!isCurrentLoad(renderer,root,char.id,token))return false;
     const runtime=window.RoleUnifiedHumanRuntime,modules=renderer.__unifiedCustomModules||[];
     renderer.loop?.stop?.();renderer.faceRig?.reset?.();window.RoleNaturalPose?.reset?.(root);
@@ -61,6 +70,48 @@
     if(!face||face.meshes.length<2)throw new Error('多网格表情合同不可用');
     renderer.faceRig=face;renderer.renderCharacter=char;renderer.__unifiedCustomKey=key;renderer.__unifiedMapped=mapped;renderer.__unifiedCandidateState=state;
     window.RoleNaturalPose?.applyNaturalPose?.(root,renderer.modules?.THREE);renderer.resize?.();renderer.frameModel?.(root,'full');renderer.loop?.start?.();return true;
+  }
+
+  async function swapUnifiedModules(renderer,char,mapped,key,token){
+    const root=renderer.root,oldModules=renderer.__unifiedCustomModules||[],oldAccessory=renderer.__unifiedCustomAccessory;
+    const runtime=window.RoleUnifiedHumanRuntime,items=[];
+    if(mapped.hair)items.push({id:mapped.hair,kind:'hair',url:HAIR_PATH(mapped.hair)});
+    for(const id of mapped.clothing||[])items.push({id,kind:'clothing',url:CLOTHING_PATH(id)});
+    const loaded=[];let accessory=null,committed=false,touched=false;
+    try{
+      // Keep the visible character alive while replacement meshes are fetched.
+      for(const item of items){
+        const gltf=await loadModule(renderer,item.url);loaded.push(gltf.scene);
+        if(!isCurrentLoad(renderer,root,char.id,token))return false;
+      }
+      const [wardrobe,joints]=await Promise.all([loadWardrobe(),loadJoints()]);if(!isCurrentLoad(renderer,root,char.id,token))return false;
+      const targets=new Set(mapped.clothingTintTargets||[]);touched=true;
+      for(let i=0;i<items.length;i++){
+        const item=items[i],module=loaded[i];
+        const required=item.kind==='hair'?['gender_female','gender_male','height_short','height_tall','face_forehead_incr']:['gender_female','gender_male','height_short','height_tall'];
+        runtime.attachModule(root,module,mapped.morphs||{},required);
+        if(item.kind==='hair')tintModule(module,mapped.hairTint);else if(targets.has(item.id))tintModule(module,mapped.clothingTint);
+      }
+      if(mapped.accessory&&mapped.accessory!=='none'){
+        accessory=window.RoleAccessoryGeometry?.attach?.(root,renderer.modules.THREE,mapped.accessory);
+        if(!accessory)throw new Error('配饰加载失败');
+      }
+      // Commit all replacements in one task, so there is no empty-character frame.
+      for(const old of oldModules)root.remove(old);
+      oldAccessory?.parent?.remove(oldAccessory);
+      renderer.__unifiedCustomModules=loaded;renderer.__unifiedCustomAccessory=accessory;
+      runtime.applyWardrobeOcclusion(root,items.map((item,i)=>({...item,root:loaded[i]})).filter(item=>item.kind==='clothing'),wardrobe);
+      renderer.faceRig?.reset?.();window.RoleNaturalPose?.reset?.(root);
+      const state=runtime.applyCandidateState(root,loaded,joints,mapped.morphs||{});
+      requireSkinTint(root,mapped.skinTint);if(mapped.eyeTint)window.RoleEyeColor?.requireNamedMaterialTint?.(root,'Iris',mapped.eyeTint);
+      renderer.faceRig=createCompositeFaceRig(root,renderer.faceRig?.headObject,window.RoleFaceRig,mapped.expressionMorphs||{});
+      renderer.renderCharacter=char;renderer.__unifiedMapped=mapped;renderer.__unifiedCustomKey=key;renderer.__unifiedCandidateState=state;
+      window.RoleNaturalPose?.applyNaturalPose?.(root,renderer.modules.THREE);renderer.loop?.start?.();
+      committed=true;for(const old of oldModules)disposeScene(old);if(oldAccessory)disposeScene(oldAccessory);
+      return true;
+    }finally{
+      if(!committed){for(const module of loaded){root.remove(module);disposeScene(module);}if(accessory){accessory.parent?.remove(accessory);disposeScene(accessory);}if(touched&&renderer.root===root){for(const old of oldModules)if(!old.parent)root.add(old);if(oldAccessory&&!oldAccessory.parent){const head=window.RoleAccessoryGeometry?.findBone?.(root,['head']);head?.add(oldAccessory);}renderer.__unifiedCustomModules=oldModules;renderer.__unifiedCustomAccessory=oldAccessory;}}
+    }
   }
 
   async function loadUnifiedCandidate(renderer,char,mapped,key,originalLoad,token){
@@ -86,12 +137,12 @@
     }catch(error){console.warn('统一3D候选未通过运行时合同，保持关闭。',error);if(renderer.__unifiedLoadToken===token){resetUnifiedState(renderer);renderer.clearModel?.();renderer.stage?.classList.remove('assembling');renderer.stage?.classList.add('active');renderer.setStatus?.(error?.message||'3D人物组合失败，请重试','error');}return false;}
   }
 
-  function patchRenderer(){const proto=window.RoleHumanRenderer?.HumanRenderer?.prototype;if(!proto?.loadCharacter||proto.loadCharacter.__unifiedCustom)return false;const originalLoad=proto.loadCharacter,originalSync=proto.syncCharacter;proto.loadCharacter=async function(char){if(!isCustom(char)){nextLoadToken(this);resetUnifiedState(this);this.stage?.classList.remove('assembling');return originalLoad.call(this,char);}if(!decorate(char)){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}const mapped=plan(char),runtime=window.RoleUnifiedHumanRuntime;if(!mapped||!runtime?.attachModule||!runtime?.applyCandidateState){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}const key=recipeKey(mapped),pendingKey=`${char.id}|${key}`;if(this.currentId===char.id&&this.root&&this.__unifiedCustomKey===key){this.renderCharacter=char;this.loop?.start?.();return true;}if(this.__unifiedPendingKey===pendingKey&&this.__unifiedPendingPromise)return this.__unifiedPendingPromise;const token=nextLoadToken(this),task=(async()=>{if(this.currentId===char.id&&this.root&&Array.isArray(this.__unifiedCustomModules)&&compositionStructure(this.__unifiedMapped)===compositionStructure(mapped)){try{return await updateUnifiedCandidate(this,char,mapped,key,token);}catch(error){console.warn('3D人物增量更新失败，重新组合。',error);}}return loadUnifiedCandidate(this,char,mapped,key,originalLoad,token);})();this.__unifiedPendingKey=pendingKey;this.__unifiedPendingPromise=task;try{return await task;}finally{if(this.__unifiedPendingPromise===task){this.__unifiedPendingPromise=null;this.__unifiedPendingKey='';}}};proto.loadCharacter.__unifiedCustom=true;proto.syncCharacter=async function(...args){if(document.body?.classList.contains('creator-fullscreen-3d'))return Boolean(this.root);const char=this.currentCharacter?.()||currentChar();if(!isCustom(char))return originalSync.apply(this,args);if(!decorate(char)||ensureDefault3D(char)!=='3d'){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}return this.loadCharacter(char);};proto.syncCharacter.__unifiedCustom=true;return true;}
+  function patchRenderer(){const proto=window.RoleHumanRenderer?.HumanRenderer?.prototype;if(!proto?.loadCharacter||proto.loadCharacter.__unifiedCustom)return false;const originalLoad=proto.loadCharacter,originalSync=proto.syncCharacter;proto.loadCharacter=async function(char){if(!isCustom(char)){nextLoadToken(this);resetUnifiedState(this);this.stage?.classList.remove('assembling');return originalLoad.call(this,char);}if(!decorate(char)){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}const mapped=plan(char),runtime=window.RoleUnifiedHumanRuntime;if(!mapped||!runtime?.attachModule||!runtime?.applyCandidateState){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}const key=recipeKey(mapped),pendingKey=`${char.id}|${key}`;if(this.currentId===char.id&&this.root&&this.__unifiedCustomKey===key){this.renderCharacter=char;this.loop?.start?.();return true;}if(this.__unifiedPendingKey===pendingKey&&this.__unifiedPendingPromise)return this.__unifiedPendingPromise;const token=nextLoadToken(this),task=(async()=>{if(this.currentId===char.id&&this.root&&Array.isArray(this.__unifiedCustomModules)&&compositionStructure(this.__unifiedMapped)!==compositionStructure(mapped)){try{return await swapUnifiedModules(this,char,mapped,key,token);}catch(error){this.setStatus?.('外观资源切换失败，请重试','error');return false;}}if(this.currentId===char.id&&this.root&&Array.isArray(this.__unifiedCustomModules)&&compositionStructure(this.__unifiedMapped)===compositionStructure(mapped)){try{return await updateUnifiedCandidate(this,char,mapped,key,token);}catch(error){console.warn('3D人物增量更新失败，重新组合。',error);}}return loadUnifiedCandidate(this,char,mapped,key,originalLoad,token);})();this.__unifiedPendingKey=pendingKey;this.__unifiedPendingPromise=task;try{return await task;}finally{if(this.__unifiedPendingPromise===task){this.__unifiedPendingPromise=null;this.__unifiedPendingKey='';}}};proto.loadCharacter.__unifiedCustom=true;proto.syncCharacter=async function(...args){if(document.body?.classList.contains('creator-fullscreen-3d'))return Boolean(this.root);const char=this.currentCharacter?.()||currentChar();if(!isCustom(char))return originalSync.apply(this,args);if(!decorate(char)||ensureDefault3D(char)!=='3d'){nextLoadToken(this);cancelRendererLoad(this);resetUnifiedState(this);this.clearModel?.();return false;}return this.loadCharacter(char);};proto.syncCharacter.__unifiedCustom=true;return true;}
   function installModeButton(){if(window.LIAOTIAN_3D_ONLY){document.getElementById('roleChatModeBtn')?.remove();return false;}const button=document.getElementById('roleChatModeBtn')||window.RoleChatMode?.ensureButton?.();if(!button)return false;if(button.dataset.unifiedCustom==='1')return true;button.dataset.unifiedCustom='1';button.addEventListener('click',event=>{const char=currentChar();if(!isCustom(char)||!qualificationFor(char))return;event.preventDefault();event.stopImmediatePropagation();const next=ensureDefault3D(char)==='3d'?'text':'3d';setMode(char,next);updateModeButton();window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();},true);return true;}
   function updateModeButton(){if(window.LIAOTIAN_3D_ONLY){document.getElementById('roleChatModeBtn')?.remove();return;}const char=currentChar(),button=document.getElementById('roleChatModeBtn');if(!button)return;if(!isCustom(char)){window.RoleChatMode?.updateButton?.();return;}if(!decorate(char)){button.hidden=true;button.textContent='3D聊天';button.setAttribute('aria-pressed','false');return;}const is3d=ensureDefault3D(char)==='3d';button.hidden=false;button.textContent=is3d?'普通聊天':'3D聊天';button.setAttribute('aria-pressed',String(is3d));button.title=is3d?'切换回普通文字聊天':'显示当前自定义3D角色';}
   function decorateAll(){if(typeof characters==='undefined'||!Array.isArray(characters))return;characters.forEach(decorate);}
   function patchSwitch(){if(typeof switchCharacter!=='function'||switchCharacter.__unifiedCustom)return false;const base=switchCharacter,wrapped=function(...args){const result=base.apply(this,args),char=currentChar();decorate(char);requestAnimationFrame(()=>{installModeButton();updateModeButton();window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();});return result;};wrapped.__unifiedCustom=true;switchCharacter=wrapped;return true;}
   function boot(){if(typeof window==='undefined'||typeof document==='undefined'||(!gateQualification()&&window.__ROLE_BASE_RECIPE_QUALIFICATION?.ok!==true))return false;if(!window.RoleHumanRenderer||!window.RoleUnifiedHumanRuntime||!window.RoleUnifiedHumanRecipe||!window.RoleAccessoryGeometry||typeof switchCharacter!=='function'){setTimeout(boot,80);return false;}decorateAll();patchRenderer();patchSwitch();installModeButton();updateModeButton();requestAnimationFrame(()=>window.__ROLE_HUMAN_RENDERER?.syncCharacter?.());return true;}
-  const api=Object.freeze({STATUS,DEVICE_STATUS,PRODUCTION_STATUS,ASSET_ID,BASE_ASSET,JOINTS_PATH,CLOTHING_TINT_BLEND,isCustom,isFixedBaseRole,qualificationFor,gateQualification,statusForQualification,decorate,plan,walkRoot,collectFaceMeshes,mergeExpressionBaseline,createCompositeFaceRig,resetLegacyRigs,resetUnifiedState,nextLoadToken,cancelRendererLoad,isCurrentLoad,loadJoints,loadWardrobe,tintSkin,requireSkinTint,captureAuthorColor,tintClothingMaterial,tintModule,recipeKey,compositionStructure,updateUnifiedCandidate,loadUnifiedCandidate,ensureDefault3D,setMode,patchRenderer,patchSwitch,updateModeButton,boot});
+  const api=Object.freeze({STATUS,DEVICE_STATUS,PRODUCTION_STATUS,ASSET_ID,BASE_ASSET,JOINTS_PATH,CLOTHING_TINT_BLEND,isCustom,isFixedBaseRole,qualificationFor,gateQualification,statusForQualification,decorate,plan,walkRoot,collectFaceMeshes,mergeExpressionBaseline,createCompositeFaceRig,resetLegacyRigs,resetUnifiedState,nextLoadToken,cancelRendererLoad,isCurrentLoad,loadJoints,loadWardrobe,tintSkin,requireSkinTint,captureAuthorColor,tintClothingMaterial,tintModule,recipeKey,compositionStructure,updateUnifiedCandidate,swapUnifiedModules,loadUnifiedCandidate,ensureDefault3D,setMode,patchRenderer,patchSwitch,updateModeButton,boot});
   if(typeof window!=='undefined'){window.RoleUnifiedCustomChat=api;boot();}if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();

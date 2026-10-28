@@ -935,6 +935,7 @@ function handleCreateRole(event) {
   const char = normalizeCustomCharacter({
     ...existing,
     id: editingCharacterId || 'custom_' + makeId(),
+    ...(window.RoleCreatorWizard?.readRecipe?{visualRecipe:window.RoleCreatorWizard.readRecipe()}:{}),
     name: byId('roleName').value, tag: byId('roleTag').value,
     greeting: byId('roleGreeting').value, personality: byId('rolePersonality').value,
     gender: byId('roleGender').value, age: byId('roleAge').value,
@@ -1106,6 +1107,17 @@ function openRoleDetails() {
   const char = characters.find(item => item.id === activeCharacterId);
   byId('roleDetailsTitle').textContent = char.name + '的人设';
   const box = byId('roleDetailsContent'); box.replaceChildren();
+  if(!char.isPreset&&char.roleKind==='3d'&&window.RoleCreatorWizard){
+    const r=window.RoleVisualRecipe.forCharacter(char),tabs=document.createElement('div'),content=document.createElement('div');
+    tabs.className='cw-tabs';
+    const show=tab=>{
+      content.replaceChildren();
+      const rows=tab==='外观'?[['人物类型',r.archetype,1],['肤色',r.skin,1],['脸型',r.face,2],['发型',r.hair,2],['头发颜色',r.hairColor,2],['眼睛颜色',r.eyeColor,2],['体型',r.body,3],['胸部',r.bodyDetails.chestSize,3],['身高',r.heightCm+' cm',3],['体重',r.weightJin+' 斤',3],['服装',r.outfit,1]]:[['声音',r.voiceStyle,4],['个性',r.personality.join('、'),4],['职业',r.profession||'未填写',4],['关系',r.relationship,4],['爱好',char.interests||'未填写',4],['问候语',char.greeting,4],['场景',r.scene||'未填写',4]];
+      for(const [label,value,step] of rows){const button=document.createElement('button');button.type='button';button.className='cw-detail';button.textContent=label+'：'+value+' ›';button.addEventListener('click',()=>{closeDialog('roleDetailsOverlay');openModal(char.id);requestAnimationFrame(()=>window.RoleCreatorWizard.goTo(step));});content.appendChild(button);}
+    };
+    for(const name of ['外观','个性']){const button=document.createElement('button');button.type='button';button.className='btn btn-outline';button.textContent=name;button.addEventListener('click',()=>show(name));tabs.appendChild(button);}
+    box.append(tabs,content);show('外观');openDialog('roleDetailsOverlay');return;
+  }
   box.appendChild(createAvatar(char.avatar, 'avatar', char.name));
   [char.tag + ' · ' + char.age + '岁', '聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label, char.isPreset ? char.personality.split('。')[0] + '。' : char.personality, char.background, char.interests ? '爱好：' + char.interests : ''].filter(Boolean).forEach(text => {
     const p = document.createElement('p'); p.textContent = text; box.appendChild(p);

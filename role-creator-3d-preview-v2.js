@@ -103,9 +103,9 @@
       const mapped=win.RoleUnifiedHumanRecipe?.mapRecipe?.(recipe)||recipe;
       const signature=json({baseId:recipe.baseId||'',structural:structuralSignature(mapped),morph:morphSignature(mapped),tint:tintSignature(mapped),action:recipe.action||'',expression:recipe.expression||'',voiceStyle:recipe.voiceStyle||''});
       const char=makeCharacter(recipe);
-      if(!force&&signature===lastSignature&&renderer.currentId===PREVIEW_ID){renderer.loop?.start?.();return true;}
+      if(signature===lastSignature&&renderer.currentId===PREVIEW_ID){renderer.loop?.start?.();return true;}
       const current=++token;
-      feedback('正在组合3D人物…');
+      feedback(renderer.root?'':'正在加载3D模型…');
       try{
         const ok=await renderer.loadCharacter(char);
         if(current!==token||!modalOpen(doc))return false;

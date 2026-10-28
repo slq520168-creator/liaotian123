@@ -3,7 +3,7 @@
 
   const DEFAULT_EYE_COLOR='深棕';
   const EYE_TINTS=Object.freeze({
-    '深棕':'#3b2a20','浅棕':'#6b4a2f','琥珀':'#8a5a23','灰蓝':'#5c7086','深蓝':'#344d6f','墨绿':'#3e5a48'
+    '深棕':'#3b2a20','浅棕':'#6b4a2f','琥珀':'#8a5a23','灰蓝':'#5c7086','深蓝':'#344d6f','墨绿':'#3e5a48','黑色':'#18151b','红色':'#a02b45','金色':'#bd913b','绿色':'#3e8659','蓝色':'#4779c1','紫色':'#7953a5'
   });
   const EYE_OPTIONS=Object.freeze(Object.keys(EYE_TINTS));
   const BLOCK=/【角色自定义设定】\n[\s\S]*?\n【自定义设定结束】/;

@@ -12,7 +12,7 @@ test('production creator is 3D-only lobby wizard',()=>{
   assert(!config.includes("'role-creator-studio.js'"));
   assert(!config.includes("'role-code-compat.js'"));
   const source=fs.readFileSync('role-creator-wizard.js','utf8');
-  for(const label of ['选择人物','发型','服装','配饰','动作声音','完成'])assert(source.includes(label));
+  for(const label of ['基础身份','外貌','脸 / 发型','身体','个性','完成'])assert(source.includes(label));
   assert(source.includes("studio.dataset.full3d='required'"));
   assert(source.includes('bases.BASES.map'));
   assert(source.includes("localStorage.setItem(DRAFT"));

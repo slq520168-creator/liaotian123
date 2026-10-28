@@ -29,9 +29,9 @@ test('fixed 3D base owns geometry while appearance remains customizable',()=>{
   assert.equal(locked.accessory,'细框眼镜');
 });
 
-test('creator is six-step 3D lobby and no longer exposes face/body sculpt pages',()=>{
+test('creator has six continuous identity, appearance, face, body, personality and finish steps',()=>{
   const source=fs.readFileSync('role-creator-wizard.js','utf8');
-  assert(source.includes("const steps=[['base','选择人物'],['hair','发型'],['outfit','服装'],['accessory','配饰'],['motion','动作声音'],['finish','完成']]"));
+  assert(source.includes("const steps=[['identity','基础身份'],['appearance','外貌'],['hair','脸 / 发型'],['body','身体'],['personality','个性'],['finish','完成']]"));
   assert(source.includes("studio.dataset.full3d='required'"));
   assert(source.includes('bases.BASES.map'));
   assert(!source.includes("['face','脸部']"));

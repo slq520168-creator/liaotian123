@@ -92,6 +92,12 @@
     return Boolean(char&&!char.isPreset&&char.humanAssetId===ASSET_ID&&['production','device-qualified','base-recipe'].includes(String(char.humanAssetStatus||'')));
   }
 
+  function personalityFrame(frame={},recipe={}){
+    const traits=recipe.personality||[],shy=traits.includes('害羞'),bright=traits.includes('开朗')||traits.includes('活泼');
+    if(!shy&&!bright)return frame;
+    return {...frame,headPitch:(Number(frame.headPitch)||0)+(shy?.055:0),gazeX:(Number(frame.gazeX)||0)+(shy?.06:0),gazeY:(Number(frame.gazeY)||0)-(shy?.035:0),gestureEnergy:(Number(frame.gestureEnergy)||0)*(shy?.5:1.6),expressionPreset:shy?'温柔':'微笑'};
+  }
+
   function patchRenderer(rendererApi=typeof window!=='undefined'?window.RoleHumanRenderer:null){
     const proto=rendererApi?.HumanRenderer?.prototype;if(!proto?.renderFrame||proto.renderFrame.__safeSkeletonMotion)return false;
     const base=proto.renderFrame;
@@ -99,7 +105,8 @@
       const char=this.renderCharacter||this.currentCharacter?.();
       if(this.root&&eligibleCharacter(char)){
         const recipe=typeof window!=='undefined'?window.RoleVisualRecipe?.forCharacter?.(char):null;
-        apply(this.root,recipe?.action||'自然站立',frame,typeof performance!=='undefined'?performance.now():Date.now());
+        frame=personalityFrame(frame,recipe||{});
+        apply(this.root,recipe?.personality?.includes('开朗')?'轻微转身':recipe?.action||'自然站立',frame,typeof performance!=='undefined'?performance.now():Date.now());
       }else if(this.root){reset(this.root);}
       return base.call(this,frame);
     };
@@ -114,7 +121,7 @@
     retry();return false;
   }
 
-  const api=Object.freeze({ASSET_ID,SPINE_BONES,UPPER_BODY_BONES,SAFE_BONES,MAX_DELTA,UPPER_BODY_MAX_DELTA,limitFor,collectBones,captureRest,actionDeltas,apply,reset,eligibleCharacter,patchRenderer,boot});
+  const api=Object.freeze({personalityFrame,ASSET_ID,SPINE_BONES,UPPER_BODY_BONES,SAFE_BONES,MAX_DELTA,UPPER_BODY_MAX_DELTA,limitFor,collectBones,captureRest,actionDeltas,apply,reset,eligibleCharacter,patchRenderer,boot});
   if(typeof window!=='undefined'){window.RoleSafeSkeletonMotion=api;boot();}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();

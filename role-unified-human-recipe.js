@@ -7,7 +7,7 @@
   const clamp01=value=>clamp(value,0,1);
   const round4=value=>Math.round(clamp01(value)*10000)/10000;
   const HAIR=Object.freeze({'自然长发':'long01','短发':'short04','清爽短发':'short02','大波浪':'bob01','卷发':'afro01','马尾':'ponytail01','编发':'braid01','利落中长发':'bob02'});
-  const HAIR_TINTS=Object.freeze({'自然黑':'#20191b','深棕':'#3a241d','栗棕':'#6a3d2d','红棕':'#7b382d','金棕':'#9a6b3b','银灰':'#8d8b91'});
+  const HAIR_TINTS=Object.freeze({'自然黑':'#20191b','深棕':'#3a241d','栗棕':'#6a3d2d','红棕':'#7b382d','金棕':'#9a6b3b','银灰':'#8d8b91','红色':'#a72943','金色':'#d7ad54','绿色':'#2f7355','蓝色':'#3157a0','紫色':'#7244a0'});
   const OUTFITS=Object.freeze({
     '日常休闲':Object.freeze(['tshirt','jeans','shoes']),
     '连帽休闲':Object.freeze(['hoodie','jeans','shoes']),
@@ -21,7 +21,7 @@
   const OUTFIT_TINTS=Object.freeze({'经典黑':'#242126','纯白':'#e9e7e4','雾灰':'#77777d','米白':'#d8c9af','酒红':'#7c2735','柔粉':'#c97f91','藏蓝':'#263957','墨绿':'#314a3b','焦糖':'#8c5a37'});
   const ACCESSORIES=Object.freeze({'无':'none','细框眼镜':'glasses','小耳环':'earrings','细项链':'necklace','眼镜+耳环':'glasses-earrings'});
   const SAFETY_UNDERWEAR=Object.freeze({male:Object.freeze(['briefs']),female:Object.freeze(['panties','bra']),unspecified:Object.freeze(['briefs'])});
-  const SKIN_TINTS=Object.freeze({'偏白':'#f2d1bf','自然肤色':'#d7a17f','小麦肤色':'#b97b55','深肤色':'#774b36'});
+  const SKIN_TINTS=Object.freeze({'偏白':'#f2d1bf','浅色':'#e9bd9e','棕色':'#986141','自然肤色':'#d7a17f','小麦肤色':'#b97b55','深肤色':'#774b36'});
   const FACE_PRESETS=Object.freeze({'自然耐看':Object.freeze({}),'圆脸':Object.freeze({face_jaw_width_incr:.20,face_chin_decr:.16,face_cheekbones_decr:.08,face_eye_size_incr:.08}),'鹅蛋脸':Object.freeze({face_jaw_width_decr:.18,face_chin_incr:.12,face_cheekbones_incr:.08}),'方脸':Object.freeze({face_jaw_width_incr:.48,face_chin_incr:.10,face_cheekbones_incr:.16}),'长脸':Object.freeze({face_forehead_incr:.25,face_chin_incr:.24,face_jaw_width_decr:.10}),'成熟脸':Object.freeze({face_jaw_width_incr:.12,face_cheekbones_incr:.26,face_eye_size_decr:.10,face_lips_decr:.08}),'甜美脸':Object.freeze({face_jaw_width_decr:.20,face_eye_size_incr:.26,face_lips_incr:.20,face_cheekbones_incr:.08})});
   const FACE_DETAIL_MORPHS=Object.freeze({eyeSize:Object.freeze(['face_eye_size_decr','face_eye_size_incr']),eyeSpacing:Object.freeze(['face_eye_spacing_decr','face_eye_spacing_incr']),eyeTilt:Object.freeze(['face_eye_tilt_decr','face_eye_tilt_incr']),noseBridge:Object.freeze(['face_nose_height_decr','face_nose_height_incr']),noseWidth:Object.freeze(['face_nose_width_decr','face_nose_width_incr']),noseLength:Object.freeze(['face_nose_length_decr','face_nose_length_incr']),lips:Object.freeze(['face_lips_decr','face_lips_incr']),mouthWidth:Object.freeze(['face_mouth_width_decr','face_mouth_width_incr']),jawWidth:Object.freeze(['face_jaw_width_decr','face_jaw_width_incr']),chin:Object.freeze(['face_chin_decr','face_chin_incr']),cheekbones:Object.freeze(['face_cheekbones_decr','face_cheekbones_incr']),earSize:Object.freeze(['face_ear_size_decr','face_ear_size_incr']),forehead:Object.freeze(['face_forehead_decr','face_forehead_incr'])});
   const BODY_DETAIL_MORPHS=Object.freeze({chestSize:Object.freeze(['breast_cup_min','breast_cup_max']),chestFirmness:Object.freeze(['breast_firm_min','breast_firm_max']),chestHeight:Object.freeze(['bdet_breast_height_decr','bdet_breast_height_incr']),chestSpacing:Object.freeze(['bdet_breast_dist_decr','bdet_breast_dist_incr']),chestProjection:Object.freeze(['bdet_breast_point_decr','bdet_breast_point_incr'])});
