@@ -17,9 +17,9 @@ test('body detail schema clamps and round-trips all five validated chest control
   const base='基础人设\n\n【角色自定义设定】\n身份：女，32岁。\n外形：身高168cm，体重118斤，匀称，鹅蛋脸，自然肤色，马尾，日常休闲。\n脸部细节：眼睛大小0。\n性格：自然。\n初始关系：普通朋友。\n聊天方式：短句自然。\n【自定义设定结束】';
   const text=bodyUi.upsertBodyDetails(base,{chestSize:140,chestFirmness:-35,chestHeight:25,chestSpacing:-45,chestProjection:60});
   const out=visual.fromPersonality(text);
-  assert.deepEqual(out.bodyDetails,{chestSize:100,chestFirmness:-35,chestHeight:25,chestSpacing:-45,chestProjection:60});
+  assert.deepEqual(out.bodyDetails,{...visual.EMPTY_BODY_DETAILS,chestSize:100,chestFirmness:-35,chestHeight:25,chestSpacing:-45,chestProjection:60});
   assert.match(text,/身体细节：胸部体积\+100，胸部紧实度-35，胸部位置\+25，胸部间距-45，胸部突出度\+60。/);
-  assert.deepEqual(visual.sanitize({bodyDetails:{chestSize:-999,chestFirmness:999,chestHeight:-150,chestSpacing:130,chestProjection:-101}}).bodyDetails,{chestSize:-100,chestFirmness:100,chestHeight:-100,chestSpacing:100,chestProjection:-100});
+  assert.deepEqual(visual.sanitize({bodyDetails:{chestSize:-999,chestFirmness:999,chestHeight:-150,chestSpacing:130,chestProjection:-101}}).bodyDetails,{...visual.EMPTY_BODY_DETAILS,chestSize:-100,chestFirmness:100,chestHeight:-100,chestSpacing:100,chestProjection:-100});
 });
 
 test('real chest sliders map to exclusive breast and bdet morphs while only validated breast correctives are emitted',()=>{
@@ -44,7 +44,7 @@ test('every emitted chest morph and corrective exists in production asset and jo
   const report=JSON.parse(fs.readFileSync('assets/humans/unified/unified-human-report.json','utf8'));
   const joints=JSON.parse(fs.readFileSync('assets/humans/unified/base_body.joints.json','utf8'));
   const targets=new Set(report?.diagnostics?.targetNames||[]);
-  for(const name of [...mapper.BODY_DETAIL_NAMES,...mapper.BREAST_CORRECTIVE_NAMES]){
+  for(const name of [...mapper.NATIVE_BODY_DETAIL_NAMES,...mapper.BREAST_CORRECTIVE_NAMES]){
     assert.ok(targets.has(name),`${name} missing from unified human targets`);
     assert.ok(Object.hasOwn(joints?.morphs||{},name),`${name} missing from joint sidecar`);
   }
@@ -68,9 +68,9 @@ test('all five chest edits stay on the incremental preview path instead of chang
   assert.notEqual(preview.morphSignature(changed),preview.morphSignature(base));
 });
 
-test('creator exposes exactly the five production-validated chest controls and still does not invent waist hip or shoulder sliders',()=>{
+test('legacy chest editor retains its five controls while creator supports runtime-authored body targets',()=>{
   assert.deepEqual(Object.keys(bodyUi.BODY_DETAILS),['chestSize','chestFirmness','chestHeight','chestSpacing','chestProjection']);
-  assert.deepEqual(Object.keys(mapper.BODY_DETAIL_MORPHS),['chestSize','chestFirmness','chestHeight','chestSpacing','chestProjection']);
+  assert.deepEqual(Object.keys(mapper.BODY_DETAIL_MORPHS),Object.keys(visual.BODY_DETAILS));
   const source=fs.readFileSync('role-body-details.js','utf8');
   assert(source.includes('input.dataset.bodyDetail=key'));
   assert(source.includes('event.target?.dataset?.bodyDetail'));

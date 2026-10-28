@@ -33,7 +33,7 @@
     const sanitize=input=>{
       const source=input&&typeof input==='object'?input:{};
       const clean=base.sanitize(source);
-      return Object.freeze({...clean,eyeColor:normalizeEyeColor(source.eyeColor??clean.eyeColor)});
+      return Object.freeze({...clean,eyeColor:normalizeEyeColor(source.eyeColor??clean.eyeColor),eyeColorRight:normalizeEyeColor(source.eyeColorRight??clean.eyeColorRight??'蓝色')});
     };
     const fromPersonality=text=>{
       const clean=base.fromPersonality?.(text);if(!clean)return null;
@@ -54,7 +54,7 @@
 
   function extendUnifiedApi(base){
     if(!base?.mapRecipe)return base;
-    const mapRecipe=recipe=>Object.freeze({...base.mapRecipe(recipe),eyeTint:EYE_TINTS[normalizeEyeColor(recipe?.eyeColor)]});
+    const mapRecipe=recipe=>Object.freeze({...base.mapRecipe(recipe),eyeTint:EYE_TINTS[normalizeEyeColor(recipe?.eyeColor)],eyeTintRight:EYE_TINTS[normalizeEyeColor(recipe?.heterochromia?recipe.eyeColorRight:recipe?.eyeColor)],eyeGlow:recipe?.eyeGlow===true});
     return Object.freeze({...base,EYE_TINTS,mapRecipe});
   }
 
@@ -77,6 +77,28 @@
     const changed=tintNamedMaterial(root,name,hex);
     if(changed<1)throw new Error(`${name} tint material unavailable`);
     return changed;
+  }
+
+  function applyEyeEffects(root,mapped){
+    const seen=new Set();let changed=0;
+    root?.traverse?.(node=>{for(const material of (Array.isArray(node.material)?node.material:[node.material])){
+      if(!material||material.name!=='Iris'||seen.has(material)||!material.color?.clone)continue;
+      seen.add(material);material.userData||={};
+      let uniforms=material.userData.siroleEyes;
+      if(!uniforms){
+        uniforms={siroleLeft:{value:material.color.clone()},siroleRight:{value:material.color.clone()},siroleGlow:{value:0}};
+        material.userData.siroleEyes=uniforms;
+        const original=material.onBeforeCompile;
+        material.onBeforeCompile=function(shader,renderer){
+          original?.call(this,shader,renderer);Object.assign(shader.uniforms,uniforms);
+          shader.vertexShader='varying float siroleEyeSide;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nsiroleEyeSide = step(0.0, position.x);');
+          shader.fragmentShader='varying float siroleEyeSide;\nuniform vec3 siroleLeft;\nuniform vec3 siroleRight;\nuniform float siroleGlow;\n'+shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb *= mix(siroleRight, siroleLeft, siroleEyeSide);').replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance += mix(siroleRight, siroleLeft, siroleEyeSide) * siroleGlow;');
+        };
+        material.customProgramCacheKey=()=> 'sirole-iris-v1';material.needsUpdate=true;
+      }
+      uniforms.siroleLeft.value.set(mapped.eyeTint);uniforms.siroleRight.value.set(mapped.eyeTintRight||mapped.eyeTint);uniforms.siroleGlow.value=mapped.eyeGlow?.65:0;
+      material.color.set('#ffffff');changed++;
+    }});return changed;
   }
 
   function installNormalizer(visualApi){
@@ -178,7 +200,7 @@
       const mapped=win.RoleUnifiedHumanRecipe?.mapRecipe?.(recipe)||{};
       try{
         const changed=requireNamedMaterialTint(this.root,'Iris',mapped.eyeTint);
-        this.__irisTintApplied=changed>0;
+        applyEyeEffects(this.root,mapped);this.__irisTintApplied=changed>0;
       }catch(error){
         this.__irisTintApplied=false;
         console.warn('Iris 材质不存在，统一3D保持关闭。',error);
@@ -200,7 +222,7 @@
     return true;
   }
 
-  const api=Object.freeze({DEFAULT_EYE_COLOR,EYE_TINTS,EYE_OPTIONS,normalizeEyeColor,parseEyeColor,upsertEyeColor,extendVisualApi,extendUnifiedApi,tintNamedMaterial,requireNamedMaterialTint,currentCreatorColor,syncCreatorLine,ensureCreatorUi,installCreatorUi,patchRenderer,boot});
+  const api=Object.freeze({DEFAULT_EYE_COLOR,EYE_TINTS,EYE_OPTIONS,normalizeEyeColor,parseEyeColor,upsertEyeColor,extendVisualApi,extendUnifiedApi,tintNamedMaterial,requireNamedMaterialTint,applyEyeEffects,currentCreatorColor,syncCreatorLine,ensureCreatorUi,installCreatorUi,patchRenderer,boot});
   if(typeof window!=='undefined'){window.RoleEyeColor=api;boot(window);}
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();

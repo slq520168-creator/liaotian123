@@ -7,12 +7,12 @@ const custom=require('../role-unified-custom-chat.js');
 
 const manifest=JSON.parse(fs.readFileSync('assets/humans/unified/unified-human-manifest.json','utf8'));
 
-test('creator exposes every validated unified hair module exactly once',()=>{
+test('creator retains every validated hair module and adds geometry styling choices',()=>{
   const mapped=new Set(Object.values(unified.HAIR));
   const available=new Set(Object.keys(manifest.modules.hair));
   assert.equal(mapped.size,8);
   assert.deepEqual([...mapped].sort(),[...available].sort());
-  assert.equal(visual.OPTIONS.hair.length,8);
+  assert.equal(visual.OPTIONS.hair.length,12);
 });
 
 test('hair color survives recipe round-trip and maps to a concrete tint',()=>{
@@ -42,4 +42,18 @@ test('unknown hair color falls back instead of inventing an unsupported render t
   const clean=visual.sanitize({hairColor:'荧光紫'});
   assert.equal(clean.hairColor,'自然黑');
   assert.equal(unified.mapRecipe(clean).hairTint,unified.HAIR_TINTS['自然黑']);
+});
+
+test('waves deform real long-hair buffers and added hairstyles retain production skeleton and morph contracts',async()=>{
+ const THREE=await import('three'),load=require('./helpers/load-human.cjs'),styling=require('../role-hair-styling.js'),runtime=require('../role-unified-human-runtime.js');
+ const base=await load('assets/humans/unified/base_body.glb');
+ for(const [label,style] of [['大波浪','waves'],['刘海','bangs'],['双丸子头','buns'],['自定义','custom']]){
+  const recipe=visual.sanitize({creatorVersion:2,hair:label,hairWave:75}),mapped=unified.mapRecipe(recipe);assert.equal(mapped.hairStyle,style);
+  const root=await load(`assets/humans/unified/hair_${mapped.hair}.glb`);let source;root.traverse(n=>{if(!source&&n.isSkinnedMesh)source=n;});
+  const before=source.geometry.attributes.position.array.slice();styling.apply(root,THREE,style,75);
+  assert(runtime.moduleContract(base,root,['gender_female','height_tall','face_forehead_incr']).ok);
+  if(style==='waves'||style==='custom')assert.notDeepEqual(source.geometry.attributes.position.array,before);
+  else {let added=0;root.traverse(n=>{if(/^Hair_(Bun|Fringe)/.test(n.name)){added++;assert(n.isSkinnedMesh);assert.equal(n.skeleton,source.skeleton);}});assert(added>=2);}
+  root.traverse(n=>{if(n.isMesh)for(const attr of [n.geometry.attributes.position,...n.geometry.morphAttributes.position])for(const x of attr.array)assert(Number.isFinite(x));});
+ }
 });

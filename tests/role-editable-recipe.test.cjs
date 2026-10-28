@@ -47,3 +47,16 @@ test('cancelled hair replacement retains visible modules and disposes the late d
   const late={};root.remove=value=>assert.equal(value,late);
   try{const result=custom.swapUnifiedModules(renderer,{id:'custom_test'},{hair:'long01',clothing:[]},'new',1);renderer.__unifiedLoadToken=2;release({scene:late});assert.equal(await result,false);assert.equal(renderer.root,root);assert.equal(renderer.__unifiedCustomModules[0],old);assert.equal(disposed,1);}finally{delete global.window;}
 });
+
+test('body transition interpolates exclusive morph directions without dropping either endpoint',()=>{
+ const custom=require('../role-unified-custom-chat.js');
+ const from={breast_cup_min:.65,shape_hipSize_min:.3},to={breast_cup_max:.65,shape_hipSize_max:.5};
+ const halfway=custom.blendMorphs(from,to,.5);assert.equal(halfway.breast_cup_min,.325);assert.equal(halfway.breast_cup_max,.325);
+ assert.equal(custom.blendMorphs(from,to,1).shape_hipSize_max,.5);assert.equal(custom.blendMorphs(from,to,1).shape_hipSize_min,0);
+});
+
+test('advanced muscle and fullness override native targets while zero retains the preset',()=>{
+ const base=runtime.mapRecipe({body:'健壮',bodyDetails:{muscleTone:0,fullness:0}});assert.equal(base.morphs.muscle_max,.72);
+ const edited=runtime.mapRecipe({body:'健壮',bodyDetails:{muscleTone:-50,fullness:70}});assert.equal(edited.morphs.muscle_min,.325);assert.equal(edited.morphs.muscle_max,undefined);assert.equal(edited.morphs.weight_max,.455);
+ const api=visual();assert.equal(api.sanitize({creatorVersion:2,relationship:'一起创作的搭档'}).relationship,'一起创作的搭档');
+});

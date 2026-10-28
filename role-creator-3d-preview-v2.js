@@ -6,9 +6,9 @@
   const BASE_ASSET=Object.freeze({url:'assets/humans/unified/base_body.glb',scale:1,y:0,rotationY:0,framing:'full',minMorphTargets:52});
   const json=value=>JSON.stringify(value??null);
 
-  function structuralSignature(mapped={}){return json({hair:mapped.hair||'',clothing:mapped.clothing||[],accessory:mapped.accessory||'none',expressionMorphs:mapped.expressionMorphs||{}});}
+  function structuralSignature(mapped={}){return json({hair:mapped.hair||'',hairStyle:mapped.hairStyle||'',hairWave:mapped.hairWave||0,clothing:mapped.clothing||[],accessory:mapped.accessory||'none',expressionMorphs:mapped.expressionMorphs||{}});}
   function morphSignature(mapped={}){return json(mapped.morphs||{});}
-  function tintSignature(mapped={}){return json({skin:mapped.skinTint||'',hair:mapped.hairTint||'',clothing:mapped.clothingTint||'',targets:mapped.clothingTintTargets||[],eye:mapped.eyeTint||''});}
+  function tintSignature(mapped={}){return json({skin:mapped.skinTint||'',hair:mapped.hairTint||'',clothing:mapped.clothingTint||'',targets:mapped.clothingTintTargets||[],eye:mapped.eyeTint||'',eyeRight:mapped.eyeTintRight||'',eyeGlow:mapped.eyeGlow||false});}
   function moduleRoots(mapped={},modules=[]){let index=0;const result={hair:null,clothing:{},complete:true};if(mapped.hair){result.hair=modules[index++]||null;if(!result.hair)result.complete=false;}for(const id of mapped.clothing||[]){const root=modules[index++]||null;result.clothing[id]=root;if(!root)result.complete=false;}if(index!==modules.length)result.complete=false;return result;}
   function modalOpen(doc){return Boolean(doc?.getElementById('createModalOverlay')?.classList?.contains('active'));}
 
@@ -101,7 +101,7 @@
       if(!win.RoleUnifiedCustomChat){feedback(win.__ROLE_UNIFIED_PRODUCTION_GATE_RESULT?.error||'正在准备3D人物资源…');return false;}
       mountSharedStage();
       const mapped=win.RoleUnifiedHumanRecipe?.mapRecipe?.(recipe)||recipe;
-      const signature=json({baseId:recipe.baseId||'',structural:structuralSignature(mapped),morph:morphSignature(mapped),tint:tintSignature(mapped),action:recipe.action||'',expression:recipe.expression||'',voiceStyle:recipe.voiceStyle||''});
+      const signature=json({baseId:recipe.baseId||'',structural:structuralSignature(mapped),morph:morphSignature(mapped),tint:tintSignature(mapped),action:recipe.action||'',expression:recipe.expression||'',voiceStyle:recipe.voiceStyle||'',personality:recipe.personality||[]});
       const char=makeCharacter(recipe);
       if(signature===lastSignature&&renderer.currentId===PREVIEW_ID){renderer.loop?.start?.();return true;}
       const current=++token;

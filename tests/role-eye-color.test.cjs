@@ -51,3 +51,23 @@ test('creator eye UI states that only Iris is tinted and renderer enforces that 
   assert(source.includes("char.humanAssetId!=='unified-charactercreator'"));
   assert(source.includes('统一3D保持关闭'));
 });
+
+test('heterochromia and glow update shader uniforms on the same Iris material and reset cleanly',async()=>{
+ const THREE=await import('three'),api=require('../role-eye-color.js');
+ const visual=api.extendVisualApi(require('../role-visual-recipe.js')),mapper=api.extendUnifiedApi(require('../role-unified-human-recipe.js'));
+ const recipe=visual.sanitize({creatorVersion:2,eyeColor:'绿色',eyeColorRight:'紫色',heterochromia:true,eyeGlow:true});
+ assert.deepEqual(visual.sanitize(JSON.parse(JSON.stringify(recipe))),recipe);
+ const root=new THREE.Group(),mat=new THREE.MeshStandardMaterial();mat.name='Iris';root.add(new THREE.Mesh(new THREE.SphereGeometry(),mat));
+ api.applyEyeEffects(root,mapper.mapRecipe(recipe));const u=mat.userData.siroleEyes;assert(!u.siroleLeft.value.equals(u.siroleRight.value));assert.equal(u.siroleGlow.value,.65);
+ const shader={uniforms:{},vertexShader:THREE.ShaderLib.standard.vertexShader,fragmentShader:THREE.ShaderLib.standard.fragmentShader};mat.onBeforeCompile(shader,{});
+ assert(shader.vertexShader.includes('step(0.0, position.x)'));assert(shader.fragmentShader.includes('totalEmissiveRadiance += mix'));assert.equal(shader.uniforms.siroleGlow,u.siroleGlow);
+ api.applyEyeEffects(root,mapper.mapRecipe({...recipe,heterochromia:false,eyeGlow:false}));assert.equal(mat.userData.siroleEyes,u);assert(u.siroleLeft.value.equals(u.siroleRight.value));assert.equal(u.siroleGlow.value,0);
+});
+
+test('preview invalidates only material signature when right eye or glow changes',()=>{
+ const preview=require('../role-creator-3d-preview-v2.js'),base={eyeTint:'#111111',eyeTintRight:'#111111',eyeGlow:false};
+ for(const next of [{...base,eyeTintRight:'#123456'},{...base,eyeGlow:true}]){
+  assert.notEqual(preview.tintSignature(base),preview.tintSignature(next));
+  assert.equal(preview.structuralSignature(base),preview.structuralSignature(next));
+ }
+});

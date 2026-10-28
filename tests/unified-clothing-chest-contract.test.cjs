@@ -24,7 +24,7 @@ function allTargetNames(json){
 
 test('every chest-covering production garment retains current breast morphs and planned static bdet targets',async()=>{
   const {parseGlb}=await import('../scripts/human-glb-contract.mjs');
-  const required=[...mapper.BODY_DETAIL_NAMES,...mapper.BREAST_CORRECTIVE_NAMES,...BDET_TARGETS];
+  const required=[...mapper.NATIVE_BODY_DETAIL_NAMES,...mapper.BREAST_CORRECTIVE_NAMES,...BDET_TARGETS];
   for(const id of UPPER_CLOTHING){
     const file=fs.readFileSync(`assets/humans/unified/clothing_${id}.glb`);
     const {json}=parseGlb(file);

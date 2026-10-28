@@ -53,3 +53,16 @@ test('glasses fit the rendered eye geometry in model space even when the head bo
   assert.ok(box.max.x-box.min.x<.16);assert.ok(box.max.x-box.min.x>.1);
   assert.ok(frame.getObjectByName('Glasses_Bridge').getWorldPosition(new THREE.Vector3()).z>.085);
 });
+
+test('fantasy choices are independently saved head-bound meshes and preserve skin choice',async()=>{
+ const THREE=await import('three');
+ for(const [label,id] of [['精灵耳','elf-ears'],['恶魔角','horns'],['天使光环','halo'],['外星触角','antennae']]){
+  const recipe=visual.sanitize({creatorVersion:2,accessory:label,skin:'深肤色'});
+  assert.equal(recipe.skin,'深肤色');assert.equal(unified.mapRecipe(recipe).accessory,id);
+  const root=new THREE.Group(),head=new THREE.Bone();head.name='head';root.add(head);
+  const eyes=new THREE.Mesh(new THREE.BoxGeometry(.09,.025,.03),new THREE.MeshStandardMaterial());eyes.material.name='Eye';eyes.position.set(0,1.55,.07);root.add(eyes);
+  const group=accessory.attach(root,THREE,id);assert.equal(group.parent,head);
+  const bounds=new THREE.Box3().setFromObject(group);assert(bounds.max.y>1.55);assert(bounds.min.y>1.4);
+  let count=0;group.traverse(n=>{if(n.isMesh){count++;assert(n.geometry.attributes.position.count>0);}});assert(count>0);
+ }
+});

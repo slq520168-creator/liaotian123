@@ -5,20 +5,20 @@
   const GENDERS = Object.freeze(['unspecified','male','female']);
   const BASE_IDS = Object.freeze(['female_soft','female_mature','female_sport','female_tall','male_clean','male_mature','male_athletic','male_tall']);
   const FACE_DETAILS = Object.freeze({eyeSize:'眼睛大小',eyeSpacing:'眼距',eyeTilt:'眼角',noseBridge:'鼻梁',noseWidth:'鼻翼',noseLength:'鼻长',lips:'嘴唇',mouthWidth:'嘴宽',jawWidth:'下颌宽度',chin:'下巴',cheekbones:'颧骨',earSize:'耳朵大小',forehead:'额头高度'});
-  const BODY_DETAILS = Object.freeze({chestSize:'胸部体积',chestFirmness:'胸部紧实度',chestHeight:'胸部位置',chestSpacing:'胸部间距',chestProjection:'胸部突出度'});
+  const BODY_DETAILS = Object.freeze({chestSize:'胸部体积',chestFirmness:'胸部紧实度',chestHeight:'胸部位置',chestSpacing:'胸部间距',chestProjection:'胸部突出度',waistSize:'腰围',hipSize:'髋宽',gluteVolume:'臀部体积',shoulderWidth:'肩宽',legVolume:'腿部丰满',legLength:'腿长',muscleTone:'肌肉微调',fullness:'丰满程度微调'});
   const OPTIONS = Object.freeze({
-    body:Object.freeze(['偏瘦','匀称','微胖','丰满','胖','健壮']),
+    body:Object.freeze(['偏瘦','匀称','微胖','丰满','胖','健壮','运动型']),
     face:Object.freeze(['自然耐看','圆脸','鹅蛋脸','方脸','长脸','成熟脸','甜美脸']),
     skin:Object.freeze(['偏白','浅色','自然肤色','小麦肤色','棕色','深肤色']),
-    hair:Object.freeze(['自然长发','短发','清爽短发','大波浪','卷发','马尾','编发','利落中长发']),
+    hair:Object.freeze(['自然长发','短发','清爽短发','大波浪','卷发','马尾','编发','利落中长发','齐肩短发','刘海','双丸子头','自定义']),
     hairColor:Object.freeze(['自然黑','深棕','栗棕','红棕','金棕','银灰','红色','金色','绿色','蓝色','紫色']),
     outfit:Object.freeze(['日常休闲','连帽休闲','居家','成熟优雅','通勤','运动','甜美','性感但自然']),
     outfitColor:Object.freeze(['经典黑','纯白','雾灰','米白','酒红','柔粉','藏蓝','墨绿','焦糖']),
-    accessory:Object.freeze(['无','细框眼镜','小耳环','细项链','眼镜+耳环']),
+    accessory:Object.freeze(['无','细框眼镜','小耳环','细项链','眼镜+耳环','精灵耳','恶魔角','天使光环','外星触角']),
     action:Object.freeze(['自然站立','放松呼吸','专注交流','轻微转身']),
     expression:Object.freeze(['自然','微笑','温柔','认真','俏皮']),
     voiceStyle:Object.freeze(['自然','温柔','成熟','活泼','低沉','清爽']),
-    relationship:Object.freeze(['慢慢熟悉','普通朋友','知心朋友','暧昧对象','恋人','伴侣','姐姐/哥哥型陪伴'])
+    relationship:Object.freeze(['慢慢熟悉','普通朋友','知心朋友','暧昧对象','恋人','伴侣','姐姐/哥哥型陪伴','助手'])
   });
   const EMPTY_FACE_DETAILS=Object.freeze(Object.fromEntries(Object.keys(FACE_DETAILS).map(key=>[key,0])));
   const EMPTY_BODY_DETAILS=Object.freeze(Object.fromEntries(Object.keys(BODY_DETAILS).map(key=>[key,0])));
@@ -34,7 +34,7 @@
   function sanitizeBodyDetails(value={}){return sanitizeDetailMap(value,BODY_DETAILS);}
   function sanitize(input={}){
     const personalities=cleanList(input.personality),chats=cleanList(input.chat);
-    return Object.freeze({creatorVersion:input.creatorVersion===2?2:1,eyeColor:typeof input.eyeColor==='string'?input.eyeColor:'深棕',archetype:typeof input.archetype==='string'?input.archetype.slice(0,24):'自定义',profession:typeof input.profession==='string'?input.profession.slice(0,120):'',scene:typeof input.scene==='string'?input.scene.slice(0,600):'',version:VERSION,baseId:pick(input.baseId,BASE_IDS,DEFAULTS.baseId),gender:pick(input.gender,GENDERS,DEFAULTS.gender),age:clampInt(input.age,18,100,DEFAULTS.age),heightCm:clampInt(input.heightCm??input.height,130,220,DEFAULTS.heightCm),weightJin:clampInt(input.weightJin??input.weight,60,500,DEFAULTS.weightJin),body:pick(input.body,OPTIONS.body,DEFAULTS.body),bodyDetails:sanitizeBodyDetails(input.bodyDetails),face:pick(input.face,OPTIONS.face,DEFAULTS.face),faceDetails:sanitizeFaceDetails(input.faceDetails),skin:pick(input.skin,OPTIONS.skin,DEFAULTS.skin),hair:pick(input.hair,OPTIONS.hair,DEFAULTS.hair),hairColor:pick(input.hairColor,OPTIONS.hairColor,DEFAULTS.hairColor),outfit:pick(input.outfit,OPTIONS.outfit,DEFAULTS.outfit),outfitColor:pick(input.outfitColor,OPTIONS.outfitColor,DEFAULTS.outfitColor),accessory:pick(input.accessory,OPTIONS.accessory,DEFAULTS.accessory),action:pick(input.action,OPTIONS.action,DEFAULTS.action),expression:pick(input.expression,OPTIONS.expression,DEFAULTS.expression),voiceStyle:pick(input.voiceStyle??input.voice,OPTIONS.voiceStyle,DEFAULTS.voiceStyle),relationship:pick(input.relationship,OPTIONS.relationship,DEFAULTS.relationship),personality:Object.freeze(personalities.length?personalities:[...DEFAULTS.personality]),chat:Object.freeze(chats.length?chats:[...DEFAULTS.chat]),extra:typeof input.extra==='string'?input.extra.trim().slice(0,400):''});
+    return Object.freeze({hairWave:clampInt(input.hairWave,0,100,50),heterochromia:input.heterochromia===true,eyeGlow:input.eyeGlow===true,eyeColorRight:typeof input.eyeColorRight==='string'?input.eyeColorRight:'蓝色',creatorVersion:input.creatorVersion===2?2:1,eyeColor:typeof input.eyeColor==='string'?input.eyeColor:'深棕',archetype:typeof input.archetype==='string'?input.archetype.slice(0,24):'自定义',profession:typeof input.profession==='string'?input.profession.slice(0,120):'',scene:typeof input.scene==='string'?input.scene.slice(0,600):'',version:VERSION,baseId:pick(input.baseId,BASE_IDS,DEFAULTS.baseId),gender:pick(input.gender,GENDERS,DEFAULTS.gender),age:clampInt(input.age,18,100,DEFAULTS.age),heightCm:clampInt(input.heightCm??input.height,130,220,DEFAULTS.heightCm),weightJin:clampInt(input.weightJin??input.weight,60,500,DEFAULTS.weightJin),body:pick(input.body,OPTIONS.body,DEFAULTS.body),bodyDetails:sanitizeBodyDetails(input.bodyDetails),face:pick(input.face,OPTIONS.face,DEFAULTS.face),faceDetails:sanitizeFaceDetails(input.faceDetails),skin:pick(input.skin,OPTIONS.skin,DEFAULTS.skin),hair:pick(input.hair,OPTIONS.hair,DEFAULTS.hair),hairColor:pick(input.hairColor,OPTIONS.hairColor,DEFAULTS.hairColor),outfit:pick(input.outfit,OPTIONS.outfit,DEFAULTS.outfit),outfitColor:pick(input.outfitColor,OPTIONS.outfitColor,DEFAULTS.outfitColor),accessory:pick(input.accessory,OPTIONS.accessory,DEFAULTS.accessory),action:pick(input.action,OPTIONS.action,DEFAULTS.action),expression:pick(input.expression,OPTIONS.expression,DEFAULTS.expression),voiceStyle:pick(input.voiceStyle??input.voice,OPTIONS.voiceStyle,DEFAULTS.voiceStyle),relationship:input.creatorVersion===2&&typeof input.relationship==='string'&&input.relationship.trim()?input.relationship.trim().slice(0,120):pick(input.relationship,OPTIONS.relationship,DEFAULTS.relationship),personality:Object.freeze(personalities.length?personalities:[...DEFAULTS.personality]),chat:Object.freeze(chats.length?chats:[...DEFAULTS.chat]),extra:typeof input.extra==='string'?input.extra.trim().slice(0,400):''});
   }
   function baseRegistry(){return typeof window!=='undefined'?window.Role3DBases:null;}
   function lockBase(input={}){

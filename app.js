@@ -521,6 +521,7 @@ function renderSidebar() {
 }
 
 function switchCharacter(charId, save = true) {
+  window.RoleHome?.close?.();
   const char = characters.find(item => item.id === charId);
   if (!char) return;
   activeCharacterId = charId;
@@ -1105,6 +1106,7 @@ function forgetRoleMemory() {
 
 function openRoleDetails() {
   const char = characters.find(item => item.id === activeCharacterId);
+  if(window.RoleHome?.show?.(char))return;
   byId('roleDetailsTitle').textContent = char.name + '的人设';
   const box = byId('roleDetailsContent'); box.replaceChildren();
   if(!char.isPreset&&char.roleKind==='3d'&&window.RoleCreatorWizard){

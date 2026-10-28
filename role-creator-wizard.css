@@ -8,3 +8,5 @@ body.creator-fullscreen-3d #createModalOverlay.active #roleCreatorStudio{height:
 
 body.creator-fullscreen-3d{background:#100e14}body.creator-fullscreen-3d #createModalOverlay.active #creator3dFeedback{color:#ffbad6;flex-shrink:0}body.creator-fullscreen-3d #createModalOverlay.active .modal-header .icon-btn{color:white}
 body.creator-fullscreen-3d #createModalOverlay.active #createRoleForm{display:flex!important;flex-direction:column!important;box-sizing:border-box!important}body.creator-fullscreen-3d #createModalOverlay.active #roleCreatorStudio{height:auto!important;min-height:0!important;flex:1!important}
+body.creator-fullscreen-3d #createModalOverlay .role-human-stage{background:#19151c!important}
+#roleCreatorStudio .cw-field input[type=checkbox]{width:20px;height:20px;vertical-align:middle;accent-color:#e15ab4;margin-right:8px}

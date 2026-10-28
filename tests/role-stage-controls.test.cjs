@@ -69,3 +69,12 @@ test('primary interaction surface only covers the upper character viewing area a
   assert(source.includes("pointerdown"));assert(source.includes("wheel"));assert(source.includes("dblclick"));assert(source.includes("keydown"));
   assert.equal(source.includes('requestAnimationFrame('),false,'controls must ride the existing renderer loop instead of creating a second RAF');
 });
+
+test('vertical drag pans camera independently of rotation and resets without changing avatar geometry',()=>{
+ const api=require('../role-stage-controls.js');
+ const renderer={camera:{position:{y:1},fov:30,updateProjectionMatrix(){}}};
+ const state=api.createState(renderer);api.syncRoot(state,{rotation:{y:0}});
+ api.beginPointer(state,1,100,100,10);api.movePointer(state,1,150,200,20);
+ assert.equal(state.panY,.2);assert.equal(renderer.camera.position.y,1.2);assert(state.desiredYaw>0);
+ api.endPointer(state,1,30);api.resetView(state);assert.equal(renderer.camera.position.y,1);assert.equal(state.panY,0);
+});

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const IDS=Object.freeze(['none','glasses','earrings','necklace','glasses-earrings']);
+  const IDS=Object.freeze(['none','glasses','earrings','necklace','glasses-earrings','elf-ears','horns','halo','antennae']);
   const HEAD_NAMES=Object.freeze(['head']);
   const NECK_NAMES=Object.freeze(['neck_01','neck']);
 
@@ -76,6 +76,32 @@
     return group;
   }
 
+  function createFantasy(THREE,id){
+    const group=new THREE.Group();group.name='Accessory_Fantasy';
+    const skin=material(THREE,0xd7a17f,0,.75);skin.name='Skin';
+    const dark=material(THREE,0x382330,.18,.5),gold=material(THREE,0xffcc69,.6,.25);
+    if(id==='halo'){
+      gold.emissive.set(0xffb84d);gold.emissiveIntensity=.65;
+      addMesh(group,THREE,new THREE.TorusGeometry(.10,.006,8,48),gold,'Halo',[0,.20,-.025],[Math.PI/2,0,0]);
+    }
+    for(const side of [-1,1]){
+      if(id==='elf-ears'){
+        const ear=addMesh(group,THREE,new THREE.ConeGeometry(.025,.105,12),skin,`ElfEar_${side}`,[side*.10,-.025,-.065],[0,0,-side*.85]);
+        ear.scale.z=.36;
+      }
+      if(id==='horns'){
+        const horn=addMesh(group,THREE,new THREE.ConeGeometry(.024,.13,16),dark,`Horn_${side}`,[side*.065,.13,-.06],[0,0,-side*.28]);
+        horn.castShadow=true;
+      }
+      if(id==='antennae'){
+        const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(side*.04,.08,-.06),new THREE.Vector3(side*.06,.16,-.05),new THREE.Vector3(side*.09,.20,-.02)]);
+        addMesh(group,THREE,new THREE.TubeGeometry(curve,12,.003,6,false),dark,`Antenna_${side}`);
+        addMesh(group,THREE,new THREE.SphereGeometry(.013,12,8),gold,`AntennaTip_${side}`,[side*.09,.20,-.02]);
+      }
+    }
+    return group;
+  }
+
   function create(THREE,id){
     const key=IDS.includes(id)?id:'none';
     if(key==='none')return null;
@@ -83,6 +109,7 @@
     if(key==='glasses'||key==='glasses-earrings')group.add(createGlasses(THREE));
     if(key==='earrings'||key==='glasses-earrings')group.add(createEarrings(THREE));
     if(key==='necklace')group.add(createNecklace(THREE));
+    if(['elf-ears','horns','halo','antennae'].includes(key))group.add(createFantasy(THREE,key));
     return group;
   }
 
@@ -123,12 +150,14 @@
     if(glasses){glasses.position.set(center.x,center.y,box.max.z+.005);glasses.scale.setScalar(Math.max(.7,Math.min(1.3,width*1.45/.112)));}
     const earrings=accessory.getObjectByName('Accessory_Earrings');
     if(earrings){earrings.position.set(center.x,center.y-.045,box.max.z-.065);earrings.scale.setScalar(Math.max(.7,Math.min(1.3,width/.09)));}
+    const fantasy=accessory.getObjectByName('Accessory_Fantasy');
+    if(fantasy){fantasy.position.set(center.x,center.y,box.max.z);fantasy.scale.setScalar(Math.max(.8,Math.min(1.2,width/.09)));}
     const necklace=accessory.getObjectByName('Accessory_Necklace');
     if(necklace)necklace.position.set(center.x,center.y-.14,box.max.z-.05);
     return true;
   }
 
-  const api=Object.freeze({IDS,HEAD_NAMES,NECK_NAMES,walk,findBone,createGlasses,createEarrings,createNecklace,create,attach,eyeBounds,fit});
+  const api=Object.freeze({IDS,HEAD_NAMES,NECK_NAMES,walk,findBone,createGlasses,createEarrings,createNecklace,createFantasy,create,attach,eyeBounds,fit});
   if(typeof window!=='undefined')window.RoleAccessoryGeometry=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();
