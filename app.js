@@ -773,7 +773,7 @@ async function requestCharacterReply(char) {
         if (navigator.onLine === false) throw new TypeError('offline');
         const response = await fetch(CHAT_API_URL, {
           // JSON正文使用CORS安全的文本类型，手机发送时无需额外预检往返。
-          method: 'POST', headers: {'Content-Type': 'text/plain;charset=UTF-8', 'X-Client-Key': window.LIAOTIAN_CONFIG?.clientKey || 'liaotian123-public-2026'},
+          method: 'POST', headers: {'Content-Type': 'text/plain;charset=UTF-8', 'X-Client-Key': window.LIAOTIAN_CONFIG?.clientKey || 'lk-9CE8422ughj8AkIQwL7ZibdQnpu4X_Hp'},
           body: JSON.stringify({messages: job.messages, client: 'liaotian123', max_tokens: job.maxTokens, stream: true, attempt}),
           signal: controller.signal, credentials: 'omit', cache: 'no-store'
         });

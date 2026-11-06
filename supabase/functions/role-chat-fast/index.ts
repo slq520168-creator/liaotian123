@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// jsr:@supabase/functions-js/edge-runtime.d.ts (类型声明，运行时不需要，打包时跳过 JSR 下载)
 
 /**
  * 允许调用本函数的前端来源（收紧 CORS，不再用 *）。
