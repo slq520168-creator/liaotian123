@@ -27,7 +27,8 @@ const context = {
   buildRequestMessages: () => messages,
   renderMessages() {}, updateComposer() {}, saveDataToStorage() {},
   makeId: () => 'reply_id', getCurrentTime: () => '15:00',
-  messagesDiv: {querySelector: () => null}
+  messagesDiv: {querySelector: () => null},
+  window: {LIAOTIAN_CONFIG: {clientKey: 'liaotian123-public-2026'}}
 };
 vm.createContext(context);
 vm.runInContext(functions, context);
@@ -69,6 +70,7 @@ assert.equal(calls.length, 2, '无内容的服务故障自动重试一次');
 for (const [attempt, call] of calls.entries()) {
   assert.equal(call.options.method, 'POST');
   assert.equal(call.options.headers['Content-Type'], 'text/plain;charset=UTF-8');
+  assert.equal(call.options.headers['X-Client-Key'], 'liaotian123-public-2026');
   assert.equal(call.options.credentials, 'omit');
   assert.deepEqual(call.body.messages, messages);
   assert.equal(call.body.attempt, attempt);

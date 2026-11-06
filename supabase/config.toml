@@ -1,0 +1,4 @@
+project_id = "afzcohtnljnmucrkgcaz"
+
+[functions.role-chat-fast]
+verify_jwt = false

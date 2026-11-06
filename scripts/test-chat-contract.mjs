@@ -11,7 +11,7 @@ const sandbox = {
   Response, Request, Headers, ReadableStream, TextEncoder, TextDecoder,
   AbortController, setTimeout, clearTimeout, setInterval, clearInterval,
   console: { log() {}, warn() {} },
-  Deno: { serve(fn) { handler = fn; } },
+  Deno: { serve(fn) { handler = fn; }, env: { get() { return null; } } },
   fetch: async (url, options) => {
     requests.push({url, ...JSON.parse(options.body)});
     return new Response(JSON.stringify({choices: [{message: {content: '收到完整内容。'}, finish_reason: 'stop'}]}), {headers: {'content-type': 'application/json'}});
@@ -22,13 +22,15 @@ const user = '长文正文。'.repeat(4900) + '全文尾部标记';
 const system = '人设细节。'.repeat(3500) + '人设尾部标记';
 const history = Array.from({length: 19}, (_, i) => ({role: i % 2 ? 'assistant' : 'user', content: '往事'.repeat(1500)}));
 async function post(body, contentType = 'text/plain;charset=UTF-8') {
-  return handler(new Request('https://example.test/role-chat-fast', {method: 'POST', headers: {'content-type': contentType}, body: JSON.stringify(body)}));
+  return handler(new Request('https://example.test/role-chat-fast', {method: 'POST', headers: {'content-type': contentType, 'x-client-key': 'liaotian123-public-2026'}, body: JSON.stringify(body)}));
 }
 const health = await handler(new Request('https://example.test/role-chat-fast'));
 assert.equal(health.status, 200);
 assert.deepEqual(await health.json(), {ok: true});
-assert.equal(health.headers.get('access-control-allow-origin'), '*');
 assert.equal(health.headers.get('cache-control'), 'no-store');
+// CORS 已从 * 收紧为白名单，health 响应应返回白名单中的首个 origin
+assert.ok(health.headers.get('access-control-allow-origin'), 'CORS 必须返回明确的 origin 而非通配符');
+assert.notEqual(health.headers.get('access-control-allow-origin'), '*');
 assert.equal(requests.length, 0, '连接检查不得请求模型');
 const preflight = await handler(new Request('https://example.test/role-chat-fast', {method: 'OPTIONS'}));
 assert.equal(preflight.status, 204);

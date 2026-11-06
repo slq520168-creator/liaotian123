@@ -286,7 +286,7 @@ function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal
     },
     cancel(){stop();}
   });
-  return new Response(stream,{headers:{...corsHeaders(req.headers.get("origin")),"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform","x-accel-buffering":"no","vary":"origin"}});
+  return new Response(stream,{headers:{...corsHeaders(origin),"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform","x-accel-buffering":"no","vary":"origin"}});
 }
 Deno.serve(async(req:Request)=>{
   const origin=req.headers.get("origin");
