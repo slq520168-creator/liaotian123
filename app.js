@@ -169,9 +169,32 @@ function saveDataToStorage() {
     localStorage.setItem('liaotian_role_memories', JSON.stringify(roleMemories));
     localStorage.setItem('liaotian_reply_length', JSON.stringify(replyLength));
     localStorage.setItem('liaotian_chat_style', JSON.stringify(chatStyle));
-    if (replyStatus.textContent === '空间不足，暂时无法保存。') replyStatus.textContent = '';
+    if (replyStatus.textContent === '空间不足，已自动清理旧消息。' || replyStatus.textContent === '空间不足，暂时无法保存。') replyStatus.textContent = '';
     return true;
   } catch (error) {
+    // 空间不足时，尝试裁剪聊天历史（每个角色只保留最近 50 条），然后重试一次
+    if (error && (error.name === 'QuotaExceededError' || error.code === 22 || error.code === 1014)) {
+      try {
+        const trimmed = {};
+        for (const charId in chatHistories) {
+          const hist = chatHistories[charId];
+          trimmed[charId] = Array.isArray(hist) ? hist.slice(-50) : hist;
+        }
+        localStorage.setItem('liaotian_chat_histories', JSON.stringify(trimmed));
+        // 裁剪后再尝试保存其余数据
+        localStorage.setItem('liaotian_custom_chars', JSON.stringify(characters.filter(char => !char.isPreset)));
+        localStorage.setItem('liaotian_active_char', activeCharacterId);
+        localStorage.setItem('liaotian_player_profile', JSON.stringify(playerProfile));
+        localStorage.setItem('liaotian_role_memories', JSON.stringify(roleMemories));
+        localStorage.setItem('liaotian_reply_length', JSON.stringify(replyLength));
+        localStorage.setItem('liaotian_chat_style', JSON.stringify(chatStyle));
+        replyStatus.textContent = '空间不足，已自动清理旧消息。';
+        return true;
+      } catch (retryError) {
+        replyStatus.textContent = '空间不足，暂时无法保存，请导出备份后清理。';
+        return false;
+      }
+    }
     replyStatus.textContent = '空间不足，暂时无法保存。';
     return false;
   }
@@ -750,12 +773,12 @@ async function requestCharacterReply(char) {
         if (navigator.onLine === false) throw new TypeError('offline');
         const response = await fetch(CHAT_API_URL, {
           // JSON正文使用CORS安全的文本类型，手机发送时无需额外预检往返。
-          method: 'POST', headers: {'Content-Type': 'text/plain;charset=UTF-8'},
+          method: 'POST', headers: {'Content-Type': 'text/plain;charset=UTF-8', 'X-Client-Key': window.LIAOTIAN_CONFIG?.clientKey || 'liaotian123-public-2026'},
           body: JSON.stringify({messages: job.messages, client: 'liaotian123', max_tokens: job.maxTokens, stream: true, attempt}),
           signal: controller.signal, credentials: 'omit', cache: 'no-store'
         });
         if (!response.ok) {
-          const error = new Error(response.status === 429 ? '暂时无法回复，请稍后重试。' : '暂时没连上，请重试。');
+          const error = new Error(response.status === 429 ? '暂时无法回复，请稍后重试。' : response.status === 401 ? '服务鉴权失败，请联系管理员。' : '暂时没连上，请重试。');
           error.retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
           throw error;
         }

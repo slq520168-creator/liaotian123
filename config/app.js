@@ -1,13 +1,14 @@
 /** 唯一聊天接口配置入口。自己的部署只需替换 chatApiUrl，密钥留在后台。 */
 window.LIAOTIAN_CONFIG = Object.freeze({
-  chatApiUrl: 'https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast'
+  chatApiUrl: 'https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast',
+  clientKey: 'liaotian123-public-2026'
 });
 window.LIAOTIAN_HUMAN_ASSETS = window.LIAOTIAN_HUMAN_ASSETS || {};
 window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES || [];
 
 (() => {
   'use strict';
-  const version='20261029-create3d51';
+  const version='20261107-security-fix1';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';

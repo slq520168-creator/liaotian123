@@ -1,17 +1,72 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const cors={
-  "access-control-allow-origin":"*",
-  "access-control-allow-headers":"content-type, authorization",
-  "access-control-allow-methods":"GET,POST,OPTIONS",
-  "access-control-max-age":"600"
-};
-function json(data:unknown,status=200){
+/**
+ * 允许调用本函数的前端来源（收紧 CORS，不再用 *）。
+ * 如需新增域名，在此数组追加即可。
+ */
+const ALLOWED_ORIGINS = [
+  "https://slq520168-creator.github.io",
+  "https://liaotian123.pages.dev",
+  "http://localhost:8000",
+  "http://127.0.0.1:8000"
+];
+
+/**
+ * 客户端共享密钥（非机密，用于区分"自家前端"与"外部白嫖"）。
+ * 部署时在 Supabase Edge Function 环境变量设置 APP_CLIENT_KEY，
+ * 未设置时回退到默认值，保证开发环境可用。
+ */
+const APP_CLIENT_KEY = Deno.env.get("APP_CLIENT_KEY") || "liaotian123-public-2026";
+
+/** 单 IP 滑动窗口限流：每分钟最多 REQUESTS_PER_MINUTE 次请求。 */
+const REQUESTS_PER_MINUTE = 20;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function corsHeaders(origin: string | null){
+  const allowOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "access-control-allow-origin": allowOrigin,
+    "access-control-allow-headers": "content-type, authorization, x-client-key",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-max-age": "600",
+    "vary": "origin"
+  };
+}
+function json(data:unknown,status=200,origin:string|null=null){
   return new Response(JSON.stringify(data),{
     status,
-    headers:{...cors,"content-type":"application/json; charset=utf-8","cache-control":"no-store","connection":"keep-alive"}
+    headers:{...corsHeaders(origin),"content-type":"application/json; charset=utf-8","cache-control":"no-store","connection":"keep-alive"}
   });
 }
+
+/** 从请求中获取客户端 IP（Supabase 通过 x-forwarded-for / x-real-ip 透传）。 */
+function getClientIp(req:Request):string{
+  const xff=req.headers.get("x-forwarded-for");
+  if(xff)return xff.split(",")[0].trim();
+  return req.headers.get("x-real-ip")||"unknown";
+}
+
+/** 滑动窗口限流检查。返回 true 表示放行，false 表示已超限。 */
+function rateLimitCheck(ip:string):boolean{
+  const now=Date.now();
+  const entry=rateLimitMap.get(ip);
+  if(!entry||now>entry.resetAt){
+    rateLimitMap.set(ip,{count:1,resetAt:now+60_000});
+    return true;
+  }
+  if(entry.count>=REQUESTS_PER_MINUTE)return false;
+  entry.count++;
+  return true;
+}
+
+/** 定期清理过期的限流条目，避免内存无限增长。 */
+function cleanupRateLimit(){
+  const now=Date.now();
+  for(const [ip,entry] of rateLimitMap){
+    if(now>entry.resetAt)rateLimitMap.delete(ip);
+  }
+}
+setInterval(cleanupRateLimit,120_000);
 function compact(messages:any[],maxUserChars=1600,maxSystemChars=6000,historyBudget=Infinity){
   const a=Array.isArray(messages)?messages:[];
   const system=a.find((m:any)=>m?.role==="system");
@@ -167,7 +222,7 @@ async function* readUpstream(response:Response):AsyncGenerator<{delta?:string,do
   }finally{reader.cancel().catch(()=>{});reader.releaseLock();}
 }
 
-function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal){
+function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal,origin:string|null){
   const encoder=new TextEncoder();
   const aborters:AbortController[]=[];
   let closed=false;
@@ -231,24 +286,41 @@ function streamedReply(messages:any[],maxTokens:number,requestSignal:AbortSignal
     },
     cancel(){stop();}
   });
-  return new Response(stream,{headers:{...cors,"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform","x-accel-buffering":"no"}});
+  return new Response(stream,{headers:{...corsHeaders(req.headers.get("origin")),"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform","x-accel-buffering":"no","vary":"origin"}});
 }
 Deno.serve(async(req:Request)=>{
+  const origin=req.headers.get("origin");
+  const cors=corsHeaders(origin);
+
+  // CORS 预检
   if(req.method==="OPTIONS") return new Response(null,{status:204,headers:cors});
-  if(req.method==="GET") return json({ok:true});
-  if(req.method!=="POST") return json({error:"method_not_allowed"},405);
+  if(req.method==="GET") return json({ok:true},200,origin);
+  if(req.method!=="POST") return json({error:"method_not_allowed"},405,origin);
+
+  // —— 鉴权：校验 x-client-key 头，区分"自家前端"与外部白嫖 ——
+  const clientKey=req.headers.get("x-client-key");
+  if(clientKey!==APP_CLIENT_KEY){
+    return json({error:"unauthorized"},401,origin);
+  }
+
+  // —— 限流：每 IP 每分钟最多 REQUESTS_PER_MINUTE 次 ——
+  const ip=getClientIp(req);
+  if(!rateLimitCheck(ip)){
+    return json({error:"rate_limited",retry_after:60},429,origin);
+  }
+
   try{
     const body=await req.json().catch(()=>({}));
     const website=body?.client==="liaotian123";
     const incoming=Array.isArray(body?.messages)?body.messages:[];
-    if(website&&(lastUser(incoming).length>30000||String(incoming.find((m:any)=>m?.role==="system")?.content||"").length>24000))return json({error:"message_too_large"},400);
+    if(website&&(lastUser(incoming).length>30000||String(incoming.find((m:any)=>m?.role==="system")?.content||"").length>24000))return json({error:"message_too_large"},400,origin);
     const messages=compact(incoming,website?30000:1600,website?24000:6000,website?12000:Infinity);
     const requestedTokens=Number(body?.max_tokens);
     const maxTokens=body?.client==="liaotian123"&&Number.isFinite(requestedTokens)
       ? Math.max(180,Math.min(6000,Math.floor(requestedTokens)))
       : 180;
-    if(messages.length<2) return json({error:"messages_required"},400);
-    if(website&&body?.stream===true)return streamedReply(messages,maxTokens,req.signal);
+    if(messages.length<2) return json({error:"messages_required"},400,origin);
+    if(website&&body?.stream===true)return streamedReply(messages,maxTokens,req.signal,origin);
     try{
       const started=Date.now();
       const winner=await Promise.any([
@@ -259,11 +331,11 @@ Deno.serve(async(req:Request)=>{
         faucet(messages,maxTokens)
       ]);
       console.log("role_chat_provider",winner.provider,"ms",Date.now()-started);
-      return json(winner);
+      return json(winner,200,origin);
     }catch(e){
-      return json({error:"free_models_busy",detail:String(e).slice(0,180)},503);
+      return json({error:"free_models_busy",detail:String(e).slice(0,180)},503,origin);
     }
   }catch(e){
-    return json({error:"role_chat_failed",detail:String((e as any)?.message||e).slice(0,180)},500);
+    return json({error:"role_chat_failed",detail:String((e as any)?.message||e).slice(0,180)},500,origin);
   }
 });
