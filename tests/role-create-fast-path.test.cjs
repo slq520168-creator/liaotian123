@@ -44,7 +44,8 @@ test('creator commit still closes before heavy 3D switching and full persistence
   assert(source.includes('flushCreatorPendingSwitch();'));
   assert(source.includes('requestIdleCallback(save, {timeout:1400})'));
   assert(config.includes("const STORAGE_KEY='liaotian_3d_roles_v1'"));
-  assert(config.includes('localStorage.removeItem(LEGACY_KEY)'));
+  assert(config.includes('localStorage.setItem(LEGACY_KEY,serialized)'));
+  assert(config.includes('backupBeforePrune'));
 });
 
 test('chat mode is no longer user-switchable: every accepted role stays 3D', () => {
