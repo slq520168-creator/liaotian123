@@ -5,7 +5,7 @@ const visual=require('../role-visual-recipe.js');
 const mapper=require('../role-unified-human-recipe.js');
 const bodyUi=require('../role-body-details.js');
 const runtime=require('../role-unified-human-runtime.js');
-const preview=require('../role-creator-3d-preview.js');
+const preview=require('../role-creator-3d-preview-v2.js');
 
 function morphRoot(names){
   const dictionary=Object.fromEntries(names.map((name,index)=>[name,index]));

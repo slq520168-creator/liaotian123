@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const visual=require('../role-visual-recipe.js');
 const mapper=require('../role-unified-human-recipe.js');
-const preview=require('../role-creator-3d-preview.js');
+const preview=require('../role-creator-3d-preview-v2.js');
 
 const NEW_DETAILS=Object.freeze({
   noseLength:Object.freeze(['face_nose_length_decr','face_nose_length_incr']),
