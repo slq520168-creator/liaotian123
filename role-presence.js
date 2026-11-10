@@ -25,6 +25,56 @@
       .map(({startMs, endMs, viseme}) => ({startMs, endMs, viseme}));
   }
 
+  // --- Natural motion target system ---
+  // Each micro-motion channel picks random target values and smoothly
+  // interpolates toward them over a random duration, then picks a new
+  // target. This replaces the old fixed-period Math.sin wave with
+  // organic, non-repeating movement.
+
+  function makeTargetChannel(pickNew) {
+    return { current: 0, target: 0, from: 0, startMs: 0, durationMs: 1, active: false };
+  }
+
+  function tickChannel(ch, now, rng, config) {
+    if (!ch.active || now >= ch.startMs + ch.durationMs) {
+      ch.from = ch.current;
+      ch.target = config.pickTarget(rng);
+      ch.startMs = now;
+      ch.durationMs = config.minMs + rng() * (config.maxMs - config.minMs);
+      ch.active = true;
+    }
+    const t = clamp01((now - ch.startMs) / ch.durationMs);
+    // Smoothstep easing for natural acceleration/deceleration
+    const eased = t * t * (3 - 2 * t);
+    ch.current = ch.from + (ch.target - ch.from) * eased;
+    return ch.current;
+  }
+
+  // Breathing: asymmetric inhale (faster) / exhale (slower) with
+  // randomized amplitude so each breath feels different.
+  function breathe(now, baseAmp, rng, breathState) {
+    const cycle = breathState.cycleMs;
+    if (cycle <= 0 || now >= breathState.cycleStart + cycle) {
+      breathState.cycleStart = now;
+      breathState.cycleMs = 2800 + rng() * 1400; // 2.8-4.2s per breath
+      breathState.amp = baseAmp * (0.7 + rng() * 0.6); // ±30% amplitude variation
+      breathState.inhaleRatio = 0.38 + rng() * 0.12; // inhale ~38-50% of cycle
+    }
+    const phase = (now - breathState.cycleStart) / breathState.cycleMs;
+    const inhaleEnd = breathState.inhaleRatio;
+    let value;
+    if (phase < inhaleEnd) {
+      // Inhale: quick rise using smoothstep
+      const t = phase / inhaleEnd;
+      value = t * t * (3 - 2 * t);
+    } else {
+      // Exhale: slow fall using smoothstep
+      const t = (phase - inhaleEnd) / (1 - inhaleEnd);
+      value = 1 - t * t * (3 - 2 * t);
+    }
+    return value * breathState.amp;
+  }
+
   class PresenceController {
     constructor(options = {}) {
       this.state = 'idle';
@@ -36,11 +86,21 @@
       this.speechStartedAt = 0;
       this.nextBlinkAt = 0;
       this.blinkStartedAt = -1;
+      // Natural motion channels with random target points
+      this._chHeadYaw = makeTargetChannel();
+      this._chHeadPitch = makeTargetChannel();
+      this._chGazeX = makeTargetChannel();
+      this._chGazeY = makeTargetChannel();
+      this._chMicroSmile = makeTargetChannel();
+      this._breathState = { cycleStart: 0, cycleMs: 0, amp: 0, inhaleRatio: 0.42 };
       this.seedBlink(this.stateSince);
     }
 
     seedBlink(now = this.now()) {
-      this.nextBlinkAt = now + 2200 + this.random() * 3600;
+      // Speaking increases blink frequency; idle is more relaxed
+      const base = this.state === 'speaking' ? 1400 : 2200;
+      const range = this.state === 'speaking' ? 2600 : 3600;
+      this.nextBlinkAt = now + base + this.random() * range;
     }
 
     subscribe(listener) {
@@ -68,6 +128,8 @@
         this.visemeCues = [];
         this.speechStartedAt = 0;
       }
+      // Re-seed blink timing to match new state's frequency
+      this.seedBlink(this.stateSince);
       this.emit('state');
       return this;
     }
@@ -132,17 +194,48 @@
       const speaking = this.state === 'speaking';
       const listening = this.state === 'listening';
       const thinking = this.state === 'thinking';
-      const breathAmp = speaking ? 0.0018 : 0.003;
-      const motionAmp = speaking ? 0.012 : listening ? 0.007 : thinking ? 0.009 : 0.004;
+      const rng = this.random;
+
+      // Natural breathing: asymmetric inhale/exhale with randomized amplitude
+      const breathAmp = speaking ? 0.0018 : listening ? 0.0028 : thinking ? 0.0025 : 0.003;
+      const breathing = breathe(now, breathAmp, rng, this._breathState);
+
+      // Random target-point micro motion for head and gaze
+      // Each channel picks a new random target every 2-6s and smoothly
+      // interpolates toward it, producing organic non-repeating movement.
+      const headYaw = tickChannel(this._chHeadYaw, now, rng, {
+        minMs: 2000, maxMs: 5500,
+        pickTarget: r => (r() - 0.5) * 2 * (speaking ? 0.012 : listening ? 0.007 : thinking ? 0.009 : 0.004)
+      });
+      const headPitch = tickChannel(this._chHeadPitch, now, rng, {
+        minMs: 2500, maxMs: 6000,
+        pickTarget: r => (r() - 0.5) * 2 * (speaking ? 0.007 : listening ? 0.004 : thinking ? 0.005 : 0.0025)
+      });
+      const gazeX = tickChannel(this._chGazeX, now, rng, {
+        minMs: 1500, maxMs: 4500,
+        pickTarget: r => (r() - 0.5) * 2 * (listening ? 0.012 : 0.018)
+      });
+      const gazeY = tickChannel(this._chGazeY, now, rng, {
+        minMs: 1800, maxMs: 5000,
+        pickTarget: r => (r() - 0.5) * 2 * 0.008
+      });
+
+      // Subtle micro-smile that drifts in and out naturally
+      const microSmile = tickChannel(this._chMicroSmile, now, rng, {
+        minMs: 4000, maxMs: 9000,
+        pickTarget: r => r() * (speaking ? 0.04 : listening ? 0.025 : 0.015)
+      });
+
       return Object.freeze({
         state: this.state,
         visemes: this.sampleVisemes(now),
         blink: this.sampleBlink(now),
-        breathing: Math.sin(elapsed / 1150 * Math.PI * 2) * breathAmp,
-        headYaw: Math.sin(elapsed / 2600) * motionAmp,
-        headPitch: Math.sin(elapsed / 3200 + 0.7) * motionAmp * 0.55,
-        gazeX: Math.sin(elapsed / 4100 + 1.2) * (listening ? 0.012 : 0.018),
-        gazeY: Math.sin(elapsed / 5100 + 0.4) * 0.008,
+        breathing,
+        headYaw,
+        headPitch,
+        gazeX,
+        gazeY,
+        microSmile,
         gestureEnergy: speaking ? 0.22 : listening ? 0.06 : thinking ? 0.08 : 0.025
       });
     }

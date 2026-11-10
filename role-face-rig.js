@@ -132,6 +132,13 @@
     addVisemes(out, frame.visemes);
     addStateMicroExpression(out, frame.state);
     addExpressionPreset(out, frame.expressionPreset);
+    // Natural micro-smile drift: subtle organic mouth movement that
+    // makes the face feel alive even in idle state
+    const microSmile = Number(frame.microSmile) || 0;
+    if (microSmile > 0) {
+      add(out, 'mouthSmileLeft', microSmile);
+      add(out, 'mouthSmileRight', microSmile);
+    }
     return out;
   }
 
