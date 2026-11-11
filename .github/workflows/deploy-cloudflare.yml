@@ -12,11 +12,13 @@ permissions:
 
 concurrency:
   group: cloudflare-production-main
-  cancel-in-progress: false
+  # New pushes cancel older queued/stalled validation runs.
+  cancel-in-progress: true
 
 jobs:
   validate-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,9 +35,9 @@ jobs:
 
       - name: Validate site and 3D human assets
         run: |
-          npm test
-          node scripts/validate.mjs
-          npm run cf:check
+          timeout --signal=TERM --kill-after=10s 120s npm test
+          timeout --signal=TERM --kill-after=10s 150s node scripts/validate.mjs
+          timeout --signal=TERM --kill-after=10s 120s npm run cf:check
 
       - name: Detect Cloudflare deployment credentials
         id: cloudflare-auth

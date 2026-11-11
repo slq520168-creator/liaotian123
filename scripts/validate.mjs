@@ -7,7 +7,9 @@ import { parseGlb, validateHumanAsset, validateManifest } from './human-glb-cont
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 function run(args) {
-  const r = spawnSync(process.execPath, args, {stdio: 'inherit'});
+  // Bound every nested validator so one hung child cannot monopolize CI minutes.
+  const r = spawnSync(process.execPath, args, {stdio: 'inherit', timeout: 90000, killSignal: 'SIGTERM'});
+  if (r.error) throw new Error(`Validation subprocess failed: ${args[0]} (${r.error.code || r.error.message})`);
   if (r.status !== 0) process.exit(r.status || 1);
 }
 for (const file of [

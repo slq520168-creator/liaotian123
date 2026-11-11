@@ -1,8 +1,9 @@
 name: Validate website and guides
 
 on:
-  push:
+  # Production pushes are validated by deploy-cloudflare.yml; do not repeat them.
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -10,6 +11,7 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,9 +22,9 @@ jobs:
         run: npm install --no-audit --no-fund --package-lock=false
       - name: JavaScript, 3D runtime and website smoke tests
         run: |
-          npm test
-          node scripts/validate.mjs
-          npm run cf:build
+          timeout --signal=TERM --kill-after=10s 120s npm test
+          timeout --signal=TERM --kill-after=10s 150s node scripts/validate.mjs
+          timeout --signal=TERM --kill-after=10s 120s npm run cf:build
           test -s dist/vendor/three/build/three.module.js
           test -s dist/vendor/three/build/three.core.js
           test -s dist/vendor/three/examples/jsm/loaders/GLTFLoader.js
