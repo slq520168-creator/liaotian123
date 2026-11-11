@@ -9,7 +9,15 @@ let handler;
 const requests = [];
 const sandbox = {
   Response, Request, Headers, ReadableStream, TextEncoder, TextDecoder,
-  AbortController, setTimeout, clearTimeout, setInterval, clearInterval,
+  AbortController, setTimeout, clearTimeout,
+  // The real Deno handler installs a 120-second housekeeping interval at module
+  // load. Keep its behavior testable without keeping the Node test process alive.
+  setInterval: (...args) => {
+    const timer = setInterval(...args);
+    timer.unref();
+    return timer;
+  },
+  clearInterval,
   console: { log() {}, warn() {} },
   Deno: { serve(fn) { handler = fn; }, env: { get() { return null; } } },
   fetch: async (url, options) => {
