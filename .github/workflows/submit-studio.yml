@@ -1,0 +1,102 @@
+name: Submit verified studio and deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: Temporary download URL for the checksum-pinned studio source archive
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: submit-verified-studio
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify and apply the exact source release
+        shell: bash
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$SOURCE_URL"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          archive="$RUNNER_TEMP/studio-source.zip"
+          curl --proto '=https' --tlsv1.2 -fsSL --retry 3 "$SOURCE_URL" -o "$archive"
+          echo "d6a03b97058effdd35be1dc1c34fddd525b4a933612ffce108c16a0f7a97fa37  $archive" | sha256sum -c -
+          python3 - "$archive" <<'PY'
+          import pathlib, sys, zipfile
+          paths = ['README.md', 'docs/free-studio.md', 'docs/studio-verification.md', 'index.html', 'scripts/build-cloudflare.mjs', 'scripts/test-studio-api.mjs', 'studio-bridge.js', 'studio-launcher.js', 'studio/api.js', 'studio/core.js', 'studio/index.html', 'studio/studio.css', 'studio/studio.js', 'supabase/functions/liaotian-studio-free/index.ts', 'tests/studio-api.test.cjs', 'tests/studio-bridge.test.cjs', 'tests/studio-core.test.cjs']
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              for name in paths:
+                  data = archive.read(name)
+                  if len(data) > 1000000:
+                      raise ValueError('Unexpected source size: ' + name)
+                  path = pathlib.Path(name)
+                  path.parent.mkdir(parents=True, exist_ok=True)
+                  path.write_bytes(data)
+          PY
+      - name: Validate before submitting
+        run: |
+          npm install --no-audit --no-fund --package-lock=false
+          npm test
+          node scripts/validate.mjs
+          npm run cf:check
+      - name: Submit source without overwriting remote changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md docs/free-studio.md docs/studio-verification.md index.html scripts/build-cloudflare.mjs scripts/test-studio-api.mjs studio-bridge.js studio-launcher.js studio supabase/functions/liaotian-studio-free/index.ts tests/studio-api.test.cjs tests/studio-bridge.test.cjs tests/studio-core.test.cjs
+          git diff --cached --quiet || git commit -m 'feat: original safe character studio with verified free chat, portraits, voice and transitions'
+          git push origin HEAD:main
+          echo "Submitted source commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    needs: submit
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-cloudflare.yml
+    secrets: inherit
+  verify-studio:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Verify exact production studio files
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          for path in index.html studio-launcher.js studio-bridge.js studio/index.html studio/studio.js studio/studio.css studio/core.js studio/api.js; do
+            matched=false
+            for attempt in $(seq 1 20); do
+              if curl -fsSL "https://sirole.vip/$path?verify=$GITHUB_RUN_ID-$attempt" -o "$tmp/file" && cmp -s "$path" "$tmp/file"; then
+                matched=true
+                break
+              fi
+              sleep 3
+            done
+            test "$matched" = true
+            echo "Verified $path"
+          done
+          echo 'Production studio verified at https://sirole.vip/' >> "$GITHUB_STEP_SUMMARY"
