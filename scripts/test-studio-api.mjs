@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+let handler,lastOptions,upstreamStatus=200;
+globalThis.Deno={serve(fn){handler=fn;}};
+globalThis.fetch=async(url,options)=>{lastOptions=options;if(upstreamStatus!==200)return new Response('{}',{status:upstreamStatus,headers:{'retry-after':'90'}});if(String(url).includes('image.pollinations.ai'))return new Response(new Uint8Array([1,2,3]),{headers:{'content-type':'image/jpeg'}});return Response.json({choices:[{message:{content:'实际模型回复'}}]});};
+await import('../supabase/functions/liaotian-studio-free/index.ts');
+const request=(body,ip='1',origin='http://localhost:3000',method='POST')=>new Request('https://test.invalid/functions/v1/liaotian-studio-free',{method,headers:{origin,'content-type':'application/json','x-forwarded-for':ip},...(method==='POST'?{body:JSON.stringify(body)}:{})});
+assert.equal((await handler(request({},'1','https://evil.invalid'))).status,403);
+assert.equal((await handler(request({},'1','http://localhost:3000','OPTIONS'))).status,204);
+assert.equal((await handler(request({kind:'other'}))).status,400);
+assert.equal((await handler(request({kind:'text',messages:[]}))).status,400);
+let res=await handler(request({kind:'text',messages:[{role:'user',content:'你好'}]},'chat'));
+assert.equal(res.status,200);assert.equal((await res.json()).choices[0].message.content,'实际模型回复');
+assert.ok(!lastOptions.headers.authorization);assert.match(JSON.parse(lastOptions.body).messages[0].content,/非色情/);
+res=await handler(request({kind:'text',messages:[{role:'user',content:'第二次'}]},'chat'));assert.equal(res.status,429);assert.ok(Number(res.headers.get('retry-after'))>0);
+res=await handler(request({kind:'image',prompt:'a fully clothed adult',seed:42},'image'));assert.equal(res.status,200);assert.match(res.headers.get('content-type'),/image/);
+assert.equal((await handler(request({kind:'image',prompt:'x'.repeat(2201)},'long'))).status,400);
+upstreamStatus=402;res=await handler(request({kind:'text',messages:[{role:'user',content:'你好'}]},'payment'));assert.equal(res.status,402);assert.equal(res.headers.get('retry-after'),'90');
+console.log('免费后台契约通过：来源、输入、实际回复、安全规则、限频、非付费请求和402错误。');

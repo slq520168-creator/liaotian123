@@ -1,3 +1,5 @@
+> **新增原创创作工作台**：[角色聊天 / 人物大小图 / 系统语音 / 本机过场动画](studio/index.html)。使用限频免费接口，不含色情功能，不自动付款；保留原有 3D 入口和本机数据。完整能力与边界见 [免费工作台说明](docs/free-studio.md)。
+
 <div align="center">
 
 <img src="assets/brand/app-icon-512.png" width="96" height="96" alt="角色聊天：玫瑰粉对话心形 Logo" />

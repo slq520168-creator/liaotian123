@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#eff2f8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://afzcohtnljnmucrkgcaz.supabase.co; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>liaotian123 · 角色创作工作台</title>
+  <link rel="icon" href="../favicon.ico">
+  <link rel="stylesheet" href="studio.css">
+  <script src="../roles.js" defer></script>
+  <script src="core.js" defer></script>
+  <script src="api.js" defer></script>
+  <script src="studio.js" defer></script>
+</head>
+<body>
+  <aside class="rail">
+    <a class="brand" href="./"><span class="brand-symbol">L</span><span>liaotian<span class="brand-number">123</span><small>角色创作工作台</small></span></a>
+    <span class="rail-caption">CREATE YOUR WORLD</span>
+    <nav aria-label="工作台导航">
+      <button class="nav active" data-view="chat"><span>◌</span>角色聊天</button>
+      <button class="nav" data-view="portrait"><span>▧</span>人物影像</button>
+      <button class="nav" data-view="story"><span>▷</span>过场动画</button>
+      <button class="nav" data-view="library"><span>▦</span>作品库</button>
+    </nav>
+    <div class="rail-bottom"><a href="../index.html?legacy=1">原有 3D 创作器 ↗</a><button id="backup">备份角色与作品</button><label class="restore">恢复备份<input id="restore" type="file" accept="application/json" hidden></label><p>本地保存 · 免费优先<br>不调用收费服务</p></div>
+  </aside>
+  <main>
+    <header class="topbar"><span>创作空间 <b>/</b> <strong id="viewName">角色聊天</strong></span><div><span class="free-badge">免费模式</span><button class="quiet" id="serviceBtn">服务说明</button><button class="quiet" id="mobileBackup">备份</button></div></header>
+    <section class="intro"><div><p class="eyebrow">CHARACTER STUDIO / 01</p><h1>让角色，有自己的世界。</h1><p>从一句对话，到一张人物图，再到一段故事。</p></div><button class="primary" id="newRole">＋ 创建角色</button></section>
+    <section class="cast-section" aria-label="角色选择"><div class="section-line"><h2>我的角色 <span id="roleCount"></span></h2><input id="search" type="search" placeholder="搜索角色" aria-label="搜索角色"></div><div id="cast" class="cast"></div></section>
+    <section id="workspace" class="workspace">
+      <aside class="character-panel"><div class="portrait-shell"><img id="hero" alt="当前角色人物预览"><span id="heroLabel">原有头像预览 · 非高清大图</span></div><div class="character-details"><div class="name-line"><h2 id="characterName"></h2><button id="editRole" class="quiet">编辑人设</button></div><p id="characterTag"></p><p id="characterBio"></p><div class="character-tags" id="characterInterests"></div><div class="profile-actions"><button class="secondary" id="heroGenerate">生成人物大图 ↗</button><button class="quiet" id="tryVoice">试听声音</button></div></div></aside>
+      <div class="work-panel">
+        <section id="chatView" class="view"><div class="panel-heading"><div><span class="eyebrow">CONVERSATION</span><h2>聊聊今天，也创造故事。</h2></div><button class="quiet" id="clearChat">清空当前对话</button></div><div id="messages" class="messages" role="log" aria-label="聊天记录" aria-live="polite"></div><div class="voice-toolbar"><label><input type="checkbox" id="autoVoice">自动朗读</label><select id="voice" aria-label="系统声音"></select><button class="quiet" id="mic">语音输入</button><button class="quiet" id="stopVoice">停止朗读</button></div><div id="starters" class="starters"></div><form id="chatForm" class="composer"><textarea id="message" placeholder="说说你的想法… Enter 发送，Shift + Enter 换行" maxlength="30000" aria-label="聊天消息" rows="2"></textarea><button id="send" class="primary" type="submit">发送 ↗</button></form><p class="footnote">真实 AI 回复 · 免费接口每次至少间隔 45 秒 · 对话只保存在本机</p></section>
+        <section id="portraitView" class="view" hidden><div class="panel-heading"><div><span class="eyebrow">CHARACTER IMAGERY</span><h2>为角色，创造一个新形象。</h2></div></div><p class="muted">免费文生图不保证与原头像是同一张脸。大图生成后可裁切小图，不额外消耗接口额度。</p><form id="imageForm" class="creation-form"><label>影像风格<select id="imageStyle"><option value="natural editorial photography, soft daylight">自然写真</option><option value="watercolor illustration, delicate brush strokes">水彩插画</option><option value="cinematic still, soft dramatic lighting">电影画面</option><option value="stylized 3D animation character, clean materials">3D 动画风</option><option value="anime illustration, expressive eyes">日系插画</option></select></label><label>场景与构图<textarea id="imageScene" maxlength="800" rows="3" placeholder="例如：穿着米白色风衣，站在雨后的书店门口"></textarea></label><label>随机种子<input id="seed" type="number" min="0" max="2147483647" value="42"></label><button id="generate" class="primary" type="submit">生成人物大图 <span>512 × 768</span></button></form><div id="imageResult" class="image-result" hidden><img id="resultImage" alt="实际生成的人物大图"><div><h3>同一张图，两种用途。</h3><p>大图作为角色展示；小图作为聊天头像。</p><label>头像裁切位置<input id="crop" type="range" min="0" max="100" value="22"></label><canvas id="avatarPreview" width="256" height="256" aria-label="头像裁切预览"></canvas><button id="setAvatar" class="secondary">使用大图和小图</button><button id="downloadImage" class="quiet">下载大图</button></div></div></section>
+        <section id="storyView" class="view" hidden><div class="panel-heading"><div><span class="eyebrow">STORYBOARD</span><h2>让画面，成为故事。</h2></div></div><p class="muted">本机镜头推进、淡入淡出与字幕，不是 AI 视频生成，也不会调用收费视频接口。可选最多 3 张作品作为分镜。</p><div id="scenePicker" class="scene-picker"></div><label class="stack-label">场景字幕<textarea id="caption" rows="2" maxlength="100" placeholder="雨停了，故事才刚刚开始。"></textarea></label><div class="story-options"><label>时长<select id="duration"><option value="4">4 秒</option><option value="8" selected>8 秒</option><option value="12">12 秒</option></select></label><button id="previewStory" class="secondary">预览过场</button><button id="exportStory" class="primary">导出 WebM</button><button id="stopStory" class="quiet">停止</button></div><canvas id="storyCanvas" width="768" height="432" aria-label="过场动画预览"></canvas><p class="footnote">导出无音轨；系统朗读不能直接嵌入视频。浏览器不支持 WebM 录制时会明确提示。</p></section>
+        <section id="libraryView" class="view" hidden><div class="panel-heading"><div><span class="eyebrow">YOUR COLLECTION</span><h2>每一张图，都有一个故事。</h2></div><label class="secondary upload-label">上传图片<input id="upload" type="file" accept="image/png,image/jpeg,image/webp" hidden></label></div><div id="library" class="library"></div><p class="footnote">作品存储于本机 IndexedDB；清除浏览器数据前请备份。</p></section>
+      </div>
+    </section>
+    <p id="status" class="status" role="status" aria-live="polite">十二位角色已就绪。选择一位，开始你的故事。</p>
+  </main>
+  <dialog id="roleDialog"><form id="roleForm"><div class="dialog-heading"><h2>角色档案</h2><button type="button" class="quiet" data-close="roleDialog">关闭 ×</button></div><div class="form-grid"><label>名字<input name="name" required maxlength="40"></label><label>年龄<input name="age" type="number" min="18" max="100" required></label><label>性别<select name="gender"><option value="female">女</option><option value="male">男</option><option value="unspecified">未指定</option></select></label><label>声音风格<select name="voiceStyle"><option>自然</option><option>温柔</option><option>成熟</option><option>活泼</option><option>低沉</option><option>清爽</option></select></label><label class="wide">性格<textarea name="personality" maxlength="12000" rows="3" required></textarea></label><label class="wide">外观描述（用于图片生成）<textarea name="appearance" maxlength="2000" rows="2" placeholder="发型、服装、配饰与气质；描述原创成年角色"></textarea></label><label>兴趣<input name="interests" maxlength="1000"></label><label>关系<input name="relationship" maxlength="1000"></label><label class="wide">背景<textarea name="background" maxlength="3000" rows="2"></textarea></label><label class="wide">开场白<input name="greeting" maxlength="1000" required></label><label class="wide">你希望角色记住的事<textarea name="memory" maxlength="3000" rows="2" placeholder="只保存在本机；聊天时作为上下文发送。不要填写密码或敏感资料。"></textarea></label></div><button class="primary" type="submit">保存角色</button></form></dialog>
+  <dialog id="serviceDialog"><div class="dialog-heading"><h2>免费能力与数据说明</h2><button class="quiet" data-close="serviceDialog">关闭 ×</button></div><div class="service-list"><p><b>聊天与人物大图</b> · 通过本站已有 Supabase 免费计划后台转发至 Pollinations Classic，免模型密钥、限频、尽力服务。可能返回 402 / 429，此时只等待重试，不自动付款，不切换收费接口。免费后台也有配额限制。</p><p><b>语音输出</b> · 浏览器系统 TTS，不克隆真人声音；可用音色由设备决定，部分系统音色需要联网。</p><p><b>语音输入</b> · 浏览器 SpeechRecognition，可用性取决于浏览器，语音可能发送给浏览器厂商。始终可用文字输入。</p><p><b>大小图与过场</b> · 大图来自实际接口或上传；小图本机裁切；过场本机 Canvas 渲染和 WebM 录制。不承诺固定人脸、音画同步或 AI 视频。</p><p><b>数据与安全</b> · 不含色情功能；角色是虚构成年人。AI 请求把文字与人设经本站后台交给 Pollinations；图片提示词包含外观描述，经典图片链接可被缓存。不上传聊天中的图片或录音给本应用服务器。</p><p><b>备份</b> · 完整备份包含本机角色、聊天与作品。恢复合并覆盖同 ID 记录，不删除其他记录；原有 3D 数据不改动。</p><p><a href="../index.html?legacy=1">打开原有 3D 创作器 ↗</a> · <label class="restore">恢复工作台备份<input id="mobileRestore" type="file" accept="application/json" hidden></label></p></div><label class="consent"><input type="checkbox" id="consent">我理解免费服务限制，并同意发送所需文字给第三方服务</label></dialog>
+</body>
+</html>
