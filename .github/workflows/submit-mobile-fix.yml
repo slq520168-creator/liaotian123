@@ -1,0 +1,96 @@
+name: Submit verified mobile repair and deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_head:
+        description: Exact main HEAD validated before submission
+        required: true
+        type: string
+      patch_base64:
+        description: Gzip base64 of the checksum-pinned mobile repair
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: submit-verified-mobile-repair
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply the exact validated mobile repair
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ inputs.expected_head }}
+          PATCH_BASE64: ${{ inputs.patch_base64 }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD"
+          patch="$RUNNER_TEMP/mobile-repair.patch"
+          printf '%s' "$PATCH_BASE64" | base64 --decode | gzip --decompress > "$patch"
+          echo "ce00cfc57ddfd3af6537c782bbdc318491fded5dcfc899940408045ed740fc14  $patch" | sha256sum -c -
+          git apply --check --index --unidiff-zero "$patch"
+          git apply --index --unidiff-zero "$patch"
+      - name: Validate before submitting
+        run: |
+          npm install --no-audit --no-fund --package-lock=false
+          npm test
+          node scripts/validate.mjs
+          npm run cf:check
+      - name: Submit without overwriting remote changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: restore mobile 3D wasm textures and verified free legacy chat'
+          git push origin HEAD:main
+          echo "Submitted source commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    needs: submit
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-cloudflare.yml
+    secrets: inherit
+  verify-mobile:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Verify exact production mobile files
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          for path in index.html config/app.js app.js studio/api.js; do
+            matched=false
+            for attempt in $(seq 1 20); do
+              if curl -fsSL "https://sirole.vip/$path?verify=$GITHUB_RUN_ID-$attempt" -o "$tmp/file" && cmp -s "$path" "$tmp/file"; then
+                matched=true
+                break
+              fi
+              sleep 3
+            done
+            test "$matched" = true
+            echo "Verified $path"
+          done
+          echo 'Production mobile repair verified at https://sirole.vip/' >> "$GITHUB_STEP_SUMMARY"
