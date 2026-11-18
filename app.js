@@ -15,7 +15,7 @@ const DEFAULT_USER_AVATAR = 'assets/avatars/user.svg';
 const MAX_AVATAR_DATA_LENGTH = 180000;
 const REQUEST_TIMEOUT_MS = 40000;
 const LONG_REQUEST_TIMEOUT_MS = 100000;
-const SITE_VERSION = '20261020-freeze1';
+const SITE_VERSION = '20261117-create3d53';
 const UPDATE_COMPOSER_KEY = 'liaotian_update_composer';
 let lastSiteVersionCheck = 0;
 let checkingSiteVersion = false;
@@ -354,7 +354,7 @@ async function checkSiteVersion() {
 }
 
 function warmReplyConnection() {
-  if (!CHAT_API_URL || navigator.onLine === false || Date.now() - lastConnectionWarmAt < 300000) return;
+  if (!CHAT_API_URL || window.LIAOTIAN_CONFIG?.chatApiKind === 'studio-free' || navigator.onLine === false || Date.now() - lastConnectionWarmAt < 300000) return;
   lastConnectionWarmAt = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
@@ -765,21 +765,24 @@ async function requestCharacterReply(char) {
   const timer = setTimeout(() => {
     job.timedOut = true;
     controller.abort();
-  }, longRequest ? LONG_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
+  }, window.LIAOTIAN_CONFIG?.chatApiKind === 'studio-free' ? 120000 : longRequest ? LONG_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
   try {
     let text = '';
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (navigator.onLine === false) throw new TypeError('offline');
+        const freeStudio = window.LIAOTIAN_CONFIG?.chatApiKind === 'studio-free';
+        const anonKey = window.LIAOTIAN_CONFIG?.anonKey;
+        if (freeStudio && !anonKey) throw new Error('免费聊天配置未加载，请刷新页面。');
         const response = await fetch(CHAT_API_URL, {
-          // JSON正文使用CORS安全的文本类型，手机发送时无需额外预检往返。
-          method: 'POST', headers: {'Content-Type': 'text/plain;charset=UTF-8', 'X-Client-Key': window.LIAOTIAN_CONFIG?.clientKey || 'lk-9CE8422ughj8AkIQwL7ZibdQnpu4X_Hp'},
-          body: JSON.stringify({messages: job.messages, client: 'liaotian123', max_tokens: job.maxTokens, stream: true, attempt}),
+          method: 'POST', headers: freeStudio ? {'Content-Type': 'application/json', Authorization: 'Bearer ' + anonKey, apikey: anonKey} : {'Content-Type': 'text/plain;charset=UTF-8', 'X-Client-Key': window.LIAOTIAN_CONFIG?.clientKey || 'lk-9CE8422ughj8AkIQwL7ZibdQnpu4X_Hp'},
+          body: JSON.stringify(freeStudio ? {kind: 'text', messages: job.messages} : {messages: job.messages, client: 'liaotian123', max_tokens: job.maxTokens, stream: true, attempt}),
           signal: controller.signal, credentials: 'omit', cache: 'no-store'
         });
         if (!response.ok) {
-          const error = new Error(response.status === 429 ? '暂时无法回复，请稍后重试。' : response.status === 401 ? '服务鉴权失败，请联系管理员。' : '暂时没连上，请重试。');
-          error.retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
+          const retryAfter = Math.max(45, Math.min(600, Number(response.headers.get('retry-after')) || 45));
+          const error = new Error(response.status === 429 ? '免费接口冷却中，请等待 ' + retryAfter + ' 秒再重试。' : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : '暂时没连上，请重试。');
+          error.retryable = !freeStudio && [408, 429, 500, 502, 503, 504].includes(response.status);
           throw error;
         }
         text = await readModelReply(response, delta => {
@@ -826,9 +829,10 @@ async function readModelReply(response, onDelta) {
   if (!response.headers.get('content-type')?.includes('text/event-stream') || !response.body) {
     let data;
     try { data = await response.json(); } catch (error) { throw new Error('回复中断，请重试。'); }
-    if (!data || typeof data.text !== 'string' || !data.text.trim() || data.error || data.ok === false) throw new Error('没有收到回复，请重试。');
-    if (data.text.length > CHAT_LIMITS.reply) throw new Error('回复过长，请分段继续聊。');
-    return data.text;
+    const text = data?.text ?? data?.choices?.[0]?.message?.content;
+    if (!data || typeof text !== 'string' || !text.trim() || data.error || data.ok === false) throw new Error('没有收到回复，请重试。');
+    if (text.length > CHAT_LIMITS.reply) throw new Error('回复过长，请分段继续聊。');
+    return text;
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

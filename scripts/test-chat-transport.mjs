@@ -97,4 +97,41 @@ assert.equal(calls.length, 1);
 assert.equal(calls[0].options.method, 'GET');
 assert.equal(calls[0].options.body, undefined, '连接检查不发送玩家资料');
 assert.equal(calls[0].options.headers, undefined);
-console.log('聊天传输通过：完成后不等断连、迟到错误、UTF-8分块、无内容重试、部分回复保护、JSON兼容与无预检发送。');
+context.window.LIAOTIAN_CONFIG = {chatApiKind: 'studio-free', anonKey: 'public-test-key'};
+calls.length = 0;
+context.chatHistories[char.id] = [{sender: 'user', text: '下午好'}];
+context.fetch = async (url, options) => {
+  calls.push({url, options, body: options.body && JSON.parse(options.body)});
+  return Response.json({choices: [{message: {role: 'assistant', content: '免费接口实际回复'}}]});
+};
+await context.requestCharacterReply(char);
+assert.equal(calls.length, 1);
+assert.equal(calls[0].options.headers.Authorization, 'Bearer public-test-key');
+assert.equal(calls[0].options.headers.apikey, 'public-test-key');
+assert.equal(calls[0].options.headers['Content-Type'], 'application/json');
+assert.equal(calls[0].options.headers['X-Client-Key'], undefined);
+assert.equal(calls[0].body.kind, 'text');
+assert.deepEqual(calls[0].body.messages, messages);
+assert.equal(context.chatHistories[char.id][1].text, '免费接口实际回复');
+assert.equal(context.replyErrors.size, 0);
+for (const status of [402, 429]) {
+  calls.length = 0;
+  context.chatHistories[char.id] = [{sender: 'user', text: '下午好'}];
+  context.fetch = async (url, options) => {
+    calls.push({url, options});
+    return Response.json({error: 'free_provider_unavailable'}, {status, headers: {'retry-after': '90'}});
+  };
+  await context.requestCharacterReply(char);
+  assert.equal(calls.length, 1, '免费额度和冷却错误不得自动重试或切换服务');
+  assert.equal(context.chatHistories[char.id].length, 1);
+  assert.match(context.replyErrors.get(char.id).message, status === 429 ? /90 秒/ : /不会调用收费接口/);
+}
+calls.length = 0;
+context.warmReplyConnection();
+assert.equal(calls.length, 0, '免费服务不使用不支持的 GET 预热');
+context.window.LIAOTIAN_CONFIG.anonKey = '';
+await context.requestCharacterReply(char);
+assert.equal(calls.length, 0);
+assert.match(context.replyErrors.get(char.id).message, /配置未加载/);
+await assert.rejects(context.readModelReply(Response.json({choices: []}), () => {}), /没有收到回复/);
+console.log('聊天传输通过：旧流式兼容、免费接口鉴权与JSON答复、冷却不重试、缺失配置保护。');
