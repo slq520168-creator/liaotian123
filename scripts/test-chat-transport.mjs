@@ -28,7 +28,7 @@ const context = {
   renderMessages() {}, updateComposer() {}, saveDataToStorage() {},
   makeId: () => 'reply_id', getCurrentTime: () => '15:00',
   messagesDiv: {querySelector: () => null},
-  window: {LIAOTIAN_CONFIG: {clientKey: 'liaotian123-public-2026'}}
+  window: {LIAOTIAN_CONFIG: {chatApiKind: 'role-free'}}
 };
 vm.createContext(context);
 vm.runInContext(functions, context);
@@ -69,11 +69,13 @@ await context.requestCharacterReply(char);
 assert.equal(calls.length, 2, '无内容的服务故障自动重试一次');
 for (const [attempt, call] of calls.entries()) {
   assert.equal(call.options.method, 'POST');
-  assert.equal(call.options.headers['Content-Type'], 'text/plain;charset=UTF-8');
-  assert.equal(call.options.headers['X-Client-Key'], 'liaotian123-public-2026');
+  assert.equal(call.options.headers['Content-Type'], 'application/json');
+  assert.equal(call.options.headers['X-Client-Key'], undefined);
+  assert.equal(call.options.headers.Authorization, undefined);
   assert.equal(call.options.credentials, 'omit');
   assert.deepEqual(call.body.messages, messages);
-  assert.equal(call.body.attempt, attempt);
+  assert.equal(call.body.attempt, undefined);
+  assert.equal(typeof call.body.max_tokens, 'number');
 }
 assert.equal(context.chatHistories[char.id].length, 2, '重试不重复插入玩家消息');
 assert.equal(context.chatHistories[char.id][1].text, '真实回复\n第二行');
@@ -97,7 +99,7 @@ assert.equal(calls.length, 1);
 assert.equal(calls[0].options.method, 'GET');
 assert.equal(calls[0].options.body, undefined, '连接检查不发送玩家资料');
 assert.equal(calls[0].options.headers, undefined);
-context.window.LIAOTIAN_CONFIG = {chatApiKind: 'studio-free', anonKey: 'public-test-key'};
+context.window.LIAOTIAN_CONFIG = {chatApiKind: 'role-free'};
 calls.length = 0;
 context.chatHistories[char.id] = [{sender: 'user', text: '下午好'}];
 context.fetch = async (url, options) => {
@@ -106,11 +108,11 @@ context.fetch = async (url, options) => {
 };
 await context.requestCharacterReply(char);
 assert.equal(calls.length, 1);
-assert.equal(calls[0].options.headers.Authorization, 'Bearer public-test-key');
-assert.equal(calls[0].options.headers.apikey, 'public-test-key');
+assert.equal(calls[0].options.headers.Authorization, undefined);
+assert.equal(calls[0].options.headers.apikey, undefined);
 assert.equal(calls[0].options.headers['Content-Type'], 'application/json');
 assert.equal(calls[0].options.headers['X-Client-Key'], undefined);
-assert.equal(calls[0].body.kind, 'text');
+assert.equal(calls[0].body.kind, undefined);
 assert.deepEqual(calls[0].body.messages, messages);
 assert.equal(context.chatHistories[char.id][1].text, '免费接口实际回复');
 assert.equal(context.replyErrors.size, 0);
@@ -129,9 +131,9 @@ for (const status of [402, 429]) {
 calls.length = 0;
 context.warmReplyConnection();
 assert.equal(calls.length, 0, '免费服务不使用不支持的 GET 预热');
-context.window.LIAOTIAN_CONFIG.anonKey = '';
+context.fetch = async () => Response.json({error:'model_unavailable'},{status:503});
 await context.requestCharacterReply(char);
-assert.equal(calls.length, 0);
-assert.match(context.replyErrors.get(char.id).message, /配置未加载/);
+assert.equal(context.chatHistories[char.id].length,1,'模型不可用时不保存虚假回复');
+assert.match(context.replyErrors.get(char.id).message,/暂时没连上/);
 await assert.rejects(context.readModelReply(Response.json({choices: []}), () => {}), /没有收到回复/);
-console.log('聊天传输通过：旧流式兼容、免费接口鉴权与JSON答复、冷却不重试、缺失配置保护。');
+console.log('聊天传输通过：真实JSON接口、流式兼容、冷却不重试、失败无虚假回复。');

@@ -17,7 +17,7 @@ for (const file of [
   'role-presence.js', 'role-visual-recipe.js', 'role-accessory-geometry.js', 'role-face-rig.js', 'role-direct-viseme-rig.js', 'role-render-loop.js', 'role-body-rig.js', 'role-proportion-rig.js', 'role-appearance-rig.js',
   'role-meshopt-support.js', 'role-human-manifest.js', 'role-asset-policy.js', 'role-human-asset-capability.js', 'role-human-renderer.js', 'role-render-recipe-bridge.js', 'role-chat-mode.js', 'role-voice-stage.js', 'role-voice-style.js',
   'role-unified-human-recipe.js', 'role-unified-human-runtime.js', 'role-unified-custom-chat.js', 'role-unified-production-gate.js',
-  'role-code-compat.js', 'role-persistence.js', 'role-builder.js', 'role-creator-studio.js', 'role-creator-animated-presets.js', 'role-custom-visual.js', 'app.js'
+  'role-code-compat.js', 'role-persistence.js', 'role-builder.js', 'role-creator-studio.js', 'role-creator-animated-presets.js', 'role-custom-visual.js', 'app.js', 'role-discovery.js', 'worker.js'
 ]) run(['--check', file]);
 for (const file of ['scripts/build-cloudflare.mjs','scripts/import-human-asset.mjs','scripts/validate-vitruvian-morph-map.mjs','scripts/validate-vitruvian-reference.mjs','scripts/validate-unified-human-candidate.cjs']) run(['--check', file]);
 for (const file of ['assets/role-models/manifest.json','roles/new-role.role.json', 'roles/preset-roles.json', 'scripts/vitruvian-morph-map.json', 'assets/humans/unified/unified-human-manifest.json', 'assets/humans/unified/unified-human-report.json', 'assets/humans/unified/asset_licenses.json']) JSON.parse(fs.readFileSync(file, 'utf8'));
