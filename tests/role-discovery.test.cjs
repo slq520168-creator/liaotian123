@@ -45,7 +45,7 @@ test('full-screen portrait, WebGL canvas and animated reply remain independent o
   assert.match(js, /messages\.querySelectorAll\('\.message-row\.bot'\)/);
   assert.match(js, /queueReplySync/);
   assert.match(js, /toggleHistory/);
-  assert.match(js, /VIDEO_URL_RE\.test\(videoSrc\)/);
+  assert.match(js, /playVideo\(\$\('rdHeroVideo'\),videoSrc\)/);
   assert.doesNotMatch(js, /localStorage\.removeItem\(['"]liaotian_chat_histories/);
 });
 
@@ -76,4 +76,14 @@ test('fresh visits always land on the 12-character swipe gallery, never cached c
   assert.match(js, /pointermove/);
   assert.match(js, /pointerup/);
   assert.doesNotMatch(css, /animation:rdPortraitBreath/);
+});
+
+test('real local videos only, no temporary third-party links in role cards',()=>{
+ const script=read('role-discovery.js'),html=read('index.html');
+ for(const id of ['shenyan','nuannuan','linwan','jiangyu','sutang','xuzhixia','yeqingge','lingyi'])assert.match(script,new RegExp('\\"'+id+'\\"'));
+ assert.match(script,/assets\/role-videos\//);
+ assert.match(script,/stopVideo/);
+ assert.match(script,/playVideo/);
+ assert.match(html,/id="rdChatVideo"/);
+ assert.doesNotMatch(script,/\.hf\.space\/--replicas/);
 });

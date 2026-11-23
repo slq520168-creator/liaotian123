@@ -166,3 +166,7 @@ body.role-chat-immersive .rd-reply-retry{margin-top:10px;padding:5px 14px;border
  body.role-chat-immersive .rd-chat-scene img,body.role-chat-immersive .rd-live-reply,
  body.role-chat-immersive .rd-speaking-indicator,body.role-chat-immersive .rd-reply-typing i{animation:none!important;transition:none!important}
 }
+/* Real MP4 video backgrounds: only the current role's video is attached. */
+body.role-chat-immersive .rd-chat-scene>.rd-chat-video{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;object-position:center 22%;filter:saturate(1.07) brightness(.81);pointer-events:none}
+body.role-chat-immersive .rd-chat-scene>.rd-chat-video[hidden]{display:none!important}
+body.role-chat-immersive .rd-chat-scene:has(.rd-chat-video:not([hidden]))>img{visibility:hidden}
