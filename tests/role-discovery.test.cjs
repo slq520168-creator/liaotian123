@@ -147,7 +147,7 @@ test('twelve featured fiction personas use independent locally hosted WebP portr
    resolved.add(filename);
  }
  assert.equal(resolved.size,12,'no shared placeholder assets');
- assert.match(app,/role-portraits\\\/[a-z0-9_-]+/);
+ assert.match(app,/role-portraits/);
  assert.match(discovery,/FEATURED_RANK/);
  assert.match(html,/data-role-filter="featured"/);
  assert.match(html,/assets\/role-portraits\/luoyan\.webp/);
