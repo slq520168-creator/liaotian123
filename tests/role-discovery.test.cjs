@@ -123,6 +123,7 @@ test('role gallery displays exactly two cards per row at all widths with legible
  const css=read('role-discovery.css'),js=read('role-discovery.js');
  const cols=[...css.matchAll(/\.rd-character-grid\s*\{([^}]+)\}/g)].map(x=>x[1]).filter(x=>x.includes('grid-template-columns'));
  assert.equal(cols.length,1,'prevent conflicting responsive column overrides');
+ assert.match(cols[0],/display:grid/,'gallery must be grid even after old styles are consolidated');
  assert.match(cols[0],/repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(css,/\.rd-mini-image\{[^}]*object-fit:cover/s);
  assert.match(css,/\.rd-mini-hook\{[^}]*-webkit-line-clamp:2/s);
