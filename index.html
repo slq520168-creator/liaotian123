@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="styles.css?v=20261117-create3d53">
   <link rel="stylesheet" href="role-discovery.css?v=20261123-discover01">
   <link rel="stylesheet" href="role-chat-immersive.css?v=20261123-discover01">
+  <link rel="stylesheet" href="role-2d-creator.css?v=20261123-character01">
 </head>
 <body>
   <div class="app-container">
@@ -32,7 +33,7 @@
 
       <div class="sidebar-actions">
         <button class="btn btn-primary btn-block" id="openCreateModalBtn">
-          <span class="icon">+</span> 创建3D角色
+          <span class="icon">+</span> 创建角色
         </button>
         <button class="btn btn-outline btn-block" id="uploadRoleCodeBtn" type="button">上传角色代码</button>
         <p id="roleCodeStatus" class="form-hint" role="status"></p>
@@ -42,12 +43,12 @@
 
       <div class="sidebar-characters">
         <div class="character-section">
-          <h3 id="presetRoleTitle">3D角色</h3>
+          <h3 id="presetRoleTitle">角色</h3>
           <div class="character-list" id="presetCharacterList"></div>
         </div>
 
         <div class="character-section">
-          <h3>我的3D角色</h3>
+          <h3>我的角色</h3>
           <div class="character-list" id="customCharacterList"></div>
         </div>
       </div>
@@ -85,7 +86,7 @@
         <div class="messages" id="messages"></div>
       </div>
 
-      <aside id="rdLiveReply" class="rd-live-reply" aria-label="人物正在回复" aria-live="polite" hidden><div class="rd-reply-top"><span class="rd-speaking-indicator"></span><strong id="rdReplyName">暖暖</strong></div><p id="rdReplyText"></p><span class="rd-reply-typing" aria-hidden="true"><i></i><i></i><i></i></span></aside>
+      <aside id="rdLiveReply" class="rd-live-reply" aria-label="人物正在回复" aria-live="polite" hidden><div class="rd-reply-top"><span class="rd-speaking-indicator"></span><strong id="rdReplyName">暖暖</strong></div><p id="rdReplyText"></p><span class="rd-reply-typing" aria-hidden="true"><i></i><i></i><i></i></span><button id="rdReplyRetry" class="rd-reply-retry" type="button" hidden>重试回复</button></aside>
       <div class="input-container">
         <div class="quick-replies" id="quickReplies"></div>
         <div class="chat-tools">
@@ -261,7 +262,8 @@
   <script src="role-code.js?v=20261117-create3d53" defer></script>
   <script src="app.js?v=20261117-create3d53" defer></script>
   <script src="role-discovery.js?v=20261123-discover01" defer></script>
-  <script src="role-face-live.js?v=20261123-face01" defer></script>
+  <script src="role-avatar-stage.js?v=20261123-character01" defer></script>
+  <script src="role-2d-creator.js?v=20261123-character01" defer></script>
   <script src="studio-bridge.js" defer></script>
 </body>
 </html>

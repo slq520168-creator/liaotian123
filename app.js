@@ -911,6 +911,7 @@ function renderAvatarPicker() {
 
 function openModal(charId = '') {
   const char = characters.find(item => item.id === charId && !item.isPreset);
+  if ((!char || char.roleKind !== '3d') && window.Role2DCreator?.open) return window.Role2DCreator.open(charId);
   editingCharacterId = char?.id || '';
   createRoleForm.reset();
   byId('createRoleTitle').textContent = char ? '编辑3D角色' : '创建3D角色';

@@ -154,6 +154,11 @@ body.role-chat-immersive #avatarUploadStatus{color:#e7c8ef}
  body.role-chat-immersive .chat-main>.role-human-stage.active~.input-container{padding-block:5px!important}
 }
 
+body.role-chat-immersive .rd-mesh-avatar{display:block;position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
+body.role-chat-immersive .rd-mesh-avatar[hidden]{display:none!important}
+body.role-chat-immersive .rd-mesh-avatar canvas{width:100%;height:100%}
+body.role-chat-immersive .rd-chat-scene:has(.rd-mesh-avatar:not([hidden]))>img{opacity:0}
+body.role-chat-immersive .rd-reply-retry{margin-top:10px;padding:5px 14px;border:1px solid #ad78ff;border-radius:10px;background:#b486ff;color:#160f1d;font-size:12px;font-weight:750}
 @keyframes rdReplyIn{from{opacity:.45;transform:translateY(9px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes rdSpeaking{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.14)}}
 @keyframes rdTyping{0%,60%,100%{opacity:.32;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}

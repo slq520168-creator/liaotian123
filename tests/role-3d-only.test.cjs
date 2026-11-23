@@ -26,7 +26,9 @@ test('production boot separates 3d storage and removes legacy mode switching',()
   assert.match(config,/liaotian_3d_roles_v1/);
   assert.match(config,/liaotian_custom_chars/);
   assert.match(config,/liaotian_chat_mode_v2_/);
-  assert.match(config,/char\.roleKind=ROLE_KIND/);
+  assert.match(config,/char\.roleKind=is3DRaw\(value\)\?ROLE_KIND:'2d'/);
+  assert.match(config,/const merged=\[\.\.\.legacy\]/);
+  assert.doesNotMatch(config,/localStorage\.setItem\(LEGACY_KEY,serialized\)/);
   assert.match(persistence,/3d-roles-v1/);
   assert.match(persistence,/char\.roleKind==='3d'/);
 });

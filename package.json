@@ -3,6 +3,7 @@
   "private": true,
   "devDependencies": {
     "meshoptimizer": "1.3.0",
+    "mesh-avatar-element": "0.4.5",
     "three": "0.186.1",
     "wrangler": "4.151.0"
   },

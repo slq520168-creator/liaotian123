@@ -138,6 +138,13 @@
     const play = index => {
       if (run !== speechRun || index >= chunks.length) return;
       const utterance = buildUtterance(chunks[index], char, voice);
+      utterance.onboundary = event => {
+        if (run !== speechRun) return;
+        if (char?.id !== activeCharacterId) return;
+        window.dispatchEvent(new CustomEvent('rolevoiceboundary', {
+          detail:{charId:char.id, charIndex:Number(event.charIndex)||0, elapsedTime:Number(event.elapsedTime)||0}
+        }));
+      };
       utterance.onstart = () => {
         if (run !== speechRun) return;
         if (!started) {

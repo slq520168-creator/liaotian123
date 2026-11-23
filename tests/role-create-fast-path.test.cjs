@@ -44,7 +44,8 @@ test('creator commit still closes before heavy 3D switching and full persistence
   assert(source.includes('flushCreatorPendingSwitch();'));
   assert(source.includes('requestIdleCallback(save, {timeout:1400})'));
   assert(config.includes("const STORAGE_KEY='liaotian_3d_roles_v1'"));
-  assert(config.includes('localStorage.setItem(LEGACY_KEY,serialized)'));
+  assert(!config.includes('localStorage.setItem(LEGACY_KEY,serialized)'));
+  assert(config.includes('const merged=[...legacy]'));
   assert(config.includes('backupBeforePrune'));
 });
 

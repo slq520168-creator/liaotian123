@@ -9,7 +9,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
 (() => {
   'use strict';
-  const version='20261123-create3d55';
+  const version='20261123-create3d56';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';
@@ -35,13 +35,25 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
   function backupBeforePrune(key,allowed,store=localStorage){try{const value=JSON.parse(store.getItem(key)||'{}');if(!value||typeof value!=='object'||Array.isArray(value))return;const removed=Object.fromEntries(Object.entries(value).filter(([id])=>!allowed.has(id)));if(Object.keys(removed).length){const backupKey=key+'_backup_'+Date.now();const existing=parseList(backupKey,store)||[];store.setItem(backupKey,JSON.stringify(removed));}store.setItem(key,JSON.stringify(Object.fromEntries(Object.entries(value).filter(([id])=>allowed.has(id)))));}catch{}}
   function removeLegacyModeState(store=localStorage){try{const keys=[];for(let i=0;i<store.length;i++){const key=store.key(i);if(key)keys.push(key);}for(const key of keys)if(key.startsWith(LEGACY_MODE_PREFIX)||key.startsWith(LEGACY_MODE_INIT_PREFIX))store.removeItem(key);}catch{}}
-  function migrate3DRoles(store=localStorage){let saved=parseList(STORAGE_KEY,store);if(!saved)saved=normalizeStored3D(parseList(LEGACY_KEY,store)||[]);else saved=normalizeStored3D(saved);try{store.setItem(STORAGE_KEY,JSON.stringify(saved));store.setItem(LEGACY_KEY,JSON.stringify(saved));removeLegacyModeState(store);const allowed=new Set([...PRESET_3D_IDS,...saved.map(item=>String(item.id||'')).filter(Boolean)]);backupBeforePrune('liaotian_chat_histories',allowed,store);backupBeforePrune('liaotian_role_memories',allowed,store);const active=store.getItem('liaotian_active_char');if(active&&!allowed.has(active))store.setItem('liaotian_active_char_backup',active);}catch{}return saved;}
+  /* Restore/preserve BOTH legacy roleplay characters and the separate 3D catalog.
+   * Older builds unconditionally replaced LEGACY_KEY with 3D-only characters and pruned
+   * chat histories. Never destroy another role type or its local messages on startup. */
+  function migrate3DRoles(store=localStorage){
+    const legacy=parseList(LEGACY_KEY,store)||[];
+    const threeD=normalizeStored3D(parseList(STORAGE_KEY,store)||[]);
+    const merged=[...legacy],seen=new Set(legacy.map(item=>String(item?.id||'')));
+    for(const item of threeD){
+      if(!seen.has(String(item?.id||''))){merged.push(item);seen.add(String(item.id));}
+    }
+    if(merged.length!==legacy.length){try{store.setItem(LEGACY_KEY,JSON.stringify(merged));}catch{}}
+    return merged;
+  }
   function install3DOnlyAuthority(){
     if(typeof PRESET_CHARACTERS!=='undefined'&&Array.isArray(PRESET_CHARACTERS)){const allowed=new Set(PRESET_3D_IDS),kept=PRESET_CHARACTERS.filter(char=>allowed.has(String(char?.id||'')));for(const char of kept)char.roleKind=ROLE_KIND;PRESET_CHARACTERS.splice(0,PRESET_CHARACTERS.length,...kept);}
     migrate3DRoles(localStorage);
-    if(typeof normalizeCustomCharacter==='function'&&!normalizeCustomCharacter.__threeDOnly){const baseNormalize=normalizeCustomCharacter;const wrappedNormalize=function(value){if(!is3DRaw(value))return null;const char=baseNormalize.call(this,value);if(!char)return null;char.roleKind=ROLE_KIND;return char;};wrappedNormalize.__threeDOnly=true;normalizeCustomCharacter=wrappedNormalize;}
-    if(typeof saveDataToStorage==='function'&&!saveDataToStorage.__threeDOnly){const baseSave=saveDataToStorage;const wrappedSave=function(...args){const ok=baseSave.apply(this,args);try{const roles=typeof characters!=='undefined'&&Array.isArray(characters)?characters.filter(char=>char&&!char.isPreset&&char.roleKind===ROLE_KIND).map(char=>({...char,roleKind:ROLE_KIND})):[];const serialized=JSON.stringify(roles);localStorage.setItem(STORAGE_KEY,serialized);localStorage.setItem(LEGACY_KEY,serialized);removeLegacyModeState(localStorage);}catch{}return ok;};wrappedSave.__threeDOnly=true;saveDataToStorage=wrappedSave;}
-    const presetTitle=document.getElementById('presetRoleTitle');if(presetTitle)presetTitle.textContent='3D角色';const customList=document.getElementById('customCharacterList');if(customList?.previousElementSibling)customList.previousElementSibling.textContent='我的3D角色';const create=document.getElementById('openCreateModalBtn');if(create)create.innerHTML='<span class="icon">+</span> 创建3D角色';document.getElementById('ordinaryChatHint')?.remove();document.getElementById('roleChatModeBtn')?.remove();
+    if(typeof normalizeCustomCharacter==='function'&&!normalizeCustomCharacter.__threeDOnly){const baseNormalize=normalizeCustomCharacter;const wrappedNormalize=function(value){const char=baseNormalize.call(this,value);if(!char)return null;char.roleKind=is3DRaw(value)?ROLE_KIND:'2d';return char;};wrappedNormalize.__threeDOnly=true;normalizeCustomCharacter=wrappedNormalize;}
+    if(typeof saveDataToStorage==='function'&&!saveDataToStorage.__threeDOnly){const baseSave=saveDataToStorage;const wrappedSave=function(...args){const ok=baseSave.apply(this,args);try{const roles=typeof characters!=='undefined'&&Array.isArray(characters)?characters.filter(char=>char&&!char.isPreset&&char.roleKind===ROLE_KIND).map(char=>({...char,roleKind:ROLE_KIND})):[];const serialized=JSON.stringify(roles);localStorage.setItem(STORAGE_KEY,serialized);}catch{}return ok;};wrappedSave.__threeDOnly=true;saveDataToStorage=wrappedSave;}
+    const presetTitle=document.getElementById('presetRoleTitle');if(presetTitle)presetTitle.textContent='角色';const customList=document.getElementById('customCharacterList');if(customList?.previousElementSibling)customList.previousElementSibling.textContent='我的角色';const create=document.getElementById('openCreateModalBtn');if(create)create.innerHTML='<span class="icon">+</span> 创建角色';document.getElementById('ordinaryChatHint')?.remove();document.getElementById('roleChatModeBtn')?.remove();
   }
   // app.js can initialize while deferred scripts still see readyState=interactive.
   // Install before its first storage read, rather than after its first render.

@@ -56,7 +56,7 @@
     root.hidden = !showLobby;
     document.body.classList.toggle('role-discovery-open', showLobby);
     document.body.classList.toggle('role-chat-immersive', !showLobby);
-    window.RoleFaceLive?.setActive?.(!showLobby);
+    window.RoleAvatarStage?.setActive?.(!showLobby);
     if (!showLobby) syncBackdrop();
     closeHistory();
     if (showLobby) {
@@ -80,7 +80,7 @@
     cover.alt = '';
     const name = $('rdReplyName');
     if (name) name.textContent = char.name;
-    window.RoleFaceLive?.setCharacter?.(char);
+    window.RoleAvatarStage?.setCharacter?.(char);
     queueReplySync();
   }
   let replyFrame = 0;
@@ -106,7 +106,15 @@
     }
     live.hidden = !last;
     live.classList.toggle('rd-is-typing', Boolean(isTyping));
-    if (!isTyping && nextText) window.RoleFaceLive?.setReply?.(nextText);
+    if (!isTyping && nextText) window.RoleAvatarStage?.setReply?.(nextText);
+    const error=messages.querySelector('.reply-error');
+    const retry=$('rdReplyRetry');
+    if(retry){retry.hidden=!error;}
+    if(error){
+      live.hidden=false;
+      live.classList.remove('rd-is-typing');
+      text.textContent=error.querySelector('span')?.textContent||'回复暂时失败，请重试。';
+    }
   }
   function closeHistory() {
     document.body.classList.remove('rd-history-open');
@@ -312,6 +320,10 @@
     root.querySelectorAll('[data-role-filter]').forEach(btn => btn.addEventListener('click', () => setFilter(btn.dataset.roleFilter)));
     $('rdGoHome')?.addEventListener('click', () => switchView(true));
     $('rdHistoryToggle').addEventListener('click', toggleHistory);
+    $('rdReplyRetry')?.addEventListener('click',()=>{
+      const btn=$('messages')?.querySelector('.reply-error button');
+      if(btn)btn.click();
+    });
     const messages = $('messages');
     if (messages && typeof MutationObserver === 'function') {
       const replyObserver = new MutationObserver(queueReplySync);
@@ -363,6 +375,7 @@
     switchView(hash !== '#chat', false);
     queueReplySync();
   }
+  window.RoleDiscovery=Object.freeze({showLobby:()=>switchView(true),openChat:id=>{const char=allCharacters().find(item=>item.id===id);if(char)startChat(char);},refresh:render});
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once: true});
   else boot();
 })();
