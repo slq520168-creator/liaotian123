@@ -169,7 +169,7 @@ function saveDataToStorage() {
     localStorage.setItem('liaotian_role_memories', JSON.stringify(roleMemories));
     localStorage.setItem('liaotian_reply_length', JSON.stringify(replyLength));
     localStorage.setItem('liaotian_chat_style', JSON.stringify(chatStyle));
-    if (replyStatus.textContent === '空间不足，已自动清理旧消息。' || replyStatus.textContent === '空间不足，暂时无法保存。') replyStatus.textContent = '';
+    if (replyStatus.textContent.startsWith('设备存储空间不足') || replyStatus.textContent.startsWith('本机保存失败')) replyStatus.textContent = '';
     return true;
   } catch (error) {
     // Never delete older conversations to make a failed write look successful.
