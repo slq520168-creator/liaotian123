@@ -780,8 +780,8 @@ async function requestCharacterReply(char) {
           signal: controller.signal, credentials: 'omit', cache: 'no-store'
         });
         if (!response.ok) {
-          const retryAfter = Math.max(45, Math.min(600, Number(response.headers.get('retry-after')) || 45));
-          const error = new Error(response.status === 429 ? '免费接口冷却中，请等待 ' + retryAfter + ' 秒再重试。' : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : '暂时没连上，请重试。');
+          const serverRetryAfter=Number(response.headers.get('retry-after')); const retryAfter=Number.isFinite(serverRetryAfter)&&serverRetryAfter>0?Math.ceil(Math.min(600,serverRetryAfter)):null;
+          const error = new Error(response.status === 429 ? (retryAfter ? '请求较多，请 ' + retryAfter + ' 秒后重试。' : '请求较多，请稍后重试。') : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : '暂时没连上，请重试。');
           error.retryable = [408, 500, 502, 503, 504].includes(response.status);
           throw error;
         }

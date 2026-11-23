@@ -1,7 +1,21 @@
 /* Same-origin chat proxy; no Supabase, database, client secret or generated placeholder response. */
-const recent=new Map();let inFlight=0;
+const buckets=new Map();let inFlight=0,lastSweep=0;
+const RATE_WINDOW_MS=60000,MAX_PER_IP=24,MAX_IN_FLIGHT=10;
+function shouldThrottle(req,now){
+  if(now-lastSweep>=RATE_WINDOW_MS){
+    for(const [key,bucket] of buckets)if(now-bucket.start>=RATE_WINDOW_MS)buckets.delete(key);
+    lastSweep=now;
+  }
+  const ip=req.headers.get('cf-connecting-ip')||'unknown';
+  let bucket=buckets.get(ip);
+  if(!bucket||now-bucket.start>=RATE_WINDOW_MS){bucket={start:now,count:0};buckets.set(ip,bucket);}
+  if(bucket.count>=MAX_PER_IP)return Math.max(1,Math.ceil((bucket.start+RATE_WINDOW_MS-now)/1000));
+  if(inFlight>=MAX_IN_FLIGHT)return 2;
+  bucket.count++;
+  return 0;
+}
 const headers={'content-type':'application/json;charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
-const out=(status,body)=>new Response(JSON.stringify(body),{status,headers});
+const out=(status,body,extraHeaders={})=>new Response(JSON.stringify(body),{status,headers:{...headers,...extraHeaders}});
 function valid(payload){
  if(!payload||!Array.isArray(payload.messages)||payload.messages.length<2||payload.messages.length>24)return null;
  let size=0;const messages=[];
@@ -27,10 +41,9 @@ export default{async fetch(req,env){
   if(Number(req.headers.get('content-length')||0)>70000)return out(413,{ok:false,error:'request_too_large'});
   let payload;try{const body=await req.text();if(body.length>70000)return out(413,{ok:false,error:'request_too_large'});payload=JSON.parse(body);}catch{return out(400,{ok:false,error:'invalid_json'});}
   const messages=valid(payload);if(!messages)return out(400,{ok:false,error:'invalid_messages'});
-  const ip=req.headers.get('cf-connecting-ip')||'unknown',now=Date.now();
-  for(const [key,time] of recent)if(now-time>20000)recent.delete(key);
-  if(inFlight>=3||now-(recent.get(ip)||0)<8000)return out(429,{ok:false,error:'temporarily_busy'});
-  recent.set(ip,now);inFlight++;
+  const retryAfter=shouldThrottle(req,Date.now());
+  if(retryAfter)return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(retryAfter)});
+  inFlight++;
   try{
    const max_tokens=Math.max(128,Math.min(2048,Number(payload.max_tokens)||400));
    for(const provider of [
