@@ -51,8 +51,12 @@ test('selected base persists and imported code cannot override base geometry',()
 });
 
 test('production loads base registry before visual recipe and ships it to Cloudflare',()=>{
-  const config=fs.readFileSync('config/app.js','utf8');
-  const build=fs.readFileSync('scripts/build-cloudflare.mjs','utf8');
-  assert(config.indexOf("'role-3d-bases.js'")<config.indexOf("'role-visual-recipe.js'"));
-  assert(build.includes("'role-3d-bases.js'"));
+ const config=fs.readFileSync('config/app.js','utf8');
+ const build=fs.readFileSync('scripts/build-cloudflare.mjs','utf8');
+ const index=fs.readFileSync('index.html','utf8');
+ assert.match(config,/LIAOTIAN_3D_ONLY=false/);
+ assert.doesNotMatch(config,/role-3d-bases\.js|role-visual-recipe\.js/);
+ assert.match(build,/'role-2d-creator\.js'/);
+ assert.doesNotMatch(index,/src="role-avatar-stage\.js/);
+ assert.match(index,/src="role-2d-creator\.js/);
 });

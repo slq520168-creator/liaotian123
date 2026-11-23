@@ -46,20 +46,20 @@ test('stored clear short hair is recovered exactly instead of matching the short
 });
 
 test('interactive script initialization applies the 3D catalog before the first storage read',()=>{
-  const data=new Map(),events=[];
-  const context={console,localStorage:{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k),key:i=>[...data.keys()][i],get length(){return data.size;}},
-    document:{readyState:'interactive',head:{appendChild(){}},createElement:()=>({}),getElementById:()=>null,addEventListener(){}},navigator:{},
-    PRESET_CHARACTERS:[{id:'nuannuan'},{id:'ordinary-role'}],normalizeCustomCharacter:v=>({...v}),saveDataToStorage:()=>true,
-    addEventListener(){},requestAnimationFrame(){},setTimeout(){},byId:()=>({}),replyLength:'auto',chatStyle:'mature',activeCharacterId:'nuannuan'};
-  context.window=context;
-  for(const key of ['renderChatStyleControl','setupEventListeners','renderAvatarPicker','updateUserAvatarPreview','renderEmojiPicker','switchCharacter','restoreUpdateComposer','updateViewportHeight','warmReplyConnection','checkSiteVersion'])context[key]=()=>{};
-  context.loadDataFromStorage=()=>events.push(context.PRESET_CHARACTERS.map(c=>c.id));
-  vm.createContext(context);
-  vm.runInContext(fs.readFileSync('config/app.js','utf8'),context);
-  const app=fs.readFileSync('app.js','utf8');
-  vm.runInContext(app.slice(app.indexOf('function init() {'),app.indexOf('\nfunction restoreUpdateComposer()'))+'\ninit();',context);
-  assert.deepEqual(events,[['nuannuan']]);
-  assert.equal(context.PRESET_CHARACTERS[0].roleKind,'3d');
+ const data=new Map(),events=[];
+ const context={console,localStorage:{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k),key:i=>[...data.keys()][i],get length(){return data.size;}},
+   document:{readyState:'interactive',head:{appendChild(){}},createElement:()=>({}),getElementById:()=>null,addEventListener(){}},navigator:{},
+   PRESET_CHARACTERS:[{id:'nuannuan'},{id:'ordinary-role',isPreset:true}],normalizeCustomCharacter:v=>({...v}),saveDataToStorage:()=>true,
+   addEventListener(){},requestAnimationFrame(){},setTimeout(){},byId:()=>({}),replyLength:'auto',chatStyle:'mature',activeCharacterId:'ordinary-role'};
+ context.window=context;
+ for(const key of ['renderChatStyleControl','setupEventListeners','renderAvatarPicker','updateUserAvatarPreview','renderEmojiPicker','switchCharacter','restoreUpdateComposer','updateViewportHeight','warmReplyConnection','checkSiteVersion'])context[key]=()=>{};
+ context.loadDataFromStorage=()=>events.push(context.PRESET_CHARACTERS.map(c=>c.id));
+ vm.createContext(context);
+ vm.runInContext(fs.readFileSync('config/app.js','utf8'),context);
+ const app=fs.readFileSync('app.js','utf8');
+ vm.runInContext(app.slice(app.indexOf('function init() {'),app.indexOf('\nfunction restoreUpdateComposer()'))+'\ninit();',context);
+ assert.deepEqual(events,[['ordinary-role']]);
+ assert.equal(context.PRESET_CHARACTERS[0].roleKind,'2d');
 });
 
 test('initial storage normalization preserves structured appearance before the 3D scripts load',()=>{

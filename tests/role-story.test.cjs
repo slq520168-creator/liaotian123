@@ -21,7 +21,7 @@ test('104 original stories enrich 20 existing 2D characters to 124 without dupli
  const {base,win}=fixture();
  assert.equal(base.length,124);
  assert.equal(win.RoleStory.list(),104);
- assert.equal(new Set(base.map(x=>x.id)).size,120);
+ assert.equal(new Set(base.map(x=>x.id)).size,124);
  const art=new Set(base.slice(20).map(x=>x.avatar));
  assert.equal(art.size,104,'no repeated portrait/poster source');
  assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('data:image/svg+xml')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar))));
@@ -51,7 +51,7 @@ test('choices are consumed by the real send path; six chapters persist and can l
  assert.equal(win.RoleStory.description('jiangwu').chapter,before);
  assert.match(read('app.js'),/RoleStory\?\.commitPending/);
  assert.match(read('app.js'),/RoleStory\?\.contextFor/);
- assert.match(read('config/app.js'),/Boolean\(char\?\.isPreset\)/);
+ assert.match(read('config/app.js'),/RoleCatalogPolicy/);
 });
 test('only trusted preset story SVG data URIs may be displayed as chat avatars',()=>{
  const app=read('app.js');

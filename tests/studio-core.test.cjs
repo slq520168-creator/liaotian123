@@ -39,12 +39,13 @@ test('分镜时间、渐隐和推进在有效范围内',()=>{
   for(let i=0;i<80;i++){const f=C.frame(i/10,8,3);assert.ok(f.alpha>=0&&f.alpha<=1);assert.ok(f.zoom>=1&&f.zoom<=1.1);}
 });
 test('工作室保持独立路径，正式首页默认是角色轮播',()=>{
-  const build=fs.readFileSync('scripts/build-cloudflare.mjs','utf8');
-  const launcher=fs.readFileSync('studio-launcher.js','utf8');
-  const index=fs.readFileSync('index.html','utf8');
-  assert.ok(build.includes("'studio-launcher.js','studio-bridge.js','studio'"));
-  assert.ok(!index.includes('src="studio-launcher.js"'));
-  assert.ok(index.includes('id="roleDiscovery"'));
-  assert.ok(launcher.includes("get('studio')!=='1'"));
-  assert.ok(fs.readFileSync('studio/index.html','utf8').includes('../index.html?legacy=1'));
+ const build=fs.readFileSync('scripts/build-cloudflare.mjs','utf8');
+ const launcher=fs.readFileSync('studio-launcher.js','utf8');
+ const index=fs.readFileSync('index.html','utf8');
+ assert.doesNotMatch(index,/src="studio-launcher\.js"|src="studio-bridge\.js"/);
+ assert.match(index,/id="roleDiscovery"/);
+ assert.match(index,/src="role-2d-creator\.js/);
+ assert.match(build,/'role-photo-collection\.js'/);
+ assert.doesNotMatch(build,/'index\.html','studio-launcher\.js','studio-bridge\.js','studio'/);
+ assert.ok(launcher.includes("get('studio')!=='1'"),'historical studio archive remains source-only');
 });

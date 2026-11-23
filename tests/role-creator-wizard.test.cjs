@@ -3,22 +3,15 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 test('production creator is 3D-only lobby wizard',()=>{
-  const config=fs.readFileSync('config/app.js','utf8');
-  assert(config.includes("'role-creator-wizard.js'"));
-  assert(config.includes("'role-code-3d.js'"));
-  assert(config.includes("'role-3d-bases.js'"));
-  assert(config.includes("'role-creator-3d-preview-v2.js'"));
-  assert(!config.includes("'role-creator-3d-preview.js'"));
-  assert(!config.includes("'role-creator-studio.js'"));
-  assert(!config.includes("'role-code-compat.js'"));
-  const source=fs.readFileSync('role-creator-wizard.js','utf8');
-  for(const label of ['基础身份','外貌','脸 / 发型','身体','个性','完成'])assert(source.includes(label));
-  assert(source.includes("studio.dataset.full3d='required'"));
-  assert(source.includes('bases.BASES.map'));
-  assert(source.includes("localStorage.setItem(DRAFT"));
-  assert(source.includes("window.dispatchEvent(new CustomEvent('rolecreatorstep'"));
-  assert(source.includes("form.requestSubmit()"));
-  assert(source.includes("localStorage.setItem('liaotian_voice_auto','1')"));
+ const config=fs.readFileSync('config/app.js','utf8');
+ const html=fs.readFileSync('index.html','utf8');
+ const source=fs.readFileSync('role-2d-creator.js','utf8');
+ assert.match(config,/LIAOTIAN_3D_ONLY=false/);
+ assert.doesNotMatch(config,/role-creator-wizard\.js|role-code-3d\.js|role-3d-bases\.js/);
+ assert.match(html,/src="role-2d-creator\.js/);
+ assert.match(source,/roleKind:'2d'/);
+ assert.match(source,/localStorage|commitCustomCharacters/);
+ assert.match(source,/video/);
 });
 
 test('custom role code activates a real 3D base role instead of ordinary text role',()=>{

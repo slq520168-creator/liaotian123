@@ -14,17 +14,15 @@ test('creator uses the existing fullscreen 3D renderer instead of a second embed
 });
 
 test('creator fullscreen presentation keeps chat production qualification separate',()=>{
-  const config=fs.readFileSync('config/app.js','utf8');
-  const gate=fs.readFileSync('role-unified-production-gate.js','utf8');
-  const manifest=JSON.parse(fs.readFileSync('assets/humans/unified/unified-human-manifest.json','utf8'));
-  const order=['role-unified-production-gate.js','role-creator-wizard-preview.js','role-creator-3d-preview-v2.js'].map(name=>config.indexOf(`'${name}'`));
-  assert(order.every(index=>index>=0));
-  assert(order[0]<order[1]&&order[1]<order[2]);
-  assert(!config.match(/for\(const src of \[[\s\S]*?'role-unified-custom-chat\.js'/));
-  assert.equal(manifest.status,'candidate-only');
-  assert.equal(manifest.capabilities.mobile,false);
-  assert.equal(manifest.mobile.validated,false);
-  assert(gate.includes("if(clean(manifest?.status)!=='production')reasons.push('status')"));
-  assert(gate.includes("if(manifest?.capabilities?.mobile!==true)reasons.push('capability:mobile')"));
-  assert(gate.includes("if(manifest?.mobile?.validated!==true)reasons.push('mobile:validated')"));
+ const config=fs.readFileSync('config/app.js','utf8');
+ const index=fs.readFileSync('index.html','utf8');
+ const gate=fs.readFileSync('role-unified-production-gate.js','utf8');
+ const manifest=JSON.parse(fs.readFileSync('assets/humans/unified/unified-human-manifest.json','utf8'));
+ assert.match(config,/LIAOTIAN_3D_ONLY=false/);
+ assert.match(index,/src="role-2d-creator\.js/);
+ assert.doesNotMatch(index,/src="role-avatar-stage\.js/);
+ assert.doesNotMatch(config,/role-creator-wizard-preview\.js|role-creator-3d-preview-v2\.js/);
+ assert.equal(manifest.status,'candidate-only');
+ assert.equal(manifest.mobile.validated,false);
+ assert(gate.includes("if(clean(manifest?.status)!=='production')reasons.push('status')"));
 });

@@ -23,31 +23,31 @@ test('real model runtime is self-hosted and never silently shows an unrelated sa
   assert.doesNotMatch(js,/miko\.mavatar|cdn\.jsdelivr\.net/);
 });
 test('custom 2D roles share existing chat engine, data and backup',()=>{
-  const editor=read('role-2d-creator.js');
-  const app=read('app.js'),config=read('config/app.js');
-  assert.match(editor,/commitCustomCharacters/);
-  assert.match(editor,/normalizeCustomCharacter/);
-  assert.match(editor,/window\.RoleDiscovery\?\.openChat/);
-  assert.match(app,/window\.Role2DCreator\?\.open/);
-  assert.match(config,/const merged=\[\.\.\.legacy\]/);
-  assert.match(config,/char\.roleKind=is3DRaw\(value\)\?ROLE_KIND:'2d'/);
-  assert.doesNotMatch(config,/backupBeforePrune\('liaotian_chat_histories'/);
-  assert.doesNotMatch(config,/localStorage\.setItem\(LEGACY_KEY,serialized\)/);
+ const editor=read('role-2d-creator.js'),app=read('app.js'),config=read('config/app.js');
+ assert.match(editor,/commitCustomCharacters/);
+ assert.match(editor,/normalizeCustomCharacter/);
+ assert.match(editor,/window\.RoleDiscovery\?\.openChat/);
+ assert.match(app,/window\.Role2DCreator\?\.open/);
+ assert.match(config,/RoleCatalogPolicy/);
+ assert.match(app,/liaotian_archived_3d_custom_v1/);
+ assert.doesNotMatch(config,/backupBeforePrune\('liaotian_chat_histories'/);
+ assert.doesNotMatch(app,/localStorage\.removeItem\('liaotian_chat_histories'/);
 });
+
 test('role model distribution is local and absent models do not become fake features',()=>{
-  const build=read('scripts/build-cloudflare.mjs');
-  const pkg=JSON.parse(read('package.json'));
-  const index=read('index.html');
-  assert.equal(pkg.devDependencies['mesh-avatar-element'],'0.4.5');
-  assert.match(build,/node_modules\/mesh-avatar-element\/dist\/standalone.js/);
-  assert.match(build,/'role-avatar-stage.js'/);
-  assert.match(build,/'role-2d-creator.js'/);
-  assert.match(index,/role-avatar-stage\.js/);
-  assert.match(index,/role-2d-creator\.js/);
-  const registry=JSON.parse(read('assets/role-models/manifest.json'));
-  assert.equal(registry.schema,1);
-  assert.equal(Object.keys(registry.models).length,0);
+ const build=read('scripts/build-cloudflare.mjs'),index=read('index.html');
+ const pkg=JSON.parse(read('package.json'));
+ assert.equal(pkg.devDependencies['mesh-avatar-element'],'0.4.5','legacy package remains archived for reproducibility');
+ assert.match(build,/'role-2d-creator\.js'/);
+ assert.doesNotMatch(index,/src="role-avatar-stage\.js/);
+ assert.match(index,/role-2d-creator\.js/);
+ assert.match(build,/assets\/role-models/);
+ assert.match(build,/await rm\(new URL\(name\+'\/',out\)/);
+ const registry=JSON.parse(read('assets/role-models/manifest.json'));
+ assert.equal(registry.schema,1);
+ assert.equal(Object.keys(registry.models).length,0);
 });
+
 test('space pressure never silently truncates a character chat history',()=>{
   const app=read('app.js');
   const body=app.match(/function saveDataToStorage\(\) \{([\s\S]*?)\n\}\n\nfunction makeId/);

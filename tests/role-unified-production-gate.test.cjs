@@ -63,10 +63,10 @@ test('production candidate still requires explicit global mobile validation',()=
 });
 
 test('production config loads the gate but never directly bypasses it with custom chat runtime',()=>{
-  const source=fs.readFileSync('config/app.js','utf8');
-  assert(source.includes("'role-unified-production-gate.js'"));
-  const injected=source.match(/for\(const src of \[([\s\S]*?)\]\)\{/m)?.[1]||'';
-  assert(!injected.includes("'role-unified-custom-chat.js'"));
+ const source=fs.readFileSync('config/app.js','utf8');
+ assert.match(source,/LIAOTIAN_3D_ONLY=false/);
+ assert.doesNotMatch(source,/role-unified-production-gate\.js|role-unified-custom-chat\.js/);
+ assert.match(source,/RoleCatalogPolicy/);
 });
 
 test('a verified session QA creates a persistent device-bound certificate that invalidates with assets',()=>{

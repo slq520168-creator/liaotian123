@@ -23,12 +23,12 @@ test('ordinary custom roles are rejected by the 3d authority',()=>{
 });
 
 test('production boot separates 3d storage and removes legacy mode switching',()=>{
-  assert.match(config,/liaotian_3d_roles_v1/);
-  assert.match(config,/liaotian_custom_chars/);
-  assert.match(config,/liaotian_chat_mode_v2_/);
-  assert.match(config,/char\.roleKind=is3DRaw\(value\)\?ROLE_KIND:'2d'/);
-  assert.match(config,/const merged=\[\.\.\.legacy\]/);
-  assert.doesNotMatch(config,/localStorage\.setItem\(LEGACY_KEY,serialized\)/);
-  assert.match(persistence,/3d-roles-v1/);
-  assert.match(persistence,/char\.roleKind==='3d'/);
+ const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+ assert.match(config,/LIAOTIAN_3D_ONLY=false/);
+ assert.match(config,/RoleCatalogPolicy/);
+ assert.match(config,/PRESET_CHARACTERS\.splice\(i,1\)/);
+ assert.match(app,/liaotian_archived_3d_custom_v1/);
+ assert.match(app,/Object\.assign\(Object\.create\(null\),storedHistories\)/);
+ assert.doesNotMatch(config,/localStorage\.setItem\(LEGACY_KEY,serialized\)/);
+ assert.match(persistence,/3d-roles-v1/);
 });

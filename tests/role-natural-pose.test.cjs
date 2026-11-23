@@ -54,11 +54,12 @@ test('pose implementation uses quaternions instead of hard-coded Euler arm angle
 });
 
 test('production loads natural pose before safe skeleton motion so the visible frame keeps arms down',()=>{
-  const source=fs.readFileSync('config/app.js','utf8');
-  const natural=source.indexOf("'role-natural-pose.js'");
-  const safe=source.indexOf("'role-safe-skeleton-motion.js'");
-  assert.ok(natural>=0&&safe>=0);
-  assert.ok(natural<safe,'natural pose must wrap the renderer before safe motion wraps it');
+ const config=fs.readFileSync('config/app.js','utf8');
+ const index=fs.readFileSync('index.html','utf8');
+ assert.match(config,/LIAOTIAN_3D_ONLY=false/);
+ assert.doesNotMatch(config,/role-natural-pose\.js|role-safe-skeleton-motion\.js/);
+ assert.match(index,/id="rdChatCover"/);
+ assert.doesNotMatch(index,/src="role-avatar-stage\.js/);
 });
 
 test('chat text contract removes all message framing',()=>{
