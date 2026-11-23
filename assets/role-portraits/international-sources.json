@@ -1,0 +1,65 @@
+{
+  "title": "International character portraits – source and likeness audit",
+  "capturedAt": "2026-11-24",
+  "license": "https://unsplash.com/license",
+  "purpose": "Fictional AI role chat visual illustration; image subjects are not the fictional characters and do not endorse this website.",
+  "images": [
+    {
+      "characterId": "celeste",
+      "localFile": "assets/role-portraits/celeste.webp",
+      "sourcePhotoId": "photo-1675277457310-260e874e7033",
+      "sourcePage": "https://unsplash.com/photos/a-woman-sitting-on-a-red-chair-in-a-theater-1P9fhPchPOo",
+      "originImage": "https://images.unsplash.com/photo-1675277457310-260e874e7033"
+    },
+    {
+      "characterId": "amara",
+      "localFile": "assets/role-portraits/amara.webp",
+      "sourcePhotoId": "photo-1531123897727-8f129e1688ce",
+      "sourcePage": null,
+      "originImage": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce"
+    },
+    {
+      "characterId": "isabella",
+      "localFile": "assets/role-portraits/isabella.webp",
+      "sourcePhotoId": "photo-1621095271433-2e4ec715c704",
+      "sourcePage": "https://unsplash.com/photos/a-woman-with-curly-hair-posing-for-a-picture-LD_kjATBeJw",
+      "originImage": "https://images.unsplash.com/photo-1621095271433-2e4ec715c704"
+    },
+    {
+      "characterId": "anika",
+      "localFile": "assets/role-portraits/anika.webp",
+      "sourcePhotoId": "photo-1761498443962-1f00eed12137",
+      "sourcePage": "https://unsplash.com/photos/a-woman-with-dark-hair-and-makeup-looks-forward-8h_OeDX9Y5Q",
+      "originImage": "https://images.unsplash.com/photo-1761498443962-1f00eed12137"
+    },
+    {
+      "characterId": "oliver",
+      "localFile": "assets/role-portraits/oliver.webp",
+      "sourcePhotoId": "photo-1506794778202-cad84cf45f1d",
+      "sourcePage": null,
+      "originImage": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d"
+    },
+    {
+      "characterId": "mateo",
+      "localFile": "assets/role-portraits/mateo.webp",
+      "sourcePhotoId": "photo-1500648767791-00dcc994a43e",
+      "sourcePage": null,
+      "originImage": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e"
+    },
+    {
+      "characterId": "noah",
+      "localFile": "assets/role-portraits/noah.webp",
+      "sourcePhotoId": "photo-1535713875002-d1d0cf377fde",
+      "sourcePage": null,
+      "originImage": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde"
+    },
+    {
+      "characterId": "idris",
+      "localFile": "assets/role-portraits/idris.webp",
+      "sourcePhotoId": "photo-1547425260-76bcadfb4f2c",
+      "sourcePage": null,
+      "originImage": "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c"
+    }
+  ],
+  "commercialReview": "Unsplash copyright permission does not automatically settle third-party personality, model-release, privacy, or endorsement rights. Review/replace recognisable portraits before paid promotional campaigns."
+}

@@ -361,7 +361,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "female",
     "age": 31,
     "tag": "巴黎剧院导演 · 法国",
-    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/celeste.webp",
     "category": "都市",
     "headline": "巴黎剧院导演",
     "traits": [
@@ -399,7 +399,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "female",
     "age": 30,
     "tag": "爵士钢琴家 · 加纳",
-    "avatar": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/amara.webp",
     "category": "都市",
     "headline": "爵士钢琴家",
     "traits": [
@@ -437,7 +437,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "female",
     "age": 28,
     "tag": "城市摄影师 · 巴西",
-    "avatar": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/isabella.webp",
     "category": "冒险",
     "headline": "城市摄影师",
     "traits": [
@@ -475,7 +475,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "female",
     "age": 29,
     "tag": "星空研究员 · 印度",
-    "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/anika.webp",
     "category": "科幻",
     "headline": "星空研究员",
     "traits": [
@@ -513,7 +513,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "male",
     "age": 34,
     "tag": "古董鉴定师 · 英国",
-    "avatar": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/oliver.webp",
     "category": "悬疑",
     "headline": "古董鉴定师",
     "traits": [
@@ -551,7 +551,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "male",
     "age": 29,
     "tag": "地中海航海家 · 西班牙",
-    "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/mateo.webp",
     "category": "冒险",
     "headline": "地中海航海家",
     "traits": [
@@ -589,7 +589,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "male",
     "age": 32,
     "tag": "建筑设计师 · 加拿大",
-    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/noah.webp",
     "category": "都市",
     "headline": "建筑设计师",
     "traits": [
@@ -627,7 +627,7 @@ const INTERNATIONAL_ROLE_CONFIGS = [
     "gender": "male",
     "age": 33,
     "tag": "老城旅店主人 · 摩洛哥",
-    "avatar": "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=900&h=1200&q=86",
+    "avatar": "assets/role-portraits/idris.webp",
     "category": "治愈",
     "headline": "老城旅店主人",
     "traits": [
