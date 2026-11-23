@@ -115,5 +115,6 @@ test('editorial character catalog has 24 distinct speakable roles and advanced f
  assert.match(ui,/startChat\(char\)/);
  assert.match(css,/rd-mini-traits/);
  for(const category of ['都市','治愈','悬疑','奇幻','古风','科幻','冒险'])assert.ok(html.includes('data-role-filter="'+category+'"'));
- assert.match(read('config/app.js'),/else if\(char\?\.isPreset\)char\.roleKind='2d'/);
+ assert.match(read('config/app.js'),/curated=new Set/);
+ assert.match(read('config/app.js'),/char\.roleKind=allowed\.has/);
 });
