@@ -233,3 +233,7 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
   .rd-mini-traits i{font-size:8px;padding:0 4px}
 }
 @media(prefers-reduced-motion:reduce){.rd-mini-card,.rd-mini-image{transition:none!important}}
+
+/* Subtle provenance disclosure without crowding two-column editorial portraits. */
+.rd-photo-disclaimer{max-width:950px;margin:16px auto 24px;color:#a99caf;font-size:10px;line-height:1.5;text-align:center}
+@media(max-width:670px){.rd-photo-disclaimer{margin:14px 6px 22px;font-size:9px}}

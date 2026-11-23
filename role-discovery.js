@@ -4,8 +4,8 @@
   if (!root) return;
   const $ = id => document.getElementById(id);
   const FAV_KEY = 'sirole_favorites_v1';
-  const MOTION_IDS=new Set(["shenyan","nuannuan","linwan","jiangyu","sutang","xuzhixia","yeqingge","lingyi"]);
-  const roleVideo=char=>char&&typeof char.video==='string'&&/^https:\/\/[^\s]{1,900}$/i.test(char.video)?char.video:char&&MOTION_IDS.has(String(char.id))?'assets/role-videos/'+char.id+'.mp4':'';
+  // No retired 3D MP4 clips; only explicit real character videos.
+  const roleVideo=char=>char&&typeof char.video==='string'&&/^https:\/\/[^\s]{1,900}$/i.test(char.video)?char.video:'';
   const videoFailed=new Set();
   function hideVideoReplay(el){
     const parent=el?.parentElement,button=parent?.querySelector('.rd-video-retry');
@@ -79,13 +79,14 @@
     if (typeof characters !== 'undefined' && Array.isArray(characters) && characters.length) return characters;
     return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
   };
-  const FEATURED_IDS=['jiangwu','muyue','yinling','shuangye','yinxuan','lanqi','qingshu','beihan','amara','luoyan','wuyue','xingye','haichao','yinyao','luojue','huajin','qiyun','celeste','maya','viala','tangli','anika'];
+  const FEATURED_IDS=["vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
   const FEATURED_RANK=new Map(FEATURED_IDS.map((id,i)=>[id,i]));
   const available = () => allCharacters().filter(char => {
     if (!char || !char.id) return false;
     if (['都市','治愈','悬疑','奇幻','古风','科幻','冒险','惊魂','民俗','言情','动漫'].includes(state.filter) && char.category !== state.filter) return false;
     if (state.filter === 'featured' && !FEATURED_RANK.has(char.id)) return false;
     if (state.filter === 'international' && char.region !== 'international') return false;
+    if (state.filter === 'photo' && !char.photoRealistic) return false;
     if (state.filter === 'female' && char.gender !== 'female') return false;
     if (state.filter === 'male' && char.gender !== 'male') return false;
     if (state.filter === 'mine' && char.isPreset) return false;
@@ -302,7 +303,7 @@
     for(const char of list){
       const card=document.createElement('article');
       card.className='rd-mini-card'+(char.id===currentId?' is-current':'');
-      card.dataset.characterId=char.id;if(char.avatarIsStoryPoster)card.dataset.story='chaptered';
+      card.dataset.characterId=char.id;if(char.storybook)card.dataset.story='chaptered';
       card.style.setProperty('--rd-accent',COLOR_BY_CATEGORY[char.category]||'#cbb2f8');
       const open=document.createElement('button');
       open.type='button';open.className='rd-mini-open';
@@ -310,7 +311,7 @@
       open.appendChild(image(char,'rd-mini-image'));
       const shade=document.createElement('span');shade.className='rd-mini-shade';open.append(shade);
       const category=document.createElement('span');category.className='rd-mini-category';
-      category.textContent=(char.mark||'✦')+' '+(char.countryLabel ? char.countryLabel+' · '+(char.category||'故事') : (char.category||'原创'))+(char.avatarIsStoryPoster?' · 6章':'');open.append(category);
+      category.textContent=(char.mark||'✦')+' '+(char.countryLabel ? char.countryLabel+' · '+(char.category||'故事') : (char.category||'原创'))+(char.storybook?' · 6章':'');open.append(category);
       if(roleVideo(char)){
         const video=document.createElement('span');video.className='rd-mini-video';video.textContent='▶';
         video.setAttribute('aria-label','可播放角色视频');open.append(video);

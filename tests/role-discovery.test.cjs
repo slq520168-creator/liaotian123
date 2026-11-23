@@ -22,15 +22,15 @@ test('role discovery is the landing page and uses the existing chat engine', () 
   assert.match(script, /suppressClickUntil/);
 });
 
-test('all 12 existing adults are reachable without deleting custom roles', () => {
-  const config = read('config/app.js');
-  const roles = read('roles.js');
-  for (const id of ['nuannuan','linwan','sutang','xuzhixia','yeqingge','lingyi','luchen','taiyang','shenyan','guyan','jiangyu','yunzhou']) {
-    assert.match(config, new RegExp("'"+id+"'|\""+id+"\""));
-    assert.match(roles, new RegExp('"id": "' + id + '"'));
-  }
-  assert.match(config, /normalizeStored3D/);
-  assert.match(config, /liaotian_3d_roles_v1/);
+test('retired 3D cards are inactive while their conversation histories remain safe',()=>{
+ const config=read('config/app.js'),roles=read('roles.js'),app=read('app.js'),index=read('index.html');
+ const ids=["nuannuan","linwan","sutang","xuzhixia","yeqingge","lingyi","luchen","taiyang","shenyan","guyan","jiangyu","yunzhou"];
+ for(const id of ids)assert.ok(config.includes('"'+id+'"')&&roles.includes('"id": "'+id+'"'));
+ assert.match(config,/LIAOTIAN_3D_ONLY=false/);
+ assert.match(config,/PRESET_CHARACTERS\.splice\(i,1\)/);
+ assert.match(app,/RoleCatalogPolicy\?\.install/);
+ assert.match(app,/liaotian_archived_3d_custom_v1/);
+ assert.doesNotMatch(index,/src="role-avatar-stage\.js/);
 });
 
 test('full-screen portrait, WebGL canvas and animated reply remain independent of persisted messages', () => {
@@ -78,14 +78,13 @@ test('fresh visits always land on the 12-character swipe gallery, never cached c
   assert.doesNotMatch(css, /animation:rdPortraitBreath/);
 });
 
-test('real local videos only, no temporary third-party links in role cards',()=>{
- const script=read('role-discovery.js'),html=read('index.html');
- for(const id of ['shenyan','nuannuan','linwan','jiangyu','sutang','xuzhixia','yeqingge','lingyi'])assert.match(script,new RegExp('\\"'+id+'\\"'));
- assert.match(script,/assets\/role-videos\//);
- assert.match(script,/stopVideo/);
- assert.match(script,/playVideo/);
+test('custom HTTPS character videos stay supported without retired 3D clips',()=>{
+ const js=read('role-discovery.js'),html=read('index.html');
+ assert.match(js,/typeof char\.video==='string'/);
+ assert.match(js,/playVideo/);
+ assert.match(js,/stopVideo/);
  assert.match(html,/id="rdChatVideo"/);
- assert.doesNotMatch(script,/\.hf\.space\/--replicas/);
+ assert.doesNotMatch(js,/assets\/role-videos\//);
 });
 
 test('iPhone Safari blocked autoplay can be resumed by a real user gesture', () => {
@@ -115,8 +114,8 @@ test('editorial character catalog has 24 distinct speakable roles and advanced f
  assert.match(ui,/startChat\(char\)/);
  assert.match(css,/rd-mini-traits/);
  for(const category of ['都市','治愈','悬疑','奇幻','古风','科幻','冒险'])assert.ok(html.includes('data-role-filter="'+category+'"'));
- assert.match(read('config/app.js'),/curated=new Set/);
- assert.match(read('config/app.js'),/char\.roleKind=allowed\.has/);
+ assert.match(read('config/app.js'),/RoleCatalogPolicy/);
+ assert.match(read('config/app.js'),/char\.roleKind='2d'/);
 });
 
 test('role gallery displays exactly two cards per row at all widths with legible portraits',()=>{
@@ -163,7 +162,7 @@ test('international characters have eight self-hosted, uniquely sourced WebP por
    const filename='assets/role-portraits/'+id+'.webp';
    assert.match(source,new RegExp('"id": "'+id+'"'));
    assert.ok(source.includes('"avatar": "'+filename+'"'),id+' must have a self-hosted image');
-   assert.ok(config.includes('"'+id+'"'),id+' must survive the preset catalog whitelist');
+   assert.ok(!config.includes('"'+id+'"'),'retired 3D registry must exclude '+id);
    const bytes=fs.readFileSync(path.join(__dirname,'..',filename));
    assert.ok(bytes.length>20000&&bytes.length<200000,id+' image empty, blurred or oversized');
    assert.equal(bytes.toString('ascii',0,4),'RIFF',id+' WebP RIFF');
@@ -176,5 +175,5 @@ test('international characters have eight self-hosted, uniquely sourced WebP por
  assert.match(discovery,/state\.filter === 'international'/);
  assert.match(discovery,/char\.countryLabel/);
  assert.match(html,/data-role-filter="international"/);
- assert.match(html,/120 位角色/);
+ assert.match(html,/124 位角色/);
 });

@@ -31,18 +31,6 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Seed original-character MP4 assets once (no external links in production)
-        run: |
-          node scripts/seed-role-videos.mjs
-          if ! git diff --quiet -- assets/role-videos/ || test -n "$(git ls-files --others --exclude-standard assets/role-videos/)"; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add assets/role-videos/
-            git commit -m 'assets(roleplay): preserve verified MP4 character videos on main'
-            git push origin HEAD:main
-          fi
-
-
       - name: Install pinned dependencies
         run: npm install --no-audit --no-fund --package-lock=false
 
@@ -73,7 +61,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Verify sirole.vip full-body 3D presets
+      - name: Verify production 2D role gallery and story covers
         if: steps.cloudflare-auth.outputs.ready == 'true'
         shell: bash
         run: |
@@ -81,52 +69,18 @@ jobs:
           base='https://sirole.vip'
           tmp="$(mktemp -d)"
           trap 'rm -rf "$tmp"' EXIT
-          expected_build="$(node -e "const s=require('fs').readFileSync('config/app.js','utf8');const m=s.match(/const version='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1])")"
-
-          wait_for_build() {
-            local attempt
-            for attempt in $(seq 1 30); do
-              echo "Waiting for production build $expected_build ($attempt/30)"
-              if curl -fsSL --retry 3 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}-$attempt" -o "$tmp/config.js" \
-                && test -s "$tmp/config.js" \
-                && grep -Fq "$expected_build" "$tmp/config.js"; then
-                echo "Production build is live: $expected_build"
-                return 0
-              fi
-              sleep 2
-            done
-            echo "Production never switched to build $expected_build" >&2
-            cat "$tmp/config.js" >&2 || true
-            return 1
-          }
-
-          fetch_text() {
-            local path="$1"
-            local out="$2"
-            local attempt
-            for attempt in $(seq 1 10); do
-              if curl -fsSL --retry 3 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}-$attempt" -o "$out" && test -s "$out"; then
-                return 0
-              fi
-              sleep 2
-            done
-            echo "Failed to fetch $path from production" >&2
-            return 1
-          }
-
-          wait_for_build
-          fetch_text 'vendor/three/build/three.module.js' "$tmp/three.module.js"
-          fetch_text 'vendor/three/build/three.core.js' "$tmp/three.core.js"
-          fetch_text 'vendor/three/examples/jsm/loaders/GLTFLoader.js' "$tmp/GLTFLoader.js"
-          fetch_text 'vendor/three/examples/jsm/utils/SkeletonUtils.js' "$tmp/SkeletonUtils.js"
-          fetch_text 'vendor/meshoptimizer/meshopt_decoder.mjs' "$tmp/meshopt.js"
-          fetch_text 'assets/humans/reference-mpfb.glb' "$tmp/reference-mpfb.glb"
-          fetch_text 'assets/humans/reference-vitruvian-morph.glb' "$tmp/reference-vitruvian-morph.glb"
-
-          grep -Fq "./three.core.js" "$tmp/three.module.js"
-          grep -Fq "REVISION = '186'" "$tmp/three.core.js"
-          grep -Fq "GLTFLoader" "$tmp/GLTFLoader.js"
-          grep -Fq "clone" "$tmp/SkeletonUtils.js"
-          grep -Fq "MeshoptDecoder" "$tmp/meshopt.js"
-          test -s "$tmp/reference-mpfb.glb"
-          test -s "$tmp/reference-vitruvian-morph.glb"
+          expected="$(node -e "const s=require('fs').readFileSync('config/app.js','utf8');const m=s.match(/const version='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1])")"
+          for attempt in $(seq 1 30); do
+            curl -fsSL --retry 2 --retry-all-errors "$base/config/app.js?smoke=${GITHUB_SHA}-$attempt" -o "$tmp/config.js" || true
+            if grep -Fq "$expected" "$tmp/config.js"; then break; fi
+            sleep 2
+          done
+          grep -Fq "$expected" "$tmp/config.js"
+          grep -Fq 'LIAOTIAN_3D_ONLY=false' "$tmp/config.js"
+          for path in index.html role-story-engine.js role-photo-collection.js assets/role-portraits/intl-sylvie.webp assets/role-portraits/intl-rosalie.webp; do
+            curl -fsSL --retry 3 --retry-all-errors "$base/$path?smoke=${GITHUB_SHA}" -o "$tmp/$(basename "$path")"
+            test -s "$tmp/$(basename "$path")"
+          done
+          grep -Fq 'role-photo-collection.js' "$tmp/index.html"
+          if grep -Eq 'role-avatar-stage\.js|studio-bridge\.js' "$tmp/index.html"; then echo "Retired 3D runtime still linked" >&2; exit 1; fi
+          echo '2D production gallery, story engine and self-hosted photo covers verified'

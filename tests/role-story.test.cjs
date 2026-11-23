@@ -8,26 +8,26 @@ const read=name=>fs.readFileSync(path.join(root,name),'utf8');
 function fixture(){
  const data=new Map();
  const store={getItem:key=>data.has(key)?data.get(key):null,setItem:(key,value)=>data.set(key,String(value))};
- const base=Array.from({length:32},(_,i)=>({id:'legacy_'+i,isPreset:true}));
+ const base=Array.from({length:20},(_,i)=>({id:'legacy_'+i,isPreset:true}));
  const nodes={};
  const doc={addEventListener:()=>{},getElementById:id=>nodes[id]||null,querySelector:()=>null};
  const win={};
  const context={window:win,PRESET_CHARACTERS:base,document:doc,localStorage:store,console,encodeURIComponent,Math,JSON,Date,Event:class{constructor(type){this.type=type;}},activeCharacterId:'jiangwu'};
  vm.createContext(context);
- for(const file of ['role-story-volume-a.js','role-story-volume-b.js','role-story-engine.js'])vm.runInContext(read(file),context,{filename:file});
+ for(const file of ['role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-engine.js'])vm.runInContext(read(file),context,{filename:file});
  return {context,win,base,nodes,store};
 }
-test('88 original complete stories enrich 32 existing roles to 120 without duplicate character IDs',()=>{
+test('104 original stories enrich 20 existing 2D characters to 124 without duplicate IDs',()=>{
  const {base,win}=fixture();
- assert.equal(base.length,120);
- assert.equal(win.RoleStory.list(),88);
+ assert.equal(base.length,124);
+ assert.equal(win.RoleStory.list(),104);
  assert.equal(new Set(base.map(x=>x.id)).size,120);
- const art=new Set(base.slice(32).map(x=>x.avatar));
- assert.equal(art.size,88,'no repeated poster source');
- assert.ok(base.slice(32).every(x=>x.age>=23&&x.isPreset&&x.avatar.startsWith('data:image/svg+xml')));
- assert.ok(base.slice(32).every(x=>!x.background.includes('核心线索：')&&!x.personality.includes('目标：')),'opening prompt must not spoil later evidence or sacrifices');
+ const art=new Set(base.slice(20).map(x=>x.avatar));
+ assert.equal(art.size,104,'no repeated portrait/poster source');
+ assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('data:image/svg+xml')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar))));
+ assert.ok(base.slice(20).every(x=>!x.background.includes('核心线索：')&&!x.personality.includes('目标：')),'opening prompt must not spoil later evidence or sacrifices');
  assert.ok(['悬疑','惊魂','民俗','科幻','言情','都市','动漫','古风','奇幻','冒险'].every(c=>base.some(x=>x.category===c)));
- for(const char of base.slice(32)){const p=win.RoleStory.description(char.id);assert.equal(p.chapterCount,6);assert.equal(p.choices.length,2);assert.ok(p.text.length>30);assert.ok(win.RoleStory.contextFor(char.id).includes(char.name));}
+ for(const char of base.slice(20)){const p=win.RoleStory.description(char.id);assert.equal(p.chapterCount,6);assert.equal(p.choices.length,2);assert.ok(p.text.length>30);assert.ok(win.RoleStory.contextFor(char.id).includes(char.name));}
 });
 test('choices are consumed by the real send path; six chapters persist and can lead to different endings',()=>{
  const {context,win,nodes,store}=fixture();
@@ -63,7 +63,7 @@ test('no new server polling, database jobs or fake AI bot responses for story pr
  const engine=read('role-story-engine.js'),index=read('index.html'),build=read('scripts/build-cloudflare.mjs');
  assert.doesNotMatch(engine,/setInterval|onSnapshot|supabase|indexedDB/);
  assert.match(engine,/localStorage\.setItem\(stateKey/);
- for(const filename of ['role-story-volume-a.js','role-story-volume-b.js','role-story-engine.js','role-story.css']){
+ for(const filename of ['role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-engine.js','role-story.css']){
    assert.ok(index.includes(filename),'index misses '+filename);
    assert.ok(build.includes("'"+filename+"'"),'build misses '+filename);
  }

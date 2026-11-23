@@ -137,7 +137,7 @@
       </div>
       <div class="rd-stage">
         <div class="rd-deck">
-          <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 120</span>
+          <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 124</span>
           <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
             <img id="rdHeroPortrait" src="assets/role-portraits/luoyan.webp" alt="当前角色形象" fetchpriority="high" decoding="async">
             <video id="rdHeroVideo" class="rd-character-video" aria-label="角色视频预览" loop muted playsinline preload="none" hidden></video>
@@ -155,11 +155,12 @@
       <button id="rdStartChat" class="rd-cta" type="button">开始聊天</button>
       <p class="rd-hint">左右滑动切换角色 · 点击人物开启对话</p>
       <section class="rd-gallery" aria-label="探索所有角色">
-        <div class="rd-gallery-title"><h2>探索角色 <small>CHARACTER COLLECTION</small></h2><span id="rdGridCount">120 位角色</span></div>
+        <div class="rd-gallery-title"><h2>探索角色 <small>CHARACTER COLLECTION</small></h2><span id="rdGridCount">124 位角色</span></div>
         <label class="rd-search-wrap" for="rdSearch"><span aria-hidden="true">⌕</span><input id="rdSearch" class="rd-search" type="search" placeholder="搜索名字、性格、身份或故事" autocomplete="off" maxlength="80"></label>
         <div class="rd-filters" role="group" aria-label="角色分类">
           <button type="button" class="rd-filter is-active" data-role-filter="all" aria-pressed="true">全部</button><button type="button" class="rd-filter" data-role-filter="featured" aria-pressed="false">精选人物</button>
           <button type="button" class="rd-filter" data-role-filter="international" aria-pressed="false">国际角色</button>
+          <button type="button" class="rd-filter" data-role-filter="photo" aria-pressed="false">欧美真人风</button>
           <button type="button" class="rd-filter" data-role-filter="惊魂" aria-pressed="false">惊魂</button>
           <button type="button" class="rd-filter" data-role-filter="悬疑" aria-pressed="false">悬疑</button>
           <button type="button" class="rd-filter" data-role-filter="民俗" aria-pressed="false">民俗诡谈</button>
@@ -178,6 +179,7 @@
           <button type="button" class="rd-filter" data-role-filter="mine" aria-pressed="false">我的角色</button>
         </div>
         <div class="rd-character-grid" id="rdCharacterGrid"></div>
+        <p class="rd-photo-disclaimer">角色均为虚构 AI 人物；真人照片仅为视觉素材，不代表照片中的人物本人参与聊天或认可本网站。</p>
         <div class="rd-grid-empty" id="rdGridEmpty" hidden><p>这里还没有角色。</p><button type="button" class="rd-header-button" id="rdCreateEmpty">创建我的角色</button></div>
       </section>
     </div>
@@ -197,12 +199,12 @@
         </div>
         <div class="form-group">
           <label for="roleCodeEditor">编写或粘贴角色代码</label>
-          <textarea class="role-code-editor" id="roleCodeEditor" rows="10" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="soft" placeholder="填写3D角色数据；支持 JSON 和 JS 对象" required></textarea>
+          <textarea class="role-code-editor" id="roleCodeEditor" rows="10" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="soft" placeholder="填写角色配置数据；支持 JSON 和 JS 对象" required></textarea>
         </div>
         <p class="form-hint" id="roleCodeEditorStatus" role="alert"></p>
         <div class="modal-footer">
           <button class="btn btn-secondary" id="cancelRoleCodeBtn" type="button">取消</button>
-          <button class="btn btn-primary" id="generateRoleCodeBtn" type="submit" title="生成角色（Ctrl/Cmd + Enter）">生成3D角色</button>
+          <button class="btn btn-primary" id="generateRoleCodeBtn" type="submit" title="生成角色（Ctrl/Cmd + Enter）">保存角色</button>
         </div>
       </form>
     </div>
@@ -241,8 +243,8 @@
   <div class="modal-overlay" id="createModalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="createRoleTitle">
       <div class="modal-header">
-        <h2 id="createRoleTitle">3D 人物大厅</h2>
-        <button class="icon-btn close-modal-btn" id="closeModalBtn" aria-label="关闭3D人物大厅">&times;</button>
+        <h2 id="createRoleTitle">角色编辑</h2>
+        <button class="icon-btn close-modal-btn" id="closeModalBtn" aria-label="关闭角色编辑">&times;</button>
       </div>
       <form id="createRoleForm" class="modal-body creator-3d-only">
         <div id="roleCreatorCompat" hidden aria-hidden="true" style="display:none!important">
@@ -272,13 +274,12 @@
   <script src="roles.js?v=20261117-create3d53" defer></script>
   <script src="role-story-volume-a.js?v=20261124-create3d68" defer></script>
   <script src="role-story-volume-b.js?v=20261124-create3d68" defer></script>
+  <script src="role-photo-collection.js?v=20261124-role2d71" defer></script>
   <script src="role-story-engine.js?v=20261124-create3d68" defer></script>
   <script src="memory.js?v=20261117-create3d53" defer></script>
   <script src="role-code.js?v=20261117-create3d53" defer></script>
   <script src="app.js?v=20261117-create3d53" defer></script>
   <script src="role-discovery.js?v=20261123-discover01" defer></script>
-  <script src="role-avatar-stage.js?v=20261123-character01" defer></script>
-  <script src="role-2d-creator.js?v=20261123-character01" defer></script>
-  <script src="studio-bridge.js" defer></script>
-</body>
+    <script src="role-2d-creator.js?v=20261123-character01" defer></script>
+  </body>
 </html>

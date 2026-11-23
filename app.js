@@ -136,7 +136,8 @@ function loadDataFromStorage() {
   const profile = readStoredJSON('liaotian_player_profile', {});
   playerProfile = {id: typeof profile?.id === 'string' ? profile.id.slice(0, 80) : makeId(), name: typeof profile?.name === 'string' ? profile.name.slice(0, 24) : '', about: typeof profile?.about === 'string' ? profile.about.slice(0, 600) : ''};
   const memories = readStoredJSON('liaotian_role_memories', {});
-  roleMemories = Object.create(null);
+  // Preserve inactive-role memory entries while the active gallery is 2D-only.
+  roleMemories=memories&&typeof memories==='object'&&!Array.isArray(memories)?Object.assign(Object.create(null),memories):Object.create(null);
   const length = readStoredJSON('liaotian_reply_length', 'auto');
   replyLength = ['auto', 'short', 'long'].includes(length) ? length : 'auto';
   const style = readStoredJSON('liaotian_chat_style', 'mature');
@@ -145,16 +146,27 @@ function loadDataFromStorage() {
     const storedAvatar = localStorage.getItem('liaotian_user_avatar');
     if (storedAvatar) userAvatar = safeAvatar(storedAvatar, DEFAULT_USER_AVATAR);
   } catch (error) {}
-  const storedCustoms = readStoredJSON('liaotian_custom_chars', []);
+  const storedCustoms=readStoredJSON('liaotian_custom_chars',[]);
+  const previousCustoms=Array.isArray(storedCustoms)?storedCustoms:[];
+  const isRetired3D=char=>Boolean(char&&typeof char==='object'&&
+    (char.roleKind==='3d'||typeof char.personality==='string'&&char.personality.includes('【角色自定义设定】')));
+  const retiredCustoms=previousCustoms.filter(isRetired3D);
+  if(retiredCustoms.length)try{
+    const saved=readStoredJSON('liaotian_archived_3d_custom_v1',[]);
+    const byId=new Map((Array.isArray(saved)?saved:[]).filter(x=>x?.id).map(x=>[x.id,x]));
+    for(const char of retiredCustoms)if(char.id)byId.set(char.id,char);
+    localStorage.setItem('liaotian_archived_3d_custom_v1',JSON.stringify([...byId.values()]));
+  }catch{}
   const seen = new Set(PRESET_CHARACTERS.map(char => char.id));
-  const customs = (Array.isArray(storedCustoms) ? storedCustoms : []).map(normalizeCustomCharacter).filter(char => {
+  const customs=previousCustoms.filter(char=>!isRetired3D(char)).map(normalizeCustomCharacter).filter(char => {
     if (!char || seen.has(char.id)) return false;
     seen.add(char.id);
     return true;
   });
   characters = PRESET_CHARACTERS.concat(customs);
   const storedHistories = readStoredJSON('liaotian_chat_histories', {});
-  chatHistories = Object.create(null);
+  // Keep retired 3D conversation data without exposing obsolete character cards.
+  chatHistories=storedHistories&&typeof storedHistories==='object'&&!Array.isArray(storedHistories)?Object.assign(Object.create(null),storedHistories):Object.create(null);
   if (storedHistories && typeof storedHistories === 'object' && !Array.isArray(storedHistories)) {
     characters.forEach(char => {
       const history = storedHistories[char.id];
@@ -286,7 +298,7 @@ function renderChatStyleControl() {
 }
 
 function init() {
-  window.Role3DOnlyAuthority?.install?.();
+  window.RoleCatalogPolicy?.install?.();
   renderChatStyleControl();
   loadDataFromStorage();
   setupEventListeners();

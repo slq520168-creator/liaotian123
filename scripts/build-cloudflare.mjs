@@ -7,7 +7,7 @@ const runtimeJs=[
   'role-chat-mode.js','role-speech-chunker.js','role-voice-stage.js','role-voice-style.js','role-code-3d.js','role-persistence.js','role-builder.js','role-eye-color.js','role-creator-wizard.js','role-creator-wizard-preview.js','role-body-details.js','role-creator-identity.js','role-creator-3d-preview-v2.js','role-creator-only-ui.js','role-home.js','role-creator-animated-presets.js','role-custom-visual.js','role-mobile-qa-diagnostics.js','role-unified-custom-chat.js','role-unified-production-gate.js'
 ];
 const staticEntries=[
-  'index.html','studio-launcher.js','studio-bridge.js','studio','role-discovery.js','role-story-volume-a.js','role-story-volume-b.js','role-story-engine.js','role-story.css','role-avatar-stage.js','role-2d-creator.js','role-2d-creator.css','role-discovery.css','role-chat-immersive.css','app.js','memory.js','role-code.js','roles.js','styles.css',...runtimeJs,
+  'index.html','role-discovery.js','role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-engine.js','role-story.css','role-2d-creator.js','role-2d-creator.css','role-discovery.css','role-chat-immersive.css','app.js','memory.js','role-code.js','roles.js','styles.css','chat-compact-ui.css',
   'role-experience.css','role-voice-stage.css','chat-compact-ui.css','role-creator-wizard.css','role-home.css','manifest.webmanifest','apple-touch-icon.png','favicon.ico','version.json','config','roles','assets','docs'
 ];
 
@@ -49,6 +49,10 @@ const referencedRuntime=[...configSource.matchAll(/['"](role-[a-z0-9-]+\.js)['"]
 for(const name of referencedRuntime)await access(new URL(name,out));
 for(const path of ['vendor/three/build/three.module.js','vendor/three/build/three.core.js','vendor/three/examples/jsm/loaders/GLTFLoader.js','vendor/three/examples/jsm/utils/BufferGeometryUtils.js','vendor/three/examples/jsm/utils/SkeletonUtils.js','vendor/meshoptimizer/meshopt_decoder.mjs'])await access(new URL(path,out));
 
+/* The heavy 3D source assets remain archived but never ship to the active 2D website. */
+for(const name of ['assets/humans','assets/role-models','assets/role-videos','vendor']){
+  await rm(new URL(name+'/',out),{recursive:true,force:true});
+}
 await writeFile(new URL('version.json',out),JSON.stringify({version:buildVersion})+'\n');
 const appOut=new URL('app.js',out);
 let appSource=await readFile(appOut,'utf8');
