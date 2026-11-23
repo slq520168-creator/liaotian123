@@ -91,6 +91,8 @@ function safeAvatar(value, fallback = DEFAULT_AVATAR) {
   if (typeof value !== 'string') return fallback;
   const src = value.trim();
   if (src.length <= MAX_AVATAR_DATA_LENGTH && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(src)) return src;
+  // Trusted built-in narrative cover SVGs only; never accept arbitrary user-provided SVG data URIs.
+  if (src.length <= MAX_AVATAR_DATA_LENGTH && src.startsWith('data:image/svg+xml;charset=utf-8,') && typeof PRESET_CHARACTERS!=='undefined' && PRESET_CHARACTERS.some(char=>char.isPreset&&char.avatarIsStoryPoster&&char.avatar===src)) return src;
   if (/^assets\/(?:avatars\/[a-z0-9_-]+\.(?:svg|jpg|jpeg|png|webp)|role-portraits\/[a-z0-9_-]+\.webp)$/i.test(src)) return src;
   try {
     const url = new URL(src);

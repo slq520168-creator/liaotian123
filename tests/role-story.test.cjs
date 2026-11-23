@@ -28,19 +28,35 @@ test('88 original complete stories enrich 32 existing roles to 120 without dupli
  assert.ok(['悬疑','惊魂','民俗','科幻','言情','都市','动漫','古风','奇幻','冒险'].every(c=>base.some(x=>x.category===c)));
  for(const char of base.slice(32)){const p=win.RoleStory.description(char.id);assert.equal(p.chapterCount,6);assert.equal(p.choices.length,2);assert.ok(p.text.length>30);assert.ok(win.RoleStory.contextFor(char.id).includes(char.name));}
 });
-test('each story has real player choices and persistence with truthful clue-gated endings',()=>{
+test('choices are consumed by the real send path; six chapters persist and can lead to different endings',()=>{
  const {context,win,nodes,store}=fixture();
  const input={value:'',dispatchEvent:()=>{send.disabled=false;}};
- const send={disabled:true,click:()=>{win.RoleStory.commitPending(context.activeCharacterId,input.value);send.disabled=true;}};
+ const send={disabled:true,click:()=>{assert.equal(win.RoleStory.commitPending(context.activeCharacterId,input.value),true);send.disabled=true;input.value='';}};
  nodes.userInput=input;nodes.sendBtn=send;
  assert.equal(win.RoleStory.description('jiangwu').chapter,0);
- for(let i=0;i<6;i++){send.disabled=true;const result=win.RoleStory.openPanel;assert.equal(typeof result,'function');}
- // UI state changes are confirmed only when the actual send handler consumes a pending choice.
+ assert.doesNotMatch(win.RoleStory.contextFor('jiangwu'),/旧楼的匿名守护者/,'secret must not be disclosed before the reveal');
+ for(let i=0;i<6;i++){assert.equal(win.RoleStory.choose('jiangwu',0),true);assert.equal(win.RoleStory.description('jiangwu').chapter,i+1);}
+ assert.equal(win.RoleStory.description('jiangwu').ending,'truth');
+ assert.equal(win.RoleStory.description('jiangwu').choices.length,0);
+ assert.equal(JSON.parse(store.getItem('liaotian_story_progress_v1')).jiangwu.route.length,6);
+ context.activeCharacterId='muyue';
+ for(let i=0;i<6;i++)assert.equal(win.RoleStory.choose('muyue',1),true);
+ assert.equal(win.RoleStory.description('muyue').ending,'bond');
+ context.activeCharacterId='nanxue';
+ for(let i=0;i<6;i++)assert.equal(win.RoleStory.choose('nanxue',i%2),true);
+ assert.equal(win.RoleStory.description('nanxue').ending,'open');
+ const before=win.RoleStory.description('jiangwu').chapter;
+ assert.equal(win.RoleStory.choose('jiangwu',0),false);
+ assert.equal(win.RoleStory.description('jiangwu').chapter,before);
  assert.match(read('app.js'),/RoleStory\?\.commitPending/);
  assert.match(read('app.js'),/RoleStory\?\.contextFor/);
  assert.match(read('config/app.js'),/Boolean\(char\?\.isPreset\)/);
- assert.equal(win.RoleStory.description('jiangwu').chapter,0,'no automatic story progression or fake bot replies');
- assert.equal(store.getItem('liaotian_story_progress_v1'),null);
+});
+test('only trusted preset story SVG data URIs may be displayed as chat avatars',()=>{
+ const app=read('app.js');
+ assert.match(app,/char\.isPreset&&char\.avatarIsStoryPoster&&char\.avatar===src/);
+ assert.match(app,/startsWith\('data:image\/svg\+xml;charset=utf-8,'\)/);
+ assert.doesNotMatch(app,/return src;\s*\/\/ unsafe SVG/);
 });
 test('no new server polling, database jobs or fake AI bot responses for story progression',()=>{
  const engine=read('role-story-engine.js'),index=read('index.html'),build=read('scripts/build-cloudflare.mjs');

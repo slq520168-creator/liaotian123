@@ -237,5 +237,5 @@ function installUI(){
  render();
 }
 document.addEventListener('DOMContentLoaded',installUI,{once:true});
-window.RoleStory=Object.freeze({list:()=>seeds.length,has:id=>byId.has(id),description,contextFor,commitPending,render,openPanel,readState:current});
+window.RoleStory=Object.freeze({list:()=>seeds.length,has:id=>byId.has(id),description,contextFor,commitPending,choose:sendChoice,render,openPanel,readState:current});
 })();
