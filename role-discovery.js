@@ -79,9 +79,12 @@
     if (typeof characters !== 'undefined' && Array.isArray(characters) && characters.length) return characters;
     return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
   };
+  const FEATURED_IDS=["luoyan","wuyue","yinyao","qiaoyu","tangli","xingye","cenmo","suyu","haichao","luxi","yanchuan","sunyu"];
+  const FEATURED_RANK=new Map(FEATURED_IDS.map((id,i)=>[id,i]));
   const available = () => allCharacters().filter(char => {
     if (!char || !char.id) return false;
     if (['都市','治愈','悬疑','奇幻','古风','科幻','冒险'].includes(state.filter) && char.category !== state.filter) return false;
+    if (state.filter === 'featured' && !FEATURED_RANK.has(char.id)) return false;
     if (state.filter === 'female' && char.gender !== 'female') return false;
     if (state.filter === 'male' && char.gender !== 'male') return false;
     if (state.filter === 'mine' && char.isPreset) return false;
@@ -89,7 +92,11 @@
     if (state.filter === 'liked' && !state.favorites.has(char.id)) return false;
     const query = state.query.trim().toLocaleLowerCase();
     return !query || [char.name,char.tag,char.personality,char.interests,char.background,char.category,char.headline,char.hook,...(char.traits||[])].some(value=>String(value||'').toLocaleLowerCase().includes(query));
-  }).sort((a,b)=>state.filter!=='recent'?0:String((typeof chatHistories!=='undefined'&&chatHistories[b.id]?.at(-1)?.createdAt)||'').localeCompare(String((typeof chatHistories!=='undefined'&&chatHistories[a.id]?.at(-1)?.createdAt)||'')));
+  }).sort((a,b)=>{
+    if(state.filter==='recent')return String((typeof chatHistories!=='undefined'&&chatHistories[b.id]?.at(-1)?.createdAt)||'').localeCompare(String((typeof chatHistories!=='undefined'&&chatHistories[a.id]?.at(-1)?.createdAt)||''));
+    if(state.filter==='mine'||state.filter==='liked')return 0;
+    return (FEATURED_RANK.get(a.id)??99)-(FEATURED_RANK.get(b.id)??99);
+  });
   const image = (char, className, eager = false) => {
     const img = document.createElement('img');
     img.className = className;

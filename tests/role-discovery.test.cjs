@@ -131,3 +131,24 @@ test('role gallery displays exactly two cards per row at all widths with legible
  assert.match(js,/open\.addEventListener\('click',\(\)=>startChat\(char\)\)/);
  assert.match(js,/favorite\.addEventListener\('click',\(\)=>toggleFavoriteFor\(char\)\)/);
 });
+
+test('twelve featured fiction personas use independent locally hosted WebP portraits',()=>{
+ const roles=read('roles.js'),discovery=read('role-discovery.js'),html=read('index.html'),app=read('app.js'),fs=require('node:fs'),path=require('node:path');
+ const selected=["luoyan","wuyue","yinyao","qiaoyu","tangli","xingye","cenmo","suyu","haichao","luxi","yanchuan","sunyu"];
+ const resolved=new Set();
+ for(const id of selected){
+   const filename='assets/role-portraits/'+id+'.webp';
+   assert.ok(roles.includes('"avatar": "'+filename+'"'),id+' must not hotlink old portrait');
+   const p=path.join(__dirname,'..',filename);
+   const raw=fs.readFileSync(p);
+   assert.ok(raw.length>=20000&&raw.length<=150000,id+' must use a nonempty optimized image');
+   assert.equal(raw.toString('ascii',0,4),'RIFF');
+   assert.equal(raw.toString('ascii',8,12),'WEBP');
+   resolved.add(filename);
+ }
+ assert.equal(resolved.size,12,'no shared placeholder assets');
+ assert.match(app,/role-portraits\\\/[a-z0-9_-]+/);
+ assert.match(discovery,/FEATURED_RANK/);
+ assert.match(html,/data-role-filter="featured"/);
+ assert.match(html,/assets\/role-portraits\/luoyan\.webp/);
+});

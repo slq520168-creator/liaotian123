@@ -91,7 +91,7 @@ function safeAvatar(value, fallback = DEFAULT_AVATAR) {
   if (typeof value !== 'string') return fallback;
   const src = value.trim();
   if (src.length <= MAX_AVATAR_DATA_LENGTH && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(src)) return src;
-  if (/^assets\/avatars\/[a-z0-9_-]+\.(svg|jpg|jpeg|png|webp)$/i.test(src)) return src;
+  if (/^assets\/(?:avatars\/[a-z0-9_-]+\.(?:svg|jpg|jpeg|png|webp)|role-portraits\/[a-z0-9_-]+\.webp)$/i.test(src)) return src;
   try {
     const url = new URL(src);
     if (url.protocol === 'https:' && !url.username && !url.password) return url.href;

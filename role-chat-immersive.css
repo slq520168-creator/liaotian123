@@ -9,7 +9,7 @@ body.role-chat-immersive .chat-main>.rd-chat-scene{
 }
 body.role-chat-immersive .rd-chat-scene img{
   width:100%;height:100%;object-fit:cover;object-position:center 21%;
-  filter:saturate(1.07) brightness(.79);transform:none!important;
+  filter:saturate(1.05) brightness(.96);transform:none!important;
   animation:none!important;
 }
 body.role-chat-immersive .rd-chat-scene:after{

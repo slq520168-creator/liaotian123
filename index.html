@@ -138,10 +138,10 @@
         <div class="rd-deck">
           <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 24</span>
           <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
-            <img id="rdHeroPortrait" src="assets/avatars/nuannuan-portrait.jpg" alt="当前角色形象" fetchpriority="high">
+            <img id="rdHeroPortrait" src="assets/role-portraits/luoyan.webp" alt="当前角色形象" fetchpriority="high" decoding="async">
             <video id="rdHeroVideo" class="rd-character-video" aria-label="角色视频预览" loop muted playsinline preload="none" hidden></video>
-            <span class="rd-character-tag" id="rdHeroTag">人物角色</span>
-            <div class="rd-card-info"><span class="rd-hero-scene" id="rdHeroScene"></span><div class="rd-card-title"><strong id="rdHeroName">暖暖</strong><span class="rd-age" id="rdHeroAge">24</span></div><div class="rd-hero-traits" id="rdHeroTraits"></div><p class="rd-card-bio" id="rdHeroBio"></p></div>
+            <span class="rd-character-tag" id="rdHeroTag">爵士歌手</span>
+            <div class="rd-card-info"><span class="rd-hero-scene" id="rdHeroScene"></span><div class="rd-card-title"><strong id="rdHeroName">罗烟</strong><span class="rd-age" id="rdHeroAge">29</span></div><div class="rd-hero-traits" id="rdHeroTraits"></div><p class="rd-card-bio" id="rdHeroBio"></p></div>
           </div>
           <div id="rdHeroEmpty" class="rd-card-empty" hidden>没有找到对应角色，试试其他筛选条件。</div>
           <div class="rd-control-row" id="rdHeroControls" aria-label="切换与收藏角色">
@@ -157,7 +157,7 @@
         <div class="rd-gallery-title"><h2>探索角色 <small>CHARACTER COLLECTION</small></h2><span id="rdGridCount">24 位角色</span></div>
         <label class="rd-search-wrap" for="rdSearch"><span aria-hidden="true">⌕</span><input id="rdSearch" class="rd-search" type="search" placeholder="搜索名字、性格、身份或故事" autocomplete="off" maxlength="80"></label>
         <div class="rd-filters" role="group" aria-label="角色分类">
-          <button type="button" class="rd-filter is-active" data-role-filter="all" aria-pressed="true">全部</button>
+          <button type="button" class="rd-filter is-active" data-role-filter="all" aria-pressed="true">全部</button><button type="button" class="rd-filter" data-role-filter="featured" aria-pressed="false">精选人物</button>
           <button type="button" class="rd-filter" data-role-filter="都市" aria-pressed="false">都市</button>
           <button type="button" class="rd-filter" data-role-filter="治愈" aria-pressed="false">治愈</button>
           <button type="button" class="rd-filter" data-role-filter="悬疑" aria-pressed="false">悬疑</button>
