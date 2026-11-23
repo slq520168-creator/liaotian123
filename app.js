@@ -31,6 +31,25 @@ let roleAvatarBusy = false;
 let playerProfile = {id: '', name: '', about: ''};
 let roleMemories = Object.create(null);
 const previousVisits = Object.create(null);
+const ROLE_SCENES=Object.freeze({default:'延续当前剧情',cafe:'安静咖啡馆的桌边',night:'城市夜晚的霓虹街头',seaside:'海边日落，浪声轻轻',home:'熟悉而温馨的客厅',fantasy:'奇幻冒险旅途'});
+const roleScenes=Object.create(null);
+try{const saved=JSON.parse(localStorage.getItem('liaotian_role_scenes_v1')||'{}');if(saved&&typeof saved==='object')for(const [id,scene] of Object.entries(saved))if(Object.hasOwn(ROLE_SCENES,scene))roleScenes[id]=scene;}catch{}
+function currentRoleScene(id){return Object.hasOwn(ROLE_SCENES,roleScenes[id])?roleScenes[id]:'default';}
+function setRoleScene(id,scene){if(!characters.some(char=>char.id===id)||!Object.hasOwn(ROLE_SCENES,scene))return false;roleScenes[id]=scene;try{localStorage.setItem('liaotian_role_scenes_v1',JSON.stringify(roleScenes));}catch{}return true;}
+function regenerateCurrentReply(){
+  const char=characters.find(char=>char.id===activeCharacterId);
+  if(!char||pendingReplies.has(char.id))return false;
+  const history=chatHistories[char.id]||[],last=history.findLastIndex(msg=>msg.sender==='user');
+  if(last<0)return false;
+  history.splice(last+1);replyErrors.delete(char.id);saveDataToStorage();requestCharacterReply(char);return true;
+}
+window.RoleChatActions=Object.freeze({
+ scene:id=>currentRoleScene(id||activeCharacterId),
+ setScene:(scene,id)=>setRoleScene(id||activeCharacterId,scene),
+ regenerate:regenerateCurrentReply,
+ activeCharacter:()=>characters.find(char=>char.id===activeCharacterId)||null,
+ history:()=>[...(chatHistories[activeCharacterId]||[])]
+});
 let replyLength = 'auto';
 let chatStyle = 'mature';
 let lastConnectionWarmAt = 0;
@@ -99,6 +118,7 @@ function normalizeCustomCharacter(value) {
     greeting: value.greeting.trim().slice(0, 300),
     personality: value.personality.trim().slice(0, CHAT_LIMITS.personality),
     avatar: safeAvatar(value.avatar),
+    video: typeof value.video === 'string' && /^https:\/\/[^\s]{1,900}$/i.test(value.video.trim()) ? value.video.trim() : '',
     gender: ['male', 'female', 'unspecified'].includes(value.gender) ? value.gender : 'unspecified',
     age: Number.isFinite(Number(value.age)) && Number(value.age) >= 18 ? Math.min(100, Math.floor(Number(value.age))) : 24,
     voice: typeof value.voice === 'string' && value.voice.trim() ? value.voice.trim().slice(0, 240) : '忠实使用用户设定的性格和说话风格，保持自然、尊重和体贴。',
@@ -705,6 +725,7 @@ function buildSystemPrompt(char) {
     (char.interests ? '\n兴趣：' + char.interests : '') +
     (char.background ? '\n角色背景（虚构设定）：' + char.background : '') +
     (char.relationship ? '\n相处方式：' + char.relationship : '') +
+    '\n当前虚构场景：' + ROLE_SCENES[currentRoleScene(char.id)] + '。继续原先剧情、关系和事实，不重新开始。' +
     '\n不同情境的接话方式（用来理解性格，不是固定回复，不要照着念）：\n' + scenes +
     '\n本轮顺着对方正在聊的事接话。变化措辞和节奏，直接输出角色说的话，不复述这些规则。';
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
@@ -753,12 +774,9 @@ async function requestCharacterReply(char) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (navigator.onLine === false) throw new TypeError('offline');
-        const freeStudio = window.LIAOTIAN_CONFIG?.chatApiKind === 'studio-free';
-        const anonKey = window.LIAOTIAN_CONFIG?.anonKey;
-        if (freeStudio && !anonKey) throw new Error('免费聊天配置未加载，请刷新页面。');
         const response = await fetch(CHAT_API_URL, {
-          method: 'POST', headers: freeStudio ? {'Content-Type': 'application/json', Authorization: 'Bearer ' + anonKey, apikey: anonKey} : {'Content-Type': 'text/plain;charset=UTF-8', 'X-Client-Key': window.LIAOTIAN_CONFIG?.clientKey || 'lk-9CE8422ughj8AkIQwL7ZibdQnpu4X_Hp'},
-          body: JSON.stringify(freeStudio ? {kind: 'text', messages: job.messages} : {messages: job.messages, client: 'liaotian123', max_tokens: job.maxTokens, stream: true, attempt}),
+          method: 'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({messages:job.messages,max_tokens:job.maxTokens}),
           signal: controller.signal, credentials: 'omit', cache: 'no-store'
         });
         if (!response.ok) {

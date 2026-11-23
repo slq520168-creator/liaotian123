@@ -120,7 +120,7 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
  border-radius:999px;font-size:12px;padding:6px 14px;transition:background .18s,color .18s
 }
 .rd-filter.is-active{background:#a776f6;border-color:#a776f6;color:#160e21;font-weight:800}
-.rd-character-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:13px}
+.rd-character-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
 .rd-mini-card{
  position:relative;display:block;aspect-ratio:.77;overflow:hidden;border-radius:17px;
  border:1px solid #312940;background:#1c1527;color:#fff;padding:0;isolation:isolate;
@@ -133,6 +133,8 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
 .rd-mini-details{position:absolute;z-index:2;bottom:12px;left:11px;right:8px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .rd-mini-details strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rd-mini-details small{font-size:10px;color:#dfd3e9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-mini-summary{font-size:10px;line-height:1.2;color:#c6bcdb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-mini-kind{position:absolute;top:8px;left:8px;z-index:2;width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:rgba(20,12,32,.72);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:12px}
 .rd-mini-heart{position:absolute;z-index:2;top:8px;right:10px;color:#f4b1dc;text-shadow:0 2px 8px #000;font-size:21px}
 .rd-grid-empty{padding:30px 10px;text-align:center;font-size:13px;color:#aaa0b8}
 .rd-grid-empty[hidden]{display:none!important}
@@ -165,7 +167,7 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
 }
 @media(max-width:410px){
  .rd-container{width:calc(100% - 32px)}
- .rd-character-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+ .rd-character-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
  .rd-intro h1{font-size:26px}
  .rd-cta{font-size:14px}
  .rd-brand-text{font-size:17px}

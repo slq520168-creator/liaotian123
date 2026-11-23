@@ -5,7 +5,7 @@
   const $ = id => document.getElementById(id);
   const FAV_KEY = 'sirole_favorites_v1';
   const MOTION_IDS=new Set(["shenyan","nuannuan","linwan","jiangyu","sutang","xuzhixia","yeqingge","lingyi"]);
-  const roleVideo=char=>char&&MOTION_IDS.has(String(char.id))?'assets/role-videos/'+char.id+'.mp4':'';
+  const roleVideo=char=>char&&typeof char.video==='string'&&/^https:\/\/[^\s]{1,900}$/i.test(char.video)?char.video:char&&MOTION_IDS.has(String(char.id))?'assets/role-videos/'+char.id+'.mp4':'';
   const videoFailed=new Set();
   function hideVideoReplay(el){
     const parent=el?.parentElement,button=parent?.querySelector('.rd-video-retry');
@@ -43,6 +43,7 @@
   }
   function playVideo(el,url,userGesture=false){
     if(!el)return;
+    if(userGesture&&url)videoFailed.delete(url);
     const enable=Boolean(url&&!videoFailed.has(url)&&(userGesture||!matchMedia('(prefers-reduced-motion: reduce)').matches));
     if(!enable){stopVideo(el);return;}
     if(el.dataset.source!==url){
@@ -83,10 +84,11 @@
     if (state.filter === 'female' && char.gender !== 'female') return false;
     if (state.filter === 'male' && char.gender !== 'male') return false;
     if (state.filter === 'mine' && char.isPreset) return false;
+    if (state.filter === 'recent' && !(typeof chatHistories!=='undefined'&&(chatHistories[char.id]||[]).some(x=>x.sender==='user'))) return false;
     if (state.filter === 'liked' && !state.favorites.has(char.id)) return false;
     const query = state.query.trim().toLocaleLowerCase();
-    return !query || [char.name, char.tag, char.personality, char.interests].some(value => String(value || '').toLocaleLowerCase().includes(query));
-  });
+    return !query || [char.name,char.tag,char.personality,char.interests,char.background].some(value=>String(value||'').toLocaleLowerCase().includes(query));
+  }).sort((a,b)=>state.filter!=='recent'?0:String((typeof chatHistories!=='undefined'&&chatHistories[b.id]?.at(-1)?.createdAt)||'').localeCompare(String((typeof chatHistories!=='undefined'&&chatHistories[a.id]?.at(-1)?.createdAt)||'')));
   const image = (char, className, eager = false) => {
     const img = document.createElement('img');
     img.className = className;
@@ -183,7 +185,7 @@
     if(error){
       live.hidden=false;
       live.classList.remove('rd-is-typing');
-      text.textContent=error.querySelector('span')?.textContent||'回复暂时失败，请重试。';
+      text.textContent='回复没有完成，可以重试。';
     }
   }
   function closeHistory() {
@@ -210,7 +212,7 @@
   }
   function openCreate() {
     // Keep the discovery page in place under the 2D editor. Cancel returns to the same card.
-    $('openCreateModalBtn')?.click();
+    if(window.Role2DCreator?.open?.()!==true)$('openCreateModalBtn')?.click();
   }
   function selectIndex(next, animate = true) {
     const list = available();
@@ -297,8 +299,11 @@
       const details = document.createElement('span'); details.className = 'rd-mini-details';
       const title = document.createElement('strong'); title.textContent = char.name;
       const roleTag = document.createElement('small'); roleTag.textContent = char.tag || '专属角色';
-      details.append(title, roleTag);
-      button.append(portrait, shade, details);
+      const summary=document.createElement('span');summary.className='rd-mini-summary';
+      summary.textContent=String(char.interests||char.greeting||'').trim().slice(0,32);
+      const marker=document.createElement('span');marker.className='rd-mini-kind';marker.textContent=roleVideo(char)?'▶':'✦';marker.setAttribute('aria-hidden','true');
+      details.append(title,roleTag,summary);
+      button.append(portrait,shade,marker,details);
       if (state.favorites.has(char.id)) {
         const heart = document.createElement('span');
         heart.className = 'rd-mini-heart';
@@ -306,7 +311,7 @@
         heart.setAttribute('aria-hidden', 'true');
         button.appendChild(heart);
       }
-      button.addEventListener('click', () => selectCharacter(char.id));
+      button.addEventListener('click', () => startChat(char));
       fragment.appendChild(button);
     }
     container.replaceChildren(fragment);
@@ -389,6 +394,25 @@
     root.querySelectorAll('[data-role-filter]').forEach(btn => btn.addEventListener('click', () => setFilter(btn.dataset.roleFilter)));
     $('rdGoHome')?.addEventListener('click', () => switchView(true));
     $('rdHistoryToggle').addEventListener('click', toggleHistory);
+    const scene=$('rdScene');
+    if(scene){
+      scene.value=window.RoleChatActions?.scene?.()||'default';
+      scene.addEventListener('change',()=>{window.RoleChatActions?.setScene?.(scene.value);document.body.dataset.roleScene=scene.value;});
+    }
+    $('rdRegenerate')?.addEventListener('click',()=>{if(window.RoleChatActions?.regenerate?.())closeHistory();});
+    $('rdShare')?.addEventListener('click',async()=>{
+      const char=window.RoleChatActions?.activeCharacter?.(),history=window.RoleChatActions?.history?.()||[];
+      if(!char||!history.length)return;
+      const transcript=char.name+' · 角色聊天\n\n'+history.map(x=>(x.sender==='user'?'我':char.name)+'：'+x.text).join('\n\n');
+      try{if(navigator.share)await navigator.share({title:char.name+' · 角色聊天',text:transcript.slice(0,16000)});else await navigator.clipboard?.writeText(transcript);}catch(e){if(e?.name!=='AbortError')console.warn('分享未完成');}
+    });
+    $('rdSave')?.addEventListener('click',()=>{
+      const char=window.RoleChatActions?.activeCharacter?.(),history=window.RoleChatActions?.history?.()||[];
+      if(!char||!history.length)return;
+      const transcript=char.name+' · 角色聊天\n\n'+history.map(x=>(x.sender==='user'?'我':char.name)+'：'+x.text).join('\n\n');
+      const url=URL.createObjectURL(new Blob([transcript],{type:'text/plain;charset=utf-8'}));
+      const anchor=document.createElement('a');anchor.href=url;anchor.download='角色聊天-'+char.name+'.txt';document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+    });
     $('rdReplyRetry')?.addEventListener('click',()=>{
       const btn=$('messages')?.querySelector('.reply-error button');
       if(btn)btn.click();
@@ -400,7 +424,7 @@
     }
     const avatar = $('headerAvatar');
     if (avatar && typeof MutationObserver === 'function') {
-      const avatarObserver = new MutationObserver(() => { syncBackdrop(); });
+      const avatarObserver = new MutationObserver(() => { syncBackdrop();const s=$('rdScene');if(s){s.value=window.RoleChatActions?.scene?.()||'default';document.body.dataset.roleScene=s.value;} });
       avatarObserver.observe(avatar, {attributes: true, attributeFilter: ['src']});
     }
     $('rdChatCover').addEventListener('error', e => {

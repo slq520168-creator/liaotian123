@@ -1,15 +1,12 @@
 /** 唯一聊天接口配置入口。自己的部署只需替换 chatApiUrl，密钥留在后台。 */
-window.LIAOTIAN_CONFIG = Object.freeze({
-  chatApiUrl: 'https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/liaotian-studio-free',
-  chatApiKind: 'studio-free',
-  anonKey: window.STUDIO_API?.anonKey || ''
-});
+/* Chat runtime is same-origin; no Supabase credentials or database. */
+window.LIAOTIAN_CONFIG = Object.freeze({chatApiUrl:'/api/chat',chatApiKind:'role-free'});
 window.LIAOTIAN_HUMAN_ASSETS = window.LIAOTIAN_HUMAN_ASSETS || {};
 window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES || [];
 
 (() => {
   'use strict';
-  const version='20261123-create3d59';
+  const version='20261123-rolechat60';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';

@@ -68,6 +68,7 @@
     basics.append(field('interests','兴趣爱好','input',240,'角色自己的兴趣'));
     basics.append(field('voice','说话语气','textarea',240,'例如：成熟、直接、有幽默感。'));
     basics.append(field('relationship','相处关系','textarea',300,'初始关系、距离感和交流边界。'));
+    basics.append(field('video','人物视频（HTTPS）','input',900,'https://.../role.mp4'));
     const error=text('p','r2-error');error.id='r2-error';error.setAttribute('role','alert');error.hidden=true;
     const footer=text('footer','r2-footer');
     const cancel=text('button','r2-cancel','取消');cancel.type='button';cancel.addEventListener('click',hide);
@@ -100,7 +101,7 @@
     previousFocus=document.activeElement;
     form.reset();editingId=item?.id||'';avatarBusy=false;
     avatarSrc=item?.avatar||'assets/avatars/nuannuan-portrait.jpg';avatar.src=avatarSrc;
-    for(const id of ['name','tag','greeting','personality','background','interests','voice','relationship']){
+    for(const id of ['name','tag','greeting','personality','background','interests','voice','relationship','video']){
       get('r2-'+id).value=typeof item?.[id]==='string'?item[id]:'';
     }
     get('r2-gender').value=item?.gender||'female';
@@ -141,9 +142,10 @@
       name:get('r2-name').value,tag:get('r2-tag').value,greeting:get('r2-greeting').value,
       personality:get('r2-personality').value,background:get('r2-background').value,
       interests:get('r2-interests').value,voice:get('r2-voice').value,
-      relationship:get('r2-relationship').value,gender:get('r2-gender').value,
+      relationship:get('r2-relationship').value,video:get('r2-video').value,gender:get('r2-gender').value,
       age,avatar:avatarSrc
     };
+    if(raw.video.trim()&&!/^https:\/\/[^\s]{1,900}$/i.test(raw.video.trim()))return error('需要有效的 HTTPS 视频链接。');
     const normalized=normalizeCustomCharacter(raw);
     if(!normalized)return error('请填写角色姓名、介绍、开场白与人设。');
     normalized.roleKind='2d';

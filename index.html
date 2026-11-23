@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#fff0f5">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' blob: https://*.supabase.co https://text.pollinations.ai https://vireonix.ai https://ai-api.cehpoint.co.in https://api.llmfaucet.dev; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' blob: https://*.supabase.co https://text.pollinations.ai https://vireonix.ai https://ai-api.cehpoint.co.in https://api.llmfaucet.dev; media-src 'self' data: blob: https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
   <meta name="application-name" content="角色聊天">
   <meta name="apple-mobile-web-app-title" content="角色聊天">
   <meta name="mobile-web-app-capable" content="yes">
@@ -85,6 +85,7 @@
         <div class="messages" id="messages"></div>
       </div>
 
+      <nav class="rd-chat-actions" aria-label="聊天操作"><select id="rdScene" aria-label="切换场景"><option value="default">当前剧情</option><option value="cafe">咖啡馆</option><option value="night">城市夜晚</option><option value="seaside">海边日落</option><option value="home">温馨客厅</option><option value="fantasy">奇幻旅途</option></select><button type="button" class="rd-action-icon" id="rdRegenerate" title="重新生成" aria-label="重新生成回复">↻</button><button type="button" class="rd-action-icon" id="rdShare" title="分享" aria-label="分享聊天">↗</button><button type="button" class="rd-action-icon" id="rdSave" title="保存" aria-label="保存聊天">↓</button></nav>
       <aside id="rdLiveReply" class="rd-live-reply" aria-label="人物正在回复" aria-live="polite" hidden><div class="rd-reply-top"><span class="rd-speaking-indicator"></span><strong id="rdReplyName">暖暖</strong></div><p id="rdReplyText"></p><span class="rd-reply-typing" aria-hidden="true"><i></i><i></i><i></i></span><button id="rdReplyRetry" class="rd-reply-retry" type="button" hidden>重试回复</button></aside>
       <div class="input-container">
         <div class="quick-replies" id="quickReplies"></div>
@@ -160,7 +161,7 @@
           <button type="button" class="rd-filter is-active" data-role-filter="all" aria-pressed="true">全部</button>
           <button type="button" class="rd-filter" data-role-filter="female" aria-pressed="false">女性角色</button>
           <button type="button" class="rd-filter" data-role-filter="male" aria-pressed="false">男性角色</button>
-          <button type="button" class="rd-filter" data-role-filter="liked" aria-pressed="false">我喜欢的</button>
+          <button type="button" class="rd-filter" data-role-filter="recent" aria-pressed="false">最近聊天</button><button type="button" class="rd-filter" data-role-filter="liked" aria-pressed="false">我喜欢的</button>
           <button type="button" class="rd-filter" data-role-filter="mine" aria-pressed="false">我的角色</button>
         </div>
         <div class="rd-character-grid" id="rdCharacterGrid"></div>
