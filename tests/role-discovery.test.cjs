@@ -87,3 +87,20 @@ test('real local videos only, no temporary third-party links in role cards',()=>
  assert.match(html,/id="rdChatVideo"/);
  assert.doesNotMatch(script,/\.hf\.space\/--replicas/);
 });
+
+test('iPhone Safari blocked autoplay can be resumed by a real user gesture', () => {
+  const js=read('role-discovery.js'),css=read('role-chat-immersive.css');
+  assert.match(js,/error\?\.name==='NotAllowedError'/);
+  assert.match(js,/playVideo\(el,el\.dataset\.source,true\)/);
+  assert.match(js,/button\.addEventListener\('click'/);
+  assert.match(js,/document\.addEventListener\('visibilitychange'/);
+  assert.match(js,/if\(document\.body\.classList\.contains\('role-chat-immersive'\)\)playVideo/);
+  assert.match(css,/\.rd-video-retry\[hidden\]/);
+});
+test('eight local role videos have genuine MP4 file signatures', () => {
+  for(const id of ['shenyan','nuannuan','linwan','jiangyu','sutang','xuzhixia','yeqingge','lingyi']){
+    const bytes=fs.readFileSync(path.join(root,'assets/role-videos',id+'.mp4'));
+    assert.ok(bytes.length>2048,id+' is not an empty stub');
+    assert.equal(bytes.subarray(4,8).toString('ascii'),'ftyp',id+' is not MP4');
+  }
+});

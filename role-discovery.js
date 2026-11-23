@@ -6,9 +6,68 @@
   const FAV_KEY = 'sirole_favorites_v1';
   const MOTION_IDS=new Set(["shenyan","nuannuan","linwan","jiangyu","sutang","xuzhixia","yeqingge","lingyi"]);
   const roleVideo=char=>char&&MOTION_IDS.has(String(char.id))?'assets/role-videos/'+char.id+'.mp4':'';
-  let videoFailed=new Set();
-  function stopVideo(el){if(!el)return;el.pause();el.hidden=true;el.removeAttribute('src');el.dataset.source='';el.load();}
-  function playVideo(el,url){if(!el)return;const enable=Boolean(url&&!videoFailed.has(url)&&!matchMedia('(prefers-reduced-motion: reduce)').matches);if(!enable){stopVideo(el);return}if(el.dataset.source!==url){el.dataset.source=url;el.src=url;el.load();}el.hidden=false;el.play().catch(()=>{el.hidden=true;});}
+  const videoFailed=new Set();
+  function hideVideoReplay(el){
+    const parent=el?.parentElement,button=parent?.querySelector('.rd-video-retry');
+    if(button)button.hidden=true;
+    if(parent?.classList.contains('rd-chat-scene'))parent.setAttribute('aria-hidden','true');
+  }
+  function showVideoReplay(el){
+    const parent=el?.parentElement;
+    if(!parent)return;
+    let button=parent.querySelector('.rd-video-retry');
+    if(!button){
+      button=document.createElement('button');
+      button.type='button';
+      button.className='rd-video-retry';
+      button.textContent='▶ 播放视频';
+      button.setAttribute('aria-label','播放当前角色的真实动态视频');
+      button.addEventListener('click',event=>{
+        event.preventDefault();
+        event.stopPropagation();
+        playVideo(el,el.dataset.source,true);
+      });
+      parent.appendChild(button);
+    }
+    button.hidden=false;
+    if(parent.classList.contains('rd-chat-scene'))parent.removeAttribute('aria-hidden');
+  }
+  function stopVideo(el){
+    if(!el)return;
+    el._playVersion=(el._playVersion||0)+1;
+    el._playPending=false;
+    const hadSource=Boolean(el.dataset.source||el.hasAttribute('src'));
+    el.pause();el.hidden=true;
+    if(hadSource){el.removeAttribute('src');el.dataset.source='';el.load();}
+    hideVideoReplay(el);
+  }
+  function playVideo(el,url,userGesture=false){
+    if(!el)return;
+    const enable=Boolean(url&&!videoFailed.has(url)&&(userGesture||!matchMedia('(prefers-reduced-motion: reduce)').matches));
+    if(!enable){stopVideo(el);return;}
+    if(el.dataset.source!==url){
+      el._playVersion=(el._playVersion||0)+1;
+      el._playPending=false;
+      el.dataset.source=url;
+      el.src=url;
+      el.load();
+      el.hidden=true;
+      hideVideoReplay(el);
+    }
+    if(document.hidden){el.pause();el.hidden=true;return;}
+    if(!el.paused&&el.readyState>=2){el.hidden=false;hideVideoReplay(el);return;}
+    if(el._playPending&&!userGesture)return;
+    const version=el._playVersion=(el._playVersion||0)+1;
+    el._playPending=true;
+    Promise.resolve(el.play()).then(()=>{
+      if(el._playVersion!==version||el.dataset.source!==url)return;
+      if(!el.paused&&!document.hidden){el.hidden=false;hideVideoReplay(el);}
+    }).catch(error=>{
+      if(el._playVersion!==version||el.dataset.source!==url)return;
+      el.hidden=true;
+      if(error?.name==='NotAllowedError'&&!document.hidden)showVideoReplay(el);
+    }).finally(()=>{if(el._playVersion===version)el._playPending=false;});
+  }
   const state = {index: 0, filter: 'all', query: '', favorites: new Set(), drag: null, suppressClickUntil: 0};
   try {
     const stored = JSON.parse(localStorage.getItem(FAV_KEY) || '[]');
@@ -90,7 +149,8 @@
     const name = $('rdReplyName');
     if (name) name.textContent = char.name;
     window.RoleAvatarStage?.setCharacter?.(char);
-    playVideo($('rdChatVideo'),roleVideo(char));
+    if(document.body.classList.contains('role-chat-immersive'))playVideo($('rdChatVideo'),roleVideo(char));
+    else stopVideo($('rdChatVideo'));
     queueReplySync();
   }
   let replyFrame = 0;
@@ -288,7 +348,25 @@
     });
   }
   function boot() {
-    for(const key of ['rdHeroVideo','rdChatVideo'])$(''+key)?.addEventListener('error',event=>{if(event.target.dataset.source)videoFailed.add(event.target.dataset.source);stopVideo(event.target)});
+    for(const key of ['rdHeroVideo','rdChatVideo']){
+      const video=$(key);
+      video?.addEventListener('error',event=>{if(event.target.dataset.source)videoFailed.add(event.target.dataset.source);stopVideo(event.target);});
+      video?.addEventListener('playing',()=>{
+        if(video.dataset.source&&!document.hidden){video.hidden=false;hideVideoReplay(video);}
+      });
+    }
+    document.addEventListener('visibilitychange',()=>{
+      if(document.hidden){
+        for(const key of ['rdHeroVideo','rdChatVideo']){
+          const video=$(key);
+          if(!video)continue;
+          video._playVersion=(video._playVersion||0)+1;
+          video._playPending=false;
+          video.pause();video.hidden=true;hideVideoReplay(video);
+        }
+      }else if(!root.hidden)renderHero();
+      else syncBackdrop();
+    });
     $('rdHeroPortrait').addEventListener('error', event => {
       if (event.target.src.endsWith('/nuannuan-portrait.jpg')) return;
       event.target.src = 'assets/avatars/nuannuan-portrait.jpg';
