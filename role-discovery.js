@@ -81,13 +81,14 @@
   };
   const available = () => allCharacters().filter(char => {
     if (!char || !char.id) return false;
+    if (['都市','治愈','悬疑','奇幻','古风','科幻','冒险'].includes(state.filter) && char.category !== state.filter) return false;
     if (state.filter === 'female' && char.gender !== 'female') return false;
     if (state.filter === 'male' && char.gender !== 'male') return false;
     if (state.filter === 'mine' && char.isPreset) return false;
     if (state.filter === 'recent' && !(typeof chatHistories!=='undefined'&&(chatHistories[char.id]||[]).some(x=>x.sender==='user'))) return false;
     if (state.filter === 'liked' && !state.favorites.has(char.id)) return false;
     const query = state.query.trim().toLocaleLowerCase();
-    return !query || [char.name,char.tag,char.personality,char.interests,char.background].some(value=>String(value||'').toLocaleLowerCase().includes(query));
+    return !query || [char.name,char.tag,char.personality,char.interests,char.background,char.category,char.headline,char.hook,...(char.traits||[])].some(value=>String(value||'').toLocaleLowerCase().includes(query));
   }).sort((a,b)=>state.filter!=='recent'?0:String((typeof chatHistories!=='undefined'&&chatHistories[b.id]?.at(-1)?.createdAt)||'').localeCompare(String((typeof chatHistories!=='undefined'&&chatHistories[a.id]?.at(-1)?.createdAt)||'')));
   const image = (char, className, eager = false) => {
     const img = document.createElement('img');
@@ -233,22 +234,21 @@
     selectIndex(index);
     root.scrollTo({top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
   }
-  function toggleFavorite() {
-    const char = current();
-    if (!char) return;
-    if (state.favorites.has(char.id)) state.favorites.delete(char.id);
+  function toggleFavoriteFor(char){
+    if(!char)return;
+    if(state.favorites.has(char.id))state.favorites.delete(char.id);
     else state.favorites.add(char.id);
     persistFavorites();
-    $('rdFavorite').classList.remove('rd-heart-pop');
-    void $('rdFavorite').offsetWidth;
-    $('rdFavorite').classList.add('rd-heart-pop');
-    if (state.filter === 'liked') {
-      state.index = 0;
-      render();
-    } else {
-      renderHero();
-      renderGrid();
-    }
+    if(state.filter==='liked')state.index=0;
+    render();
+  }
+  function toggleFavorite(){
+    const char=current();
+    if(!char)return;
+    toggleFavoriteFor(char);
+    const target=$('rdFavorite');
+    target?.classList.remove('rd-heart-pop');
+    if(target){void target.offsetWidth;target.classList.add('rd-heart-pop');}
   }
   function renderHero() {
     const char = current();
@@ -275,7 +275,10 @@
     illustration.alt = char.name + '的角色形象';
     name.textContent = char.name;
     age.textContent = Number(char.age) >= 18 ? String(char.age) : '';
-    bio.textContent = String(char.personality || char.greeting || '').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g, '').trim().slice(0, 160);
+    bio.textContent = String(char.hook || char.personality || char.greeting || '').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,140);
+    const heroScene=$('rdHeroScene'),heroTraits=$('rdHeroTraits');
+    if(heroScene)heroScene.textContent=char.sceneLabel || char.headline || '';
+    if(heroTraits)heroTraits.replaceChildren(...(char.traits||[]).slice(0,3).map(value=>{const item=document.createElement('span');item.textContent=value;return item;}));
     tag.textContent = char.tag || '遇见新角色';
     const liked = state.favorites.has(char.id);
     favorite.classList.toggle('is-liked', liked);
@@ -284,39 +287,46 @@
     $('rdStartChat').textContent = '与' + char.name + '开始聊天';
     card.setAttribute('aria-label', '查看' + char.name + '，左右滑动切换角色');
   }
+  const COLOR_BY_CATEGORY=Object.freeze({'都市':'#e0a7cb','治愈':'#b0e2c6','悬疑':'#a2b1dc','奇幻':'#d3a8f7','古风':'#e7c38b','科幻':'#87c4e8','冒险':'#eac28d'});
   function renderGrid() {
-    const container = $('rdCharacterGrid');
-    const list = available();
-    const fragment = document.createDocumentFragment();
-    for (const char of list) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'rd-mini-card' + (char.id === current()?.id ? ' is-current' : '');
-      button.setAttribute('aria-label', '选择' + char.name + '，' + (char.tag || '角色'));
-      button.dataset.characterId = char.id;
-      const portrait = image(char, 'rd-mini-image');
-      const shade = document.createElement('span'); shade.className = 'rd-mini-shade';
-      const details = document.createElement('span'); details.className = 'rd-mini-details';
-      const title = document.createElement('strong'); title.textContent = char.name;
-      const roleTag = document.createElement('small'); roleTag.textContent = char.tag || '专属角色';
-      const summary=document.createElement('span');summary.className='rd-mini-summary';
-      summary.textContent=String(char.interests||char.greeting||'').trim().slice(0,32);
-      const marker=document.createElement('span');marker.className='rd-mini-kind';marker.textContent=roleVideo(char)?'▶':'✦';marker.setAttribute('aria-hidden','true');
-      details.append(title,roleTag,summary);
-      button.append(portrait,shade,marker,details);
-      if (state.favorites.has(char.id)) {
-        const heart = document.createElement('span');
-        heart.className = 'rd-mini-heart';
-        heart.textContent = '♥';
-        heart.setAttribute('aria-hidden', 'true');
-        button.appendChild(heart);
+    const container=$('rdCharacterGrid'),list=available(),currentId=current()?.id,fragment=document.createDocumentFragment();
+    for(const char of list){
+      const card=document.createElement('article');
+      card.className='rd-mini-card'+(char.id===currentId?' is-current':'');
+      card.dataset.characterId=char.id;
+      card.style.setProperty('--rd-accent',COLOR_BY_CATEGORY[char.category]||'#cbb2f8');
+      const open=document.createElement('button');
+      open.type='button';open.className='rd-mini-open';
+      open.setAttribute('aria-label','与'+char.name+'开始聊天：'+(char.headline||char.tag||'角色')+'，'+(char.traits||[]).join('、'));
+      open.appendChild(image(char,'rd-mini-image'));
+      const shade=document.createElement('span');shade.className='rd-mini-shade';open.append(shade);
+      const category=document.createElement('span');category.className='rd-mini-category';
+      category.textContent=(char.mark||'✦')+' '+(char.category||'原创');open.append(category);
+      if(roleVideo(char)){
+        const video=document.createElement('span');video.className='rd-mini-video';video.textContent='▶';
+        video.setAttribute('aria-label','可播放角色视频');open.append(video);
       }
-      button.addEventListener('click', () => startChat(char));
-      fragment.appendChild(button);
+      const info=document.createElement('span');info.className='rd-mini-details';
+      const role=document.createElement('span');role.className='rd-mini-role';role.textContent=char.headline||char.tag||'自定义角色';
+      const name=document.createElement('strong');name.textContent=char.name;
+      const traits=document.createElement('span');traits.className='rd-mini-traits';
+      for(const trait of (char.traits||[]).slice(0,2)){const chip=document.createElement('i');chip.textContent=trait;traits.append(chip);}
+      const hook=document.createElement('span');hook.className='rd-mini-hook';
+      hook.textContent=String(char.hook||char.greeting||char.personality||'').replace(/【角色自定义设定】[\\s\\S]*?【自定义设定结束】/g,'').trim().slice(0,65);
+      const enter=document.createElement('span');enter.className='rd-mini-enter';enter.textContent='进入故事  ›';enter.setAttribute('aria-hidden','true');
+      info.append(role,name,traits,hook,enter);open.append(info);
+      open.addEventListener('click',()=>startChat(char));
+      const favorite=document.createElement('button');
+      favorite.type='button';favorite.className='rd-mini-fav'+(state.favorites.has(char.id)?' is-liked':'');
+      favorite.setAttribute('aria-label',(state.favorites.has(char.id)?'取消收藏':'收藏')+char.name);
+      favorite.setAttribute('aria-pressed',String(state.favorites.has(char.id)));
+      favorite.textContent=state.favorites.has(char.id)?'♥':'♡';
+      favorite.addEventListener('click',()=>toggleFavoriteFor(char));
+      card.append(open,favorite);fragment.append(card);
     }
     container.replaceChildren(fragment);
-    $('rdGridCount').textContent = String(list.length) + ' 位角色';
-    $('rdGridEmpty').hidden = list.length > 0;
+    $('rdGridCount').textContent=list.length+' 位角色';
+    $('rdGridEmpty').hidden=list.length>0;
   }
   function render() { renderHero(); renderGrid(); }
   function attachGestures() {

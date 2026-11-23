@@ -104,3 +104,16 @@ test('eight local role videos have genuine MP4 file signatures', () => {
     assert.equal(bytes.subarray(4,8).toString('ascii'),'ftyp',id+' is not MP4');
   }
 });
+
+test('editorial character catalog has 24 distinct speakable roles and advanced filter controls',()=>{
+ const source=read('roles.js'),ui=read('role-discovery.js'),html=read('index.html'),css=read('role-discovery.css');
+ const cards=[...source.matchAll(/"id": "(wuyue|tangli|qiaoyu|luoyan|xingye|yinyao|cenmo|sunyu|luxi|yanchuan|suyu|haichao)"/g)];
+ assert.equal(new Set(cards.map(x=>x[1])).size,12);
+ assert.match(source,/ROLE_DISCOVERY_CARDS/);
+ assert.match(ui,/toggleFavoriteFor\(char\)/);
+ assert.match(ui,/char\.category/);
+ assert.match(ui,/startChat\(char\)/);
+ assert.match(css,/rd-mini-traits/);
+ for(const category of ['都市','治愈','悬疑','奇幻','古风','科幻','冒险'])assert.ok(html.includes('data-role-filter="'+category+'"'));
+ assert.match(read('config/app.js'),/else if\(char\?\.isPreset\)char\.roleKind='2d'/);
+});

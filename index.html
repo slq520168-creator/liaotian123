@@ -131,17 +131,17 @@
       </nav>
       <div class="rd-intro">
         <span class="rd-eyebrow">CHARACTER · STORY · CONNECTION</span>
-        <h1>她（他）只差<em>一条消息。</em></h1>
-        <p>发现喜欢的角色，让故事从第一句对话开始。</p>
+        <h1>每种性格，<em>都有一段故事。</em></h1>
+        <p>从陌生到熟悉，挑一个想走进的世界。</p>
       </div>
       <div class="rd-stage">
         <div class="rd-deck">
-          <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 12</span>
+          <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 24</span>
           <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
             <img id="rdHeroPortrait" src="assets/avatars/nuannuan-portrait.jpg" alt="当前角色形象" fetchpriority="high">
             <video id="rdHeroVideo" class="rd-character-video" aria-label="角色视频预览" loop muted playsinline preload="none" hidden></video>
             <span class="rd-character-tag" id="rdHeroTag">人物角色</span>
-            <div class="rd-card-info"><div class="rd-card-title"><strong id="rdHeroName">暖暖</strong><span class="rd-age" id="rdHeroAge">24</span></div><p class="rd-card-bio" id="rdHeroBio"></p></div>
+            <div class="rd-card-info"><span class="rd-hero-scene" id="rdHeroScene"></span><div class="rd-card-title"><strong id="rdHeroName">暖暖</strong><span class="rd-age" id="rdHeroAge">24</span></div><div class="rd-hero-traits" id="rdHeroTraits"></div><p class="rd-card-bio" id="rdHeroBio"></p></div>
           </div>
           <div id="rdHeroEmpty" class="rd-card-empty" hidden>没有找到对应角色，试试其他筛选条件。</div>
           <div class="rd-control-row" id="rdHeroControls" aria-label="切换与收藏角色">
@@ -154,10 +154,17 @@
       <button id="rdStartChat" class="rd-cta" type="button">开始聊天</button>
       <p class="rd-hint">左右滑动切换角色 · 点击人物开启对话</p>
       <section class="rd-gallery" aria-label="探索所有角色">
-        <div class="rd-gallery-title"><h2>探索角色</h2><span id="rdGridCount">12 位角色</span></div>
-        <label class="rd-search-wrap" for="rdSearch"><span aria-hidden="true">⌕</span><input id="rdSearch" class="rd-search" type="search" placeholder="搜索角色名字、性格或兴趣" autocomplete="off" maxlength="80"></label>
+        <div class="rd-gallery-title"><h2>探索角色 <small>CHARACTER COLLECTION</small></h2><span id="rdGridCount">24 位角色</span></div>
+        <label class="rd-search-wrap" for="rdSearch"><span aria-hidden="true">⌕</span><input id="rdSearch" class="rd-search" type="search" placeholder="搜索名字、性格、身份或故事" autocomplete="off" maxlength="80"></label>
         <div class="rd-filters" role="group" aria-label="角色分类">
           <button type="button" class="rd-filter is-active" data-role-filter="all" aria-pressed="true">全部</button>
+          <button type="button" class="rd-filter" data-role-filter="都市" aria-pressed="false">都市</button>
+          <button type="button" class="rd-filter" data-role-filter="治愈" aria-pressed="false">治愈</button>
+          <button type="button" class="rd-filter" data-role-filter="悬疑" aria-pressed="false">悬疑</button>
+          <button type="button" class="rd-filter" data-role-filter="奇幻" aria-pressed="false">奇幻</button>
+          <button type="button" class="rd-filter" data-role-filter="古风" aria-pressed="false">古风</button>
+          <button type="button" class="rd-filter" data-role-filter="科幻" aria-pressed="false">科幻</button>
+          <button type="button" class="rd-filter" data-role-filter="冒险" aria-pressed="false">冒险</button>
           <button type="button" class="rd-filter" data-role-filter="female" aria-pressed="false">女性角色</button>
           <button type="button" class="rd-filter" data-role-filter="male" aria-pressed="false">男性角色</button>
           <button type="button" class="rd-filter" data-role-filter="recent" aria-pressed="false">最近聊天</button><button type="button" class="rd-filter" data-role-filter="liked" aria-pressed="false">我喜欢的</button>
