@@ -18,6 +18,8 @@
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="preconnect" href="https://afzcohtnljnmucrkgcaz.supabase.co" crossorigin>
   <link rel="stylesheet" href="styles.css?v=20261117-create3d53">
+  <link rel="stylesheet" href="role-discovery.css?v=20261123-discover01">
+  <link rel="stylesheet" href="role-chat-immersive.css?v=20261123-discover01">
 </head>
 <body>
   <div class="app-container">
@@ -54,6 +56,7 @@
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <main class="chat-main">
+      <div class="rd-chat-scene" aria-hidden="true"><img id="rdChatCover" src="assets/avatars/nuannuan-portrait.jpg" alt=""></div>
       <header class="chat-header">
         <button class="icon-btn menu-btn" id="openSidebarBtn" title="打开角色菜单" aria-label="打开角色菜单" aria-expanded="false">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
@@ -68,6 +71,7 @@
           </div>
         </div>
         <div class="header-actions">
+          <button class="icon-btn rd-history-toggle" type="button" id="rdHistoryToggle" title="查看对话记录" aria-label="查看对话记录" aria-pressed="false">☷</button>
           <button class="btn btn-outline btn-sm" id="switchCharBtn">切换/创建角色</button>
           <button class="icon-btn" id="clearChatBtn" title="清空对话" aria-label="清空当前角色对话">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -81,6 +85,7 @@
         <div class="messages" id="messages"></div>
       </div>
 
+      <aside id="rdLiveReply" class="rd-live-reply" aria-label="人物正在回复" aria-live="polite" hidden><div class="rd-reply-top"><span class="rd-speaking-indicator"></span><strong id="rdReplyName">暖暖</strong></div><p id="rdReplyText"></p><span class="rd-reply-typing" aria-hidden="true"><i></i><i></i><i></i></span></aside>
       <div class="input-container">
         <div class="quick-replies" id="quickReplies"></div>
         <div class="chat-tools">
@@ -117,6 +122,52 @@
       </div>
     </main>
   </div>
+
+  <section id="roleDiscovery" aria-label="角色发现大厅" hidden>
+    <div class="rd-container">
+      <nav class="rd-nav" aria-label="角色大厅导航">
+        <div class="rd-brand"><span class="rd-brand-mark" aria-hidden="true">♡</span><span class="rd-brand-text">Liaotian123</span></div>
+        <div class="rd-nav-actions"><button type="button" class="rd-header-button rd-primary" id="rdCreateRole">＋ 创建角色</button></div>
+      </nav>
+      <div class="rd-intro">
+        <span class="rd-eyebrow">CHARACTER · STORY · CONNECTION</span>
+        <h1>她（他）只差<em>一条消息。</em></h1>
+        <p>发现喜欢的角色，让故事从第一句对话开始。</p>
+      </div>
+      <div class="rd-stage">
+        <div class="rd-deck">
+          <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 12</span>
+          <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
+            <img id="rdHeroPortrait" src="assets/avatars/nuannuan-portrait.jpg" alt="当前角色形象" fetchpriority="high">
+            <video id="rdHeroVideo" class="rd-character-video" aria-label="角色视频预览" autoplay loop muted playsinline preload="metadata" hidden></video>
+            <span class="rd-character-tag" id="rdHeroTag">人物角色</span>
+            <div class="rd-card-info"><div class="rd-card-title"><strong id="rdHeroName">暖暖</strong><span class="rd-age" id="rdHeroAge">24</span></div><p class="rd-card-bio" id="rdHeroBio"></p></div>
+          </div>
+          <div id="rdHeroEmpty" class="rd-card-empty" hidden>没有找到对应角色，试试其他筛选条件。</div>
+          <div class="rd-control-row" id="rdHeroControls" aria-label="切换与收藏角色">
+            <button id="rdPrevious" type="button" class="rd-control" aria-label="上一个角色">‹</button>
+            <button id="rdFavorite" type="button" class="rd-control rd-favorite" aria-label="收藏当前角色" aria-pressed="false">♥</button>
+            <button id="rdNext" type="button" class="rd-control" aria-label="下一个角色">›</button>
+          </div>
+        </div>
+      </div>
+      <button id="rdStartChat" class="rd-cta" type="button">开始聊天</button>
+      <p class="rd-hint">左右滑动切换角色 · 点击人物开启对话</p>
+      <section class="rd-gallery" aria-label="探索所有角色">
+        <div class="rd-gallery-title"><h2>探索角色</h2><span id="rdGridCount">12 位角色</span></div>
+        <label class="rd-search-wrap" for="rdSearch"><span aria-hidden="true">⌕</span><input id="rdSearch" class="rd-search" type="search" placeholder="搜索角色名字、性格或兴趣" autocomplete="off" maxlength="80"></label>
+        <div class="rd-filters" role="group" aria-label="角色分类">
+          <button type="button" class="rd-filter is-active" data-role-filter="all" aria-pressed="true">全部</button>
+          <button type="button" class="rd-filter" data-role-filter="female" aria-pressed="false">女性角色</button>
+          <button type="button" class="rd-filter" data-role-filter="male" aria-pressed="false">男性角色</button>
+          <button type="button" class="rd-filter" data-role-filter="liked" aria-pressed="false">我喜欢的</button>
+          <button type="button" class="rd-filter" data-role-filter="mine" aria-pressed="false">我的角色</button>
+        </div>
+        <div class="rd-character-grid" id="rdCharacterGrid"></div>
+        <div class="rd-grid-empty" id="rdGridEmpty" hidden><p>这里还没有角色。</p><button type="button" class="rd-header-button" id="rdCreateEmpty">创建我的角色</button></div>
+      </section>
+    </div>
+  </section>
 
   <div class="modal-overlay" id="roleCodeModalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleCodeTitle">
@@ -209,6 +260,7 @@
   <script src="memory.js?v=20261117-create3d53" defer></script>
   <script src="role-code.js?v=20261117-create3d53" defer></script>
   <script src="app.js?v=20261117-create3d53" defer></script>
+  <script src="role-discovery.js?v=20261123-discover01" defer></script>
   <script src="studio-bridge.js" defer></script>
 </body>
 </html>

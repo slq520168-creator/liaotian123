@@ -9,7 +9,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
 (() => {
   'use strict';
-  const version='20261117-create3d53';
+  const version='20261123-role-discovery01';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';
@@ -17,7 +17,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
   const LEGACY_MODE_INIT_PREFIX='liaotian_unified_mode_initialized_';
   const SPEC_START='【角色自定义设定】';
   const SPEC_END='【自定义设定结束】';
-  const PRESET_3D_IDS=Object.freeze(['nuannuan']);
+  const PRESET_3D_IDS=Object.freeze(["nuannuan","linwan","sutang","xuzhixia","yeqingge","lingyi","luchen","taiyang","shenyan","guyan","jiangyu","yunzhou"]);
   window.LIAOTIAN_BUILD_VERSION=version;
   window.LIAOTIAN_3D_ONLY=true;
   window.LIAOTIAN_3D_ROLE_STORAGE_KEY=STORAGE_KEY;
