@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#fff0f5">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' blob: https://*.supabase.co https://text.pollinations.ai https://vireonix.ai https://ai-api.cehpoint.co.in https://api.llmfaucet.dev; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
-  <script src="studio-launcher.js"></script>
   <meta name="application-name" content="角色聊天">
   <meta name="apple-mobile-web-app-title" content="角色聊天">
   <meta name="mobile-web-app-capable" content="yes">
@@ -22,7 +21,7 @@
   <link rel="stylesheet" href="role-chat-immersive.css?v=20261123-discover01">
   <link rel="stylesheet" href="role-2d-creator.css?v=20261123-character01">
 </head>
-<body>
+<body class="role-discovery-open">
   <div class="app-container">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
@@ -124,7 +123,7 @@
     </main>
   </div>
 
-  <section id="roleDiscovery" aria-label="角色发现大厅" hidden>
+  <section id="roleDiscovery" aria-label="角色发现大厅">
     <div class="rd-container">
       <nav class="rd-nav" aria-label="角色大厅导航">
         <div class="rd-brand"><span class="rd-brand-mark" aria-hidden="true">♡</span><span class="rd-brand-text">Liaotian123</span></div>

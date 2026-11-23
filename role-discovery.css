@@ -57,7 +57,7 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
 .rd-card.rd-enter{animation:rdArrival .38s cubic-bezier(.16,.83,.25,1) both}
 .rd-card > img{
  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%;
- animation:rdPortraitBreath 8s ease-in-out infinite
+ /* static portraits remain still; changing the card is the interaction */
 }
 .rd-card:after{content:"";position:absolute;inset:0;pointer-events:none;
  background:linear-gradient(180deg,rgba(4,4,13,0) 32%,rgba(7,7,16,.1) 51%,rgba(7,7,16,.80) 85%,rgba(6,6,14,.95) 100%);}
@@ -147,8 +147,8 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
  .rd-nav{padding-bottom:14px}
  .rd-brand-text{font-size:18px}
  .rd-header-button{font-size:12px;min-height:35px;padding:7px 11px}
- .rd-intro{padding:0 0 18px}
- .rd-intro h1{font-size:29px;margin:8px 0}
+ .rd-intro{padding:0 0 7px}
+ .rd-intro h1{font-size:clamp(17px,4.7vw,23px);margin:3px 0 6px}
  .rd-intro p{display:none}
  .rd-card{min-height:0;aspect-ratio:.78;border-radius:20px}
  .rd-card-info{left:17px;right:17px;bottom:21px}
@@ -172,11 +172,10 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
 }
 @media(max-height:520px) and (orientation:landscape){
  .rd-stage{max-width:360px}
- .rd-intro h1{font-size:24px}
- .rd-card{min-height:0;max-height:none}
+ .rd-intro{display:none}
+ .rd-card{min-height:0;max-height:none;height:clamp(230px,calc(100dvh - 174px),390px);aspect-ratio:auto}
 }
 @keyframes rdArrival{0%{opacity:.7;transform:translateX(18px) scale(.97)}100%{opacity:1;transform:translateX(0) scale(1)}}
-@keyframes rdPortraitBreath{0%,100%{transform:scale(1.015)}50%{transform:scale(1.045)}}
 @keyframes rdHeart{0%,100%{transform:scale(1)}35%{transform:scale(1.24)}75%{transform:scale(.94)}}
 @media(prefers-reduced-motion:reduce){
  #roleDiscovery *,#roleDiscovery *::before,#roleDiscovery *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}

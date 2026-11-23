@@ -55,3 +55,25 @@ test('Cloudflare dist includes discovery assets', () => {
     assert.ok(build.includes("'" + file + "'"), file + ' must be included in dist');
   }
 });
+
+test('production root no longer redirects every visitor into the old studio', () => {
+  const index = read('index.html');
+  const launcher = read('studio-launcher.js');
+  assert.doesNotMatch(index, /<script[^>]*src="studio-launcher\.js"/);
+  assert.match(index, /<body class="role-discovery-open">/);
+  assert.match(index, /<section id="roleDiscovery" aria-label="角色发现大厅">/);
+  assert.doesNotMatch(index, /id="roleDiscovery"[^>]+hidden/);
+  assert.match(launcher, /get\('studio'\)!=='1'/);
+  assert.doesNotMatch(launcher, /get\('legacy'\)===('|"?)1/);
+});
+test('fresh visits always land on the 12-character swipe gallery, never cached chat hash', () => {
+  const js = read('role-discovery.js');
+  const css = read('role-discovery.css');
+  assert.match(js, /switchView\(true, false\)/);
+  assert.match(js, /history\.replaceState\(/);
+  assert.match(js, /PRESET_CHARACTERS/);
+  assert.match(js, /pointerdown/);
+  assert.match(js, /pointermove/);
+  assert.match(js, /pointerup/);
+  assert.doesNotMatch(css, /animation:rdPortraitBreath/);
+});

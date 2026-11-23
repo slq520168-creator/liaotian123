@@ -10,7 +10,11 @@
     const stored = JSON.parse(localStorage.getItem(FAV_KEY) || '[]');
     if (Array.isArray(stored)) state.favorites = new Set(stored.filter(id => typeof id === 'string'));
   } catch {}
-  const allCharacters = () => typeof characters !== 'undefined' && Array.isArray(characters) ? characters : [];
+  const allCharacters = () => {
+    // The first frame must show real preset roles even if the chat boot is still loading.
+    if (typeof characters !== 'undefined' && Array.isArray(characters) && characters.length) return characters;
+    return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
+  };
   const available = () => allCharacters().filter(char => {
     if (!char || !char.id) return false;
     if (state.filter === 'female' && char.gender !== 'female') return false;
@@ -371,8 +375,10 @@
       previous = allCharacters().map(char => char.id + ':' + char.name + ':' + char.avatar).join('|');
       observer.observe(list, {childList: true});
     }
-    const hash = location.hash;
-    switchView(hash !== '#chat', false);
+    // A fresh visit must always open the swipeable character gallery.
+    // Old sessions may have persisted #chat in the URL; don't resume that view.
+    switchView(true, false);
+    if (location.hash !== '#discover') history.replaceState({siroleView: 'discover'}, '', location.pathname + location.search + '#discover');
     queueReplySync();
   }
   window.RoleDiscovery=Object.freeze({showLobby:()=>switchView(true),openChat:id=>{const char=allCharacters().find(item=>item.id===id);if(char)startChat(char);},refresh:render});
