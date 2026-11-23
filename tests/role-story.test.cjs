@@ -25,6 +25,7 @@ test('88 original complete stories enrich 32 existing roles to 120 without dupli
  const art=new Set(base.slice(32).map(x=>x.avatar));
  assert.equal(art.size,88,'no repeated poster source');
  assert.ok(base.slice(32).every(x=>x.age>=23&&x.isPreset&&x.avatar.startsWith('data:image/svg+xml')));
+ assert.ok(base.slice(32).every(x=>!x.background.includes('核心线索：')&&!x.personality.includes('目标：')),'opening prompt must not spoil later evidence or sacrifices');
  assert.ok(['悬疑','惊魂','民俗','科幻','言情','都市','动漫','古风','奇幻','冒险'].every(c=>base.some(x=>x.category===c)));
  for(const char of base.slice(32)){const p=win.RoleStory.description(char.id);assert.equal(p.chapterCount,6);assert.equal(p.choices.length,2);assert.ok(p.text.length>30);assert.ok(win.RoleStory.contextFor(char.id).includes(char.name));}
 });
