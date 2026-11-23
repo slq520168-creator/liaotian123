@@ -118,3 +118,15 @@ test('editorial character catalog has 24 distinct speakable roles and advanced f
  assert.match(read('config/app.js'),/curated=new Set/);
  assert.match(read('config/app.js'),/char\.roleKind=allowed\.has/);
 });
+
+test('role gallery displays exactly two cards per row at all widths with legible portraits',()=>{
+ const css=read('role-discovery.css'),js=read('role-discovery.js');
+ const cols=[...css.matchAll(/\.rd-character-grid\s*\{([^}]+)\}/g)].map(x=>x[1]).filter(x=>x.includes('grid-template-columns'));
+ assert.equal(cols.length,1,'prevent conflicting responsive column overrides');
+ assert.match(cols[0],/repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(css,/\.rd-mini-image\{[^}]*object-fit:cover/s);
+ assert.match(css,/\.rd-mini-hook\{[^}]*-webkit-line-clamp:2/s);
+ assert.match(js,/char\.traits\|\|\[\]\)\.slice\(0,3\)/);
+ assert.match(js,/open\.addEventListener\('click',\(\)=>startChat\(char\)\)/);
+ assert.match(js,/favorite\.addEventListener\('click',\(\)=>toggleFavoriteFor\(char\)\)/);
+});

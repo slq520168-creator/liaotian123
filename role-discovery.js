@@ -310,10 +310,10 @@
       const role=document.createElement('span');role.className='rd-mini-role';role.textContent=char.headline||char.tag||'自定义角色';
       const name=document.createElement('strong');name.textContent=char.name;
       const traits=document.createElement('span');traits.className='rd-mini-traits';
-      for(const trait of (char.traits||[]).slice(0,2)){const chip=document.createElement('i');chip.textContent=trait;traits.append(chip);}
+      for(const trait of (char.traits||[]).slice(0,3)){const chip=document.createElement('i');chip.textContent=trait;traits.append(chip);}
       const hook=document.createElement('span');hook.className='rd-mini-hook';
       hook.textContent=String(char.hook||char.greeting||char.personality||'').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,65);
-      const enter=document.createElement('span');enter.className='rd-mini-enter';enter.textContent='进入故事  ›';enter.setAttribute('aria-hidden','true');
+      const enter=document.createElement('span');enter.className='rd-mini-enter';enter.textContent='进入聊天  ›';enter.setAttribute('aria-hidden','true');
       info.append(role,name,traits,hook,enter);open.append(info);
       open.addEventListener('click',()=>startChat(char));
       const favorite=document.createElement('button');
