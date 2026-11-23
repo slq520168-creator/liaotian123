@@ -135,11 +135,11 @@
     if (typeof closeSidebar === 'function') closeSidebar();
     requestAnimationFrame(() => {
       window.__ROLE_HUMAN_RENDERER?.resize?.();
-      $('userInput')?.focus({preventScroll: true});
+      if (matchMedia('(pointer:fine)').matches) $('userInput')?.focus({preventScroll: true});
     });
   }
   function openCreate() {
-    switchView(false);
+    // Keep the discovery page in place under the 2D editor. Cancel returns to the same card.
     $('openCreateModalBtn')?.click();
   }
   function selectIndex(next, animate = true) {

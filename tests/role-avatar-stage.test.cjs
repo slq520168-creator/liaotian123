@@ -48,3 +48,17 @@ test('role model distribution is local and absent models do not become fake feat
   assert.equal(registry.schema,1);
   assert.equal(Object.keys(registry.models).length,0);
 });
+test('space pressure never silently truncates a character chat history',()=>{
+  const app=read('app.js');
+  const body=app.match(/function saveDataToStorage\(\) \{([\s\S]*?)\n\}\n\nfunction makeId/);
+  assert.ok(body,'storage handler exists');
+  assert.doesNotMatch(body[1],/slice\(-50\)|自动清理旧消息/);
+  assert.match(body[1],/原聊天记录没有清理/);
+});
+
+test('2D creator opens on top of the discovery page and does not force the iPhone keyboard open',()=>{
+  const discovery=read('role-discovery.js');
+  assert.match(discovery,/function openCreate\(\) \{[\s\S]*?openCreateModalBtn/);
+  assert.doesNotMatch(discovery,/function openCreate\(\) \{\s*switchView\(false\)/);
+  assert.match(discovery,/matchMedia\('\(pointer:fine\)'\)/);
+});

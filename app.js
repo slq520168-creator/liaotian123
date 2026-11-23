@@ -172,30 +172,12 @@ function saveDataToStorage() {
     if (replyStatus.textContent === '空间不足，已自动清理旧消息。' || replyStatus.textContent === '空间不足，暂时无法保存。') replyStatus.textContent = '';
     return true;
   } catch (error) {
-    // 空间不足时，尝试裁剪聊天历史（每个角色只保留最近 50 条），然后重试一次
-    if (error && (error.name === 'QuotaExceededError' || error.code === 22 || error.code === 1014)) {
-      try {
-        const trimmed = {};
-        for (const charId in chatHistories) {
-          const hist = chatHistories[charId];
-          trimmed[charId] = Array.isArray(hist) ? hist.slice(-50) : hist;
-        }
-        localStorage.setItem('liaotian_chat_histories', JSON.stringify(trimmed));
-        // 裁剪后再尝试保存其余数据
-        localStorage.setItem('liaotian_custom_chars', JSON.stringify(characters.filter(char => !char.isPreset)));
-        localStorage.setItem('liaotian_active_char', activeCharacterId);
-        localStorage.setItem('liaotian_player_profile', JSON.stringify(playerProfile));
-        localStorage.setItem('liaotian_role_memories', JSON.stringify(roleMemories));
-        localStorage.setItem('liaotian_reply_length', JSON.stringify(replyLength));
-        localStorage.setItem('liaotian_chat_style', JSON.stringify(chatStyle));
-        replyStatus.textContent = '空间不足，已自动清理旧消息。';
-        return true;
-      } catch (retryError) {
-        replyStatus.textContent = '空间不足，暂时无法保存，请导出备份后清理。';
-        return false;
-      }
-    }
-    replyStatus.textContent = '空间不足，暂时无法保存。';
+    // Never delete older conversations to make a failed write look successful.
+    // The user can export an existing backup without losing a single stored message.
+    const quota = error && (error.name === 'QuotaExceededError' || error.code === 22 || error.code === 1014);
+    replyStatus.textContent = quota
+      ? '设备存储空间不足，原聊天记录没有清理；请先导出备份。'
+      : '本机保存失败，已有记录保持不变，请稍后重试。';
     return false;
   }
 }
