@@ -152,3 +152,20 @@ test('twelve featured fiction personas use independent locally hosted WebP portr
  assert.match(html,/data-role-filter="featured"/);
  assert.match(html,/assets\/role-portraits\/luoyan\.webp/);
 });
+
+test('international characters return as distinct real role entries without dropping existing twenty-four',()=>{
+ const roles=read('roles.js'),config=read('config/app.js'),discovery=read('role-discovery.js'),html=read('index.html');
+ const ids=["celeste","amara","isabella","anika","oliver","mateo","noah","idris"];
+ const pictures=["https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&h=1200&q=86","https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=900&h=1200&q=86","https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&h=1200&q=86","https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&h=1200&q=86","https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=900&h=1200&q=86","https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&h=1200&q=86","https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=900&h=1200&q=86","https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=900&h=1200&q=86"];
+ assert.equal(ids.length,8);assert.equal(new Set(ids).size,8);assert.equal(new Set(pictures).size,8,'portrait URLs must be unique');
+ for(let i=0;i<ids.length;i++){
+   assert.match(roles,new RegExp('"id": "'+ids[i]+'"'));
+   assert.ok(roles.includes(pictures[i]),'role '+ids[i]+' must have a distinct image');
+   assert.ok(config.includes('"'+ids[i]+'"'),'role '+ids[i]+' must survive the existing catalog authority');
+ }
+ assert.match(roles,/\.\.\.INTERNATIONAL_ROLE_CONFIGS\.map/);
+ assert.match(discovery,/state\.filter === 'international'/);
+ assert.match(discovery,/char\.countryLabel/);
+ assert.match(html,/data-role-filter="international"/);
+ assert.match(html,/32 位角色/);
+});
