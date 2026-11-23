@@ -79,11 +79,11 @@
     if (typeof characters !== 'undefined' && Array.isArray(characters) && characters.length) return characters;
     return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
   };
-  const FEATURED_IDS=["amara","celeste","luoyan","mateo","wuyue","anika","tangli","isabella","yinyao","noah","qiaoyu","oliver","xingye","idris","cenmo","suyu","haichao","luxi","yanchuan","sunyu"];
+  const FEATURED_IDS=['jiangwu','muyue','yinling','shuangye','yinxuan','lanqi','qingshu','beihan','amara','luoyan','wuyue','xingye','haichao','yinyao','luojue','huajin','qiyun','celeste','maya','viala','tangli','anika'];
   const FEATURED_RANK=new Map(FEATURED_IDS.map((id,i)=>[id,i]));
   const available = () => allCharacters().filter(char => {
     if (!char || !char.id) return false;
-    if (['都市','治愈','悬疑','奇幻','古风','科幻','冒险'].includes(state.filter) && char.category !== state.filter) return false;
+    if (['都市','治愈','悬疑','奇幻','古风','科幻','冒险','惊魂','民俗','言情','动漫'].includes(state.filter) && char.category !== state.filter) return false;
     if (state.filter === 'featured' && !FEATURED_RANK.has(char.id)) return false;
     if (state.filter === 'international' && char.region !== 'international') return false;
     if (state.filter === 'female' && char.gender !== 'female') return false;
@@ -92,7 +92,7 @@
     if (state.filter === 'recent' && !(typeof chatHistories!=='undefined'&&(chatHistories[char.id]||[]).some(x=>x.sender==='user'))) return false;
     if (state.filter === 'liked' && !state.favorites.has(char.id)) return false;
     const query = state.query.trim().toLocaleLowerCase();
-    return !query || [char.name,char.latinName,char.countryLabel,char.region,char.tag,char.personality,char.interests,char.background,char.category,char.headline,char.hook,...(char.traits||[])].some(value=>String(value||'').toLocaleLowerCase().includes(query));
+    return !query || [char.name,char.latinName,char.countryLabel,char.region,char.tag,char.personality,char.interests,char.background,char.category,char.headline,char.hook,char.sceneLabel,...(char.traits||[])].some(value=>String(value||'').toLocaleLowerCase().includes(query));
   }).sort((a,b)=>{
     if(state.filter==='recent')return String((typeof chatHistories!=='undefined'&&chatHistories[b.id]?.at(-1)?.createdAt)||'').localeCompare(String((typeof chatHistories!=='undefined'&&chatHistories[a.id]?.at(-1)?.createdAt)||''));
     if(state.filter==='mine'||state.filter==='liked')return 0;
@@ -145,6 +145,7 @@
       window.__ROLE_HUMAN_RENDERER?.resize?.();
       window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
     }
+    if(!showLobby)window.RoleStory?.render?.();
     if (updateHistory) {
       const target = showLobby ? '#discover' : '#chat';
       if (location.hash !== target) history.pushState({siroleView: showLobby ? 'discover' : 'chat'}, '', target);
@@ -301,7 +302,7 @@
     for(const char of list){
       const card=document.createElement('article');
       card.className='rd-mini-card'+(char.id===currentId?' is-current':'');
-      card.dataset.characterId=char.id;
+      card.dataset.characterId=char.id;if(char.avatarIsStoryPoster)card.dataset.story='chaptered';
       card.style.setProperty('--rd-accent',COLOR_BY_CATEGORY[char.category]||'#cbb2f8');
       const open=document.createElement('button');
       open.type='button';open.className='rd-mini-open';
@@ -309,7 +310,7 @@
       open.appendChild(image(char,'rd-mini-image'));
       const shade=document.createElement('span');shade.className='rd-mini-shade';open.append(shade);
       const category=document.createElement('span');category.className='rd-mini-category';
-      category.textContent=(char.mark||'✦')+' '+(char.countryLabel ? char.countryLabel+' · '+(char.category||'故事') : (char.category||'原创'));open.append(category);
+      category.textContent=(char.mark||'✦')+' '+(char.countryLabel ? char.countryLabel+' · '+(char.category||'故事') : (char.category||'原创'))+(char.avatarIsStoryPoster?' · 6章':'');open.append(category);
       if(roleVideo(char)){
         const video=document.createElement('span');video.className='rd-mini-video';video.textContent='▶';
         video.setAttribute('aria-label','可播放角色视频');open.append(video);

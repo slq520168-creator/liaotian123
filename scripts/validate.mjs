@@ -13,7 +13,7 @@ function run(args) {
   if (r.status !== 0) process.exit(r.status || 1);
 }
 for (const file of [
-  'role-avatar-stage.js','role-2d-creator.js','config/app.js', 'roles.js', 'memory.js', 'role-code.js', 'role-experience.js',
+  'role-avatar-stage.js','role-2d-creator.js','config/app.js', 'roles.js','role-story-volume-a.js','role-story-volume-b.js','role-story-engine.js', 'memory.js', 'role-code.js', 'role-experience.js',
   'role-presence.js', 'role-visual-recipe.js', 'role-accessory-geometry.js', 'role-face-rig.js', 'role-direct-viseme-rig.js', 'role-render-loop.js', 'role-body-rig.js', 'role-proportion-rig.js', 'role-appearance-rig.js',
   'role-meshopt-support.js', 'role-human-manifest.js', 'role-asset-policy.js', 'role-human-asset-capability.js', 'role-human-renderer.js', 'role-render-recipe-bridge.js', 'role-chat-mode.js', 'role-voice-stage.js', 'role-voice-style.js',
   'role-unified-human-recipe.js', 'role-unified-human-runtime.js', 'role-unified-custom-chat.js', 'role-unified-production-gate.js',

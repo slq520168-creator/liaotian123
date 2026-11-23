@@ -712,6 +712,7 @@ function handleSendMessage() {
   userInput.value = '';
   userInput.style.height = 'auto';
   replyErrors.delete(char.id);
+  window.RoleStory?.commitPending?.(char.id,text);
   saveDataToStorage();
   requestCharacterReply(char);
 }
@@ -734,8 +735,9 @@ function buildSystemPrompt(char) {
   const lastBot = (chatHistories[char.id] || []).filter(msg => msg.sender === 'bot').at(-1)?.text || '';
   const preferences = roleMemories[char.id]?.preferences.join(' ') || '';
   const noQuestion = /(?:不要|别|少|不用).{0,16}(?:追问|反问|问号|问题)/.test(preferences) || /[？?]\s*$/.test(lastBot) && !/[？?]\s*$/.test(latest);
+  const plotRule=window.RoleStory?.contextFor?.(char.id)||'';
   const styleRule = '\n当前聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label + '。\n' + ROLE_CHAT_STYLES[chatStyle].rules.join('\n');
-  return (base + styleRule + '\n' + lengthRule + '\n回复排版紧凑，必要时使用单次换行，段落之间不插入空白行。' + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
+  return (base + (plotRule?'\n'+plotRule:'') + styleRule + '\n' + lengthRule + '\n回复排版紧凑，必要时使用单次换行，段落之间不插入空白行。' + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
 }
 
 function buildRequestMessages(char) {

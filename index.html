@@ -17,6 +17,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="stylesheet" href="styles.css?v=20261117-create3d53">
   <link rel="stylesheet" href="role-discovery.css?v=20261123-discover01">
+  <link rel="stylesheet" href="role-story.css?v=20261124-create3d68">
   <link rel="stylesheet" href="role-chat-immersive.css?v=20261123-discover01">
   <link rel="stylesheet" href="role-2d-creator.css?v=20261123-character01">
 </head>
@@ -136,7 +137,7 @@
       </div>
       <div class="rd-stage">
         <div class="rd-deck">
-          <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 32</span>
+          <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 120</span>
           <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
             <img id="rdHeroPortrait" src="assets/role-portraits/luoyan.webp" alt="当前角色形象" fetchpriority="high" decoding="async">
             <video id="rdHeroVideo" class="rd-character-video" aria-label="角色视频预览" loop muted playsinline preload="none" hidden></video>
@@ -154,14 +155,19 @@
       <button id="rdStartChat" class="rd-cta" type="button">开始聊天</button>
       <p class="rd-hint">左右滑动切换角色 · 点击人物开启对话</p>
       <section class="rd-gallery" aria-label="探索所有角色">
-        <div class="rd-gallery-title"><h2>探索角色 <small>CHARACTER COLLECTION</small></h2><span id="rdGridCount">32 位角色</span></div>
+        <div class="rd-gallery-title"><h2>探索角色 <small>CHARACTER COLLECTION</small></h2><span id="rdGridCount">120 位角色</span></div>
         <label class="rd-search-wrap" for="rdSearch"><span aria-hidden="true">⌕</span><input id="rdSearch" class="rd-search" type="search" placeholder="搜索名字、性格、身份或故事" autocomplete="off" maxlength="80"></label>
         <div class="rd-filters" role="group" aria-label="角色分类">
           <button type="button" class="rd-filter is-active" data-role-filter="all" aria-pressed="true">全部</button><button type="button" class="rd-filter" data-role-filter="featured" aria-pressed="false">精选人物</button>
           <button type="button" class="rd-filter" data-role-filter="international" aria-pressed="false">国际角色</button>
+          <button type="button" class="rd-filter" data-role-filter="惊魂" aria-pressed="false">惊魂</button>
+          <button type="button" class="rd-filter" data-role-filter="悬疑" aria-pressed="false">悬疑</button>
+          <button type="button" class="rd-filter" data-role-filter="民俗" aria-pressed="false">民俗诡谈</button>
+          <button type="button" class="rd-filter" data-role-filter="言情" aria-pressed="false">言情</button>
+          <button type="button" class="rd-filter" data-role-filter="动漫" aria-pressed="false">动漫</button>
           <button type="button" class="rd-filter" data-role-filter="都市" aria-pressed="false">都市</button>
           <button type="button" class="rd-filter" data-role-filter="治愈" aria-pressed="false">治愈</button>
-          <button type="button" class="rd-filter" data-role-filter="悬疑" aria-pressed="false">悬疑</button>
+          
           <button type="button" class="rd-filter" data-role-filter="奇幻" aria-pressed="false">奇幻</button>
           <button type="button" class="rd-filter" data-role-filter="古风" aria-pressed="false">古风</button>
           <button type="button" class="rd-filter" data-role-filter="科幻" aria-pressed="false">科幻</button>
@@ -264,6 +270,9 @@
 
   <script src="config/app.js?v=20261117-create3d53" defer></script>
   <script src="roles.js?v=20261117-create3d53" defer></script>
+  <script src="role-story-volume-a.js?v=20261124-create3d68" defer></script>
+  <script src="role-story-volume-b.js?v=20261124-create3d68" defer></script>
+  <script src="role-story-engine.js?v=20261124-create3d68" defer></script>
   <script src="memory.js?v=20261117-create3d53" defer></script>
   <script src="role-code.js?v=20261117-create3d53" defer></script>
   <script src="app.js?v=20261117-create3d53" defer></script>

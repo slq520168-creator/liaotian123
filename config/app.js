@@ -6,7 +6,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
 
 (() => {
   'use strict';
-  const version='20261124-create3d67';
+  const version='20261124-create3d68';
   const ROLE_KIND='3d';
   const STORAGE_KEY='liaotian_3d_roles_v1';
   const LEGACY_KEY='liaotian_custom_chars';
@@ -46,7 +46,7 @@ window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATES = window.LIAOTIAN_CUSTOM_HUMAN_CANDIDATE
     return merged;
   }
   function install3DOnlyAuthority(){
-    if(typeof PRESET_CHARACTERS!=='undefined'&&Array.isArray(PRESET_CHARACTERS)){const allowed=new Set(PRESET_3D_IDS),curated=new Set(["wuyue","tangli","qiaoyu","luoyan","xingye","yinyao","cenmo","sunyu","luxi","yanchuan","suyu","haichao","celeste","amara","isabella","anika","oliver","mateo","noah","idris"]);const kept=PRESET_CHARACTERS.filter(char=>allowed.has(String(char?.id||''))||curated.has(String(char?.id||'')));for(const char of kept){char.roleKind=allowed.has(String(char.id))?ROLE_KIND:'2d';}PRESET_CHARACTERS.splice(0,PRESET_CHARACTERS.length,...kept);}
+    if(typeof PRESET_CHARACTERS!=='undefined'&&Array.isArray(PRESET_CHARACTERS)){const allowed=new Set(PRESET_3D_IDS),curated=new Set(["wuyue","tangli","qiaoyu","luoyan","xingye","yinyao","cenmo","sunyu","luxi","yanchuan","suyu","haichao","celeste","amara","isabella","anika","oliver","mateo","noah","idris"]);const kept=PRESET_CHARACTERS.filter(char=>allowed.has(String(char?.id||''))||curated.has(String(char?.id||''))||Boolean(char?.isPreset));for(const char of kept){char.roleKind=allowed.has(String(char.id))?ROLE_KIND:'2d';}PRESET_CHARACTERS.splice(0,PRESET_CHARACTERS.length,...kept);}
     migrate3DRoles(localStorage);
     if(typeof normalizeCustomCharacter==='function'&&!normalizeCustomCharacter.__threeDOnly){const baseNormalize=normalizeCustomCharacter;const wrappedNormalize=function(value){const char=baseNormalize.call(this,value);if(!char)return null;char.roleKind=is3DRaw(value)?ROLE_KIND:'2d';return char;};wrappedNormalize.__threeDOnly=true;normalizeCustomCharacter=wrappedNormalize;}
     if(typeof saveDataToStorage==='function'&&!saveDataToStorage.__threeDOnly){const baseSave=saveDataToStorage;const wrappedSave=function(...args){const ok=baseSave.apply(this,args);try{const roles=typeof characters!=='undefined'&&Array.isArray(characters)?characters.filter(char=>char&&!char.isPreset&&char.roleKind===ROLE_KIND).map(char=>({...char,roleKind:ROLE_KIND})):[];const serialized=JSON.stringify(roles);localStorage.setItem(STORAGE_KEY,serialized);}catch{}return ok;};wrappedSave.__threeDOnly=true;saveDataToStorage=wrappedSave;}
