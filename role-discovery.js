@@ -56,6 +56,7 @@
     root.hidden = !showLobby;
     document.body.classList.toggle('role-discovery-open', showLobby);
     document.body.classList.toggle('role-chat-immersive', !showLobby);
+    window.RoleFaceLive?.setActive?.(!showLobby);
     if (!showLobby) syncBackdrop();
     closeHistory();
     if (showLobby) {
@@ -79,6 +80,7 @@
     cover.alt = '';
     const name = $('rdReplyName');
     if (name) name.textContent = char.name;
+    window.RoleFaceLive?.setCharacter?.(char);
     queueReplySync();
   }
   let replyFrame = 0;
@@ -104,6 +106,7 @@
     }
     live.hidden = !last;
     live.classList.toggle('rd-is-typing', Boolean(isTyping));
+    if (!isTyping && nextText) window.RoleFaceLive?.setReply?.(nextText);
   }
   function closeHistory() {
     document.body.classList.remove('rd-history-open');

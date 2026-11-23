@@ -7,7 +7,7 @@ const runtimeJs=[
   'role-chat-mode.js','role-speech-chunker.js','role-voice-stage.js','role-voice-style.js','role-code-3d.js','role-persistence.js','role-builder.js','role-eye-color.js','role-creator-wizard.js','role-creator-wizard-preview.js','role-body-details.js','role-creator-identity.js','role-creator-3d-preview-v2.js','role-creator-only-ui.js','role-home.js','role-creator-animated-presets.js','role-custom-visual.js','role-mobile-qa-diagnostics.js','role-unified-custom-chat.js','role-unified-production-gate.js'
 ];
 const staticEntries=[
-  'index.html','studio-launcher.js','studio-bridge.js','studio','role-discovery.js','role-discovery.css','role-chat-immersive.css','app.js','memory.js','role-code.js','roles.js','styles.css',...runtimeJs,
+  'index.html','studio-launcher.js','studio-bridge.js','studio','role-discovery.js','role-face-live.js','role-discovery.css','role-chat-immersive.css','app.js','memory.js','role-code.js','roles.js','styles.css',...runtimeJs,
   'role-experience.css','role-voice-stage.css','chat-compact-ui.css','role-creator-wizard.css','role-home.css','manifest.webmanifest','apple-touch-icon.png','favicon.ico','version.json','config','roles','assets','docs'
 ];
 

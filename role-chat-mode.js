@@ -30,7 +30,17 @@
   function recipeFor(char){if(typeof window!=='undefined'&&window.RoleVisualRecipe?.forCharacter)return window.RoleVisualRecipe.forCharacter(char);return char?.visualRecipe||{};}
   function safeActionTransform(action,frame={},now=0){const t=Number.isFinite(Number(now))?Number(now):0,breathing=Math.max(-.006,Math.min(.006,Number(frame?.breathing)||0));if(action==='放松呼吸')return Object.freeze({y:breathing,rotationY:Math.sin(t/4200)*.004});if(action==='专注交流')return Object.freeze({y:breathing*.45,rotationY:Math.sin(t/3000)*.008});if(action==='轻微转身')return Object.freeze({y:breathing*.35,rotationY:Math.sin(t/3600)*.035});return Object.freeze({y:0,rotationY:0});}
   function activeCharacter(){if(typeof characters==='undefined'||typeof activeCharacterId==='undefined')return null;return characters.find(item=>item.id===activeCharacterId)||null;}
-  function shouldRender3D(char=activeCharacter()){return isProductionReady(char);}
+  function shouldRender3D(char=activeCharacter()){
+    // The chat and discovery surfaces use the 2D character presentation.
+    // Keep the existing WebGL pipeline available only for its 3D creator.
+    if(typeof document!=='undefined'){
+      const lobby=document.body?.classList?.contains('role-discovery-open');
+      const chat=document.body?.classList?.contains('role-chat-immersive');
+      const editor=document.getElementById('createModalOverlay')?.classList?.contains('active');
+      if((lobby||chat)&&!editor)return false;
+    }
+    return isProductionReady(char);
+  }
   function hideTextStage(renderer){renderer?.loop?.stop?.();if(renderer?.stage){renderer.stage.classList.remove('active','loading','error');renderer.setStatus?.('');}}
   function cancelDeferredTextCleanup(renderer){const job=renderer?.__chatModeDeferredClear;if(!job)return false;if(job.kind==='idle'&&typeof cancelIdleCallback==='function')cancelIdleCallback(job.id);if(job.kind==='timer')clearTimeout(job.id);renderer.__chatModeDeferredClear=null;return true;}
   function deferTextModeCleanup(renderer,char){if(!renderer)return false;cancelDeferredTextCleanup(renderer);renderer.cancelPendingLoad?.();hideTextStage(renderer);const expectedId=String(char?.id||'');const run=()=>{renderer.__chatModeDeferredClear=null;const current=renderer.currentCharacter?.()||activeCharacter();if(!current||String(current.id||'')!==expectedId||shouldRender3D(current))return;renderer.cancelPendingLoad?.();renderer.clearModel?.();};if(typeof requestIdleCallback==='function')renderer.__chatModeDeferredClear={kind:'idle',id:requestIdleCallback(run,{timeout:1200})};else renderer.__chatModeDeferredClear={kind:'timer',id:setTimeout(run,450)};return true;}
