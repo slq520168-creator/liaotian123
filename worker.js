@@ -33,11 +33,13 @@ function retrySeconds(raw){if(!raw)return 30;const n=Number(raw);return Math.max
 async function model(messages,requested,provider,deadline,signal,token){
  const abort=new AbortController();
  const cancel=()=>abort.abort();
- if(signal?.aborted)cancel();else signal?.addEventListener('abort',cancel,{once:true});
+ if(signal?.aborted)cancel();else signal?.addEventListener?.('abort',cancel,{once:true});
  const timeout=setTimeout(cancel,Math.min(provider.timeout,Math.max(1,deadline-Date.now())));
  try{
   const max_tokens=Math.max(provider.reasoning?1500:256,requested);
-  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8}),signal:abort.signal,redirect:'error'});
+  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8}),signal:abort.signal,redirect:'manual'});
+  // Workers rejects redirect:'error' before sending a request. Use manual mode and reject redirects explicitly; never forward credentials to a redirected host.
+  if(response.status>=300&&response.status<400)throw Object.assign(Error('upstream_redirect_rejected'),{status:response.status});
   if(!response.ok){
    const e=Object.assign(Error('upstream_http_'+response.status),{status:response.status});
    if(response.status===429||response.status===402)e.cooldown=retrySeconds(response.headers.get('retry-after'));
@@ -50,7 +52,7 @@ async function model(messages,requested,provider,deadline,signal,token){
   if(text.trim()&&text.length<=30000)return text.trim();
   if(choice?.finish_reason==='content_filter'||choice?.message?.refusal)throw Object.assign(Error('content_filtered'),{filtered:true});
   throw Error('empty_visible_reply');
- }finally{clearTimeout(timeout);signal?.removeEventListener('abort',cancel);}
+ }finally{clearTimeout(timeout);signal?.removeEventListener?.('abort',cancel);}
 }
 export default{async fetch(req,env){
  const url=new URL(req.url);
@@ -70,7 +72,7 @@ export default{async fetch(req,env){
    for(const provider of CHAT_ROUTES){
     const token=provider.host==='llm7'?String(env.ROLE_LLM7_FREE_TOKEN||'').trim():'';
     if(provider.host==='llm7'&&!token)continue;
-    if(req.signal.aborted||Date.now()>deadline-1000)break;
+    if(req.signal?.aborted||Date.now()>deadline-1000)break;
     eligibleHosts.add(provider.host);
     if((cooldowns.get(provider.host)?.until||0)>Date.now()){
      if(cooldowns.get(provider.host).quota)quotaHosts.add(provider.host);

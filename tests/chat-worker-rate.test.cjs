@@ -65,3 +65,24 @@ test('unconfigured token never triggers an unauthenticated LLM7 call; OVH uses d
   assert.equal(response.status,200);assert.equal(seen.length,1);assert.match(seen[0].url,/ovh\.net/);assert.equal(seen[0].body.model,'Mistral-Small-3.2-24B-Instruct-2506');assert.equal(seen[0].headers.authorization,undefined);
  }finally{globalThis.fetch=original;}
 });
+
+test('Cloudflare-compatible manual redirect mode reaches the real transport and rejects redirects without forwarding credentials',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// workers-redirect-contract'))).default;
+ const original=globalThis.fetch,seen=[];
+ const request=()=>new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.51'},body:JSON.stringify({messages:[{role:'system',content:'虚构成年咖啡师'},{role:'user',content:'你好'}]})});
+ globalThis.fetch=async(url,init)=>{
+  if(init.redirect==='error')throw new TypeError('Cloudflare Workers does not implement redirect error');
+  assert.equal(init.redirect,'manual');
+  seen.push(url);
+  if(seen.length===1)return Response.json({choices:[{message:{content:'测试回复'}}]});
+  return new Response('',{status:302,headers:{location:'https://untrusted.example/redirect'}});
+ };
+ try{
+  const ok=await worker.fetch(request(),{});
+  assert.equal(ok.status,200);assert.equal((await ok.json()).text,'测试回复');
+  const rejected=await worker.fetch(request(),{});
+  assert.equal(rejected.status,503);assert.match(rejected.headers.get('x-role-chat-diagnostic'),/http_302/);assert.equal(seen.length,2);
+  assert.ok(seen.every(url=>url.startsWith('https://oai.endpoints.kepler.ai.cloud.ovh.net/')));
+ }finally{globalThis.fetch=original;}
+});
