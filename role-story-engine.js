@@ -4,62 +4,17 @@
 const seeds=Array.isArray(window.LIAOTIAN_STORY_SEEDS)?window.LIAOTIAN_STORY_SEEDS:[];
 const stateKey='liaotian_story_progress_v1';
 const byId=new Map();
-const palette={
- '悬疑':['#19213a','#aa6eab','#ebe0fa'],'惊魂':['#111a24','#b1505c','#eeb4a8'],
- '民俗':['#2b1120','#dba66a','#f3d0a3'],'科幻':['#081e3a','#3ed6d6','#b0dcff'],
- '言情':['#3a1732','#c78baf','#ffe1ec'],'都市':['#221b3a','#a4a9ea','#f6e4f0'],
- '动漫':['#27143e','#e088cf','#ffe3fa'],'古风':['#152b36','#d1ad86','#eae1ca'],
- '奇幻':['#171837','#b4a0ef','#fcddc4'],'冒险':['#1c2937','#c5996d','#f1dabd']
-};
 const sceneByGenre={
 '悬疑':'雨夜城市和暗色霓虹','惊魂':'无人长廊与微弱烛光',
 '民俗':'旧城灯笼与雕花屋檐','科幻':'未来天际与蓝色全息光屏',
 '言情':'城市豪宅与戏剧性灯光','都市':'温暖公寓与城市街景',
 '动漫':'舞台灯光与潮流街区','古风':'山水古院与月色',
 '奇幻':'魔法城堡和飘浮荧光','冒险':'海湾或异国城市天际'};
-const esc=value=>String(value||'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
-function poster(seed,index){
- const [deep,light,highlight]=palette[seed.genre]||palette['都市'];
- const hairHints=['束发','短发','蓬松卷发','长波浪','高马尾','丸子头','不规则短发','中长发'];
- const hair=seed.look.includes('爆炸')||seed.look.includes('卷发')?'curly':seed.look.includes('丸子')||seed.look.includes('盘发')?'bun':seed.look.includes('马尾')||seed.look.includes('束发')?'pony':seed.look.includes('短发')?'short':'long';
- const poses=['M270 248 C190 290 140 400 156 535 L124 822 L609 822 577 526 C563 392 513 286 428 246Z',
-'M268 259 C201 313 197 396 224 518 L132 823 L616 823 537 499 C567 352 507 286 428 248Z',
-'M275 260 C192 283 176 433 203 582 L112 826 L604 826 549 538 C559 425 520 316 427 264Z',
-'M288 265 C218 287 179 392 155 514 L164 830 L593 830 581 526 C545 414 510 304 427 255Z'];
- const pose=poses[index%poses.length];
- const skin=['#c99070','#e2a788','#8a5946','#e9b794','#b97854','#d59a75'][index%6];
- const hairColor=['#140e21','#a66b3e','#181828','#af5e72','#e8d8c4','#6b305b','#302121'][index%7];
- const dress=['#121b32','#7d355e','#151526','#2b5365','#5e2d45','#385c60'][index%6];
- const flip=index%4===1?'translate(760,0) scale(-1,1)':'';
- let hairPath='';
- if(hair==='short')hairPath='M259 237 Q235 148 335 127 Q455 89 493 215 L460 249 Q457 168 389 175 Q305 154 273 259Z';
- else if(hair==='bun')hairPath='M258 234 Q231 146 326 128 Q457 85 494 219 L481 269 Q465 152 402 168 Q292 150 269 254Z M417 152 Q445 65 507 84 Q568 119 507 167Z';
- else if(hair==='pony')hairPath='M244 242 Q223 125 337 117 Q470 109 509 242 L475 274 Q482 161 389 162 Q290 140 271 274Z M467 158 Q566 131 591 269 Q613 412 573 503 Q555 373 514 316Z';
- else if(hair==='curly')hairPath='M244 260 Q192 218 218 165 Q213 110 274 109 Q308 57 365 91 Q412 41 462 113 Q525 118 541 174 Q570 220 510 284 Q502 194 422 176 Q315 144 262 278Z';
- else hairPath='M238 241 Q222 133 330 109 Q466 89 506 213 Q522 398 532 487 L477 484 Q480 249 438 192 Q310 159 273 261 L265 481 L214 490Z';
- const title=esc(seed.title),fullname=esc(seed.name),place=esc(sceneByGenre[seed.genre]),scene=esc(seed.genre);
- const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 1024" width="760" height="1024">'+
- '<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="'+deep+'"/><stop offset=".6" stop-color="'+light+'"/><stop offset="1" stop-color="#080b19"/></linearGradient>'+
- '<radialGradient id="a"><stop stop-color="'+highlight+'" stop-opacity=".7"/><stop offset="1" stop-color="'+highlight+'" stop-opacity="0"/></radialGradient>'+
- '<linearGradient id="cloth" x1="0" y1="0" x2="1" y2="1"><stop stop-color="'+dress+'"/><stop offset=".6" stop-color="'+deep+'"/><stop offset="1" stop-color="#05040c"/></linearGradient>'+
- '<linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a091a" stop-opacity="0"/><stop offset="1" stop-color="#080817" stop-opacity=".9"/></linearGradient></defs>'+
- '<rect width="760" height="1024" fill="url(#bg)"/>'+
- '<circle cx="'+(index%2?205:545)+'" cy="255" r="340" fill="url(#a)"/>'+
- '<g opacity=".46" stroke="'+highlight+'" stroke-width="2"><path d="M5 708L240 475 347 600 570 295 755 544" fill="none"/><path d="M0 772L202 528 400 699 592 375 760 529" fill="none"/><path d="M0 875L260 730 415 764 570 614 760 682" fill="none"/></g>'+
- '<g opacity=".32" fill="'+highlight+'"><rect x="55" y="490" width="64" height="420"/><rect x="128" y="421" width="56" height="489"/><rect x="612" y="380" width="79" height="560"/><rect x="548" y="510" width="47" height="420"/></g>'+
- '<circle cx="594" cy="150" r="39" stroke="'+highlight+'" stroke-opacity=".74" stroke-width="3" fill="none"/>'+
- '<g transform="'+flip+'"><path d="'+pose+'" fill="url(#cloth)" stroke="'+highlight+'" stroke-width="3"/>'+
- '<path d="M306 268 L337 363 Q378 393 419 365 L452 266" fill="'+skin+'"/>'+
- '<ellipse cx="380" cy="213" rx="104" ry="124" fill="'+skin+'"/>'+
- '<path d="'+hairPath+'" fill="'+hairColor+'"/>'+
- '<path d="M292 214 Q330 194 360 216 M401 216 Q430 196 465 213" fill="none" stroke="#241921" stroke-width="8" stroke-linecap="round"/>'+
- '<circle cx="333" cy="225" r="8" fill="#1b1a27"/><circle cx="432" cy="225" r="8" fill="#1b1a27"/>'+
- '<path d="M380 231 L371 274 388 275 M350 300 Q381 321 417 295" fill="none" stroke="#8d554e" stroke-width="5" stroke-linecap="round"/>'+
- '<path d="M273 374 Q380 433 482 376" fill="none" stroke="'+highlight+'" stroke-opacity=".63" stroke-width="7"/>'+
- '<path d="M281 551 Q386 512 472 551" fill="none" stroke="'+highlight+'" stroke-opacity=".22" stroke-width="13"/></g>'+
- '<rect width="760" height="1024" fill="url(#shade)"/>'+
- '<g font-family="system-ui, Noto Sans CJK SC, sans-serif" fill="'+highlight+'"><text x="43" y="67" font-size="23" letter-spacing="8" font-weight="700">'+scene+'</text><text x="46" y="856" fill="#f7ecff" font-size="48" font-weight="800">'+fullname+'</text><text x="46" y="909" font-size="26" fill="'+highlight+'">'+title+'</text><text x="46" y="956" font-size="20" fill="#ffffff" fill-opacity=".74">'+place+'</text></g></svg>';
- return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+const ARTWORK_CATALOG=window.LIAOTIAN_STORY_COVERS||{};
+function coverFor(seed) {
+  const src=ARTWORK_CATALOG[seed.id];
+  if(!src||typeof src!=='string')throw Error('Missing role art '+seed.id);
+  return src;
 }
 const traitVoice={
  '悬疑':'谨慎、推理严密。提出猜测时必须指出故事内证据，发现线索不凭空补造。',
@@ -82,7 +37,7 @@ seeds.forEach((seed,index)=>{
  id:seed.id,name:seed.name,age:seed.age,gender:seed.gender,isPreset:true,roleKind:'2d',
  category:seed.genre,headline:seed.occupation,tag:seed.genre+' · '+seed.occupation,
  traits:seed.traits,hook:seed.opening,sceneLabel:seed.title,
- avatar:seed.avatar||poster(seed,index),avatarIsStoryPoster:!seed.avatar,storybook:true,
+ avatar:seed.avatar||coverFor(seed),avatarIsStoryPoster:false,storybook:true,
  photoRealistic:Boolean(seed.photoRealistic),region:seed.region||'',countryLabel:seed.countryLabel||'',
  mark:'✦',greeting:intro,
  personality:seed.age+'岁的'+seed.occupation+'。'+seed.traits.join('、')+'。有独立人格、隐秘的过去与完整动机。故事真相与人物代价必须随章节逐步揭示。',

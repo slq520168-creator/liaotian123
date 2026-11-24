@@ -14,7 +14,7 @@ function fixture(){
  const win={};
  const context={window:win,PRESET_CHARACTERS:base,document:doc,localStorage:store,console,encodeURIComponent,Math,JSON,Date,Event:class{constructor(type){this.type=type;}},activeCharacterId:'jiangwu'};
  vm.createContext(context);
- for(const file of ['role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-engine.js'])vm.runInContext(read(file),context,{filename:file});
+ for(const file of ['role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-cover-catalog.js','role-story-engine.js'])vm.runInContext(read(file),context,{filename:file});
  return {context,win,base,nodes,store};
 }
 test('104 original stories enrich 20 existing 2D characters to 124 without duplicate IDs',()=>{
@@ -24,7 +24,7 @@ test('104 original stories enrich 20 existing 2D characters to 124 without dupli
  assert.equal(new Set(base.map(x=>x.id)).size,124);
  const art=new Set(base.slice(20).map(x=>x.avatar));
  assert.equal(art.size,104,'no repeated portrait/poster source');
- assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('data:image/svg+xml')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar))));
+ assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('https://images.pexels.com/photos/')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar))));
  assert.ok(base.slice(20).every(x=>!x.background.includes('核心线索：')&&!x.personality.includes('目标：')),'opening prompt must not spoil later evidence or sacrifices');
  assert.ok(['悬疑','惊魂','民俗','科幻','言情','都市','动漫','古风','奇幻','冒险'].every(c=>base.some(x=>x.category===c)));
  for(const char of base.slice(20)){const p=win.RoleStory.description(char.id);assert.equal(p.chapterCount,6);assert.equal(p.choices.length,2);assert.ok(p.text.length>30);assert.ok(win.RoleStory.contextFor(char.id).includes(char.name));}
@@ -63,7 +63,7 @@ test('no new server polling, database jobs or fake AI bot responses for story pr
  const engine=read('role-story-engine.js'),index=read('index.html'),build=read('scripts/build-cloudflare.mjs');
  assert.doesNotMatch(engine,/setInterval|onSnapshot|supabase|indexedDB/);
  assert.match(engine,/localStorage\.setItem\(stateKey/);
- for(const filename of ['role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-engine.js','role-story.css']){
+ for(const filename of ['role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-cover-catalog.js','role-story-engine.js','role-story.css']){
    assert.ok(index.includes(filename),'index misses '+filename);
    assert.ok(build.includes("'"+filename+"'"),'build misses '+filename);
  }
@@ -72,4 +72,14 @@ test('no new server polling, database jobs or fake AI bot responses for story pr
  assert.match(index,/data-role-filter="民俗"/);
  assert.match(index,/data-role-filter="言情"/);
  assert.match(index,/data-role-filter="动漫"/);
+});
+
+test('no procedural SVG people, 88 distinct photo sources for all generated stories',()=>{
+ const engine=read('role-story-engine.js'),catalog=read('role-story-cover-catalog.js');
+ const ids=[...catalog.matchAll(/"([a-z][a-z0-9]+)": "https:\/\/images\.pexels\.com\/photos\/(\d+)\//g)];
+ assert.equal(ids.length,88);
+ assert.equal(new Set(ids.map(x=>x[1])).size,88);
+ assert.equal(new Set(ids.map(x=>x[2])).size,88);
+ assert.doesNotMatch(engine,/function poster\(|data:image\/svg\+xml/);
+ assert.match(engine,/seed\.avatar\|\|coverFor\(seed\)/);
 });

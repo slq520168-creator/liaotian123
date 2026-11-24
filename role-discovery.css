@@ -237,8 +237,3 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
 /* Subtle provenance disclosure without crowding two-column editorial portraits. */
 .rd-photo-disclaimer{max-width:950px;margin:16px auto 24px;color:#a99caf;font-size:10px;line-height:1.5;text-align:center}
 @media(max-width:670px){.rd-photo-disclaimer{margin:14px 6px 22px;font-size:9px}}
-
-/* Paginated 120+ character collection: only nearby cards are constructed, remaining roles are reachable by scroll, search or the real button. */
-.rd-load-more{display:block;margin:18px auto 2px;min-width:198px;max-width:calc(100% - 24px);min-height:42px;border:1px solid rgba(210,179,233,.35);background:linear-gradient(110deg,rgba(107,60,141,.26),rgba(47,46,79,.32));color:#f1e0fc;font-size:12px;font-weight:740;border-radius:12px;cursor:pointer;padding:10px 20px;transition:background .16s ease,border-color .16s ease}
-.rd-load-more:hover,.rd-load-more:focus-visible{border-color:#c99aed;background:rgba(131,74,170,.39)}
-.rd-load-more[hidden]{display:none!important}

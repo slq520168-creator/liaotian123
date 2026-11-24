@@ -1,0 +1,360 @@
+{
+  "source": "Pexels",
+  "license": "https://www.pexels.com/license/",
+  "total": 88,
+  "notice": "Real people in photos are NOT chatbot actors, characters, representatives or endorsers; independent publicity/model release review required before promotional monetization.",
+  "roles": {
+    "jiangwu": {
+      "source": "https://www.pexels.com/photo/34519173/",
+      "imageId": "34519173"
+    },
+    "luoyu": {
+      "source": "https://www.pexels.com/photo/40666382/",
+      "imageId": "40666382"
+    },
+    "nanxue": {
+      "source": "https://www.pexels.com/photo/20862358/",
+      "imageId": "20862358"
+    },
+    "chenshi": {
+      "source": "https://www.pexels.com/photo/3911274/",
+      "imageId": "3911274"
+    },
+    "hejin": {
+      "source": "https://www.pexels.com/photo/37647057/",
+      "imageId": "37647057"
+    },
+    "xiezhi": {
+      "source": "https://www.pexels.com/photo/4163911/",
+      "imageId": "4163911"
+    },
+    "linyin": {
+      "source": "https://www.pexels.com/photo/3534454/",
+      "imageId": "3534454"
+    },
+    "weicen": {
+      "source": "https://www.pexels.com/photo/17668938/",
+      "imageId": "17668938"
+    },
+    "muyue": {
+      "source": "https://www.pexels.com/photo/886404/",
+      "imageId": "886404"
+    },
+    "loulan": {
+      "source": "https://www.pexels.com/photo/15568434/",
+      "imageId": "15568434"
+    },
+    "qiyun": {
+      "source": "https://www.pexels.com/photo/39647617/",
+      "imageId": "39647617"
+    },
+    "shenyuan": {
+      "source": "https://www.pexels.com/photo/40546402/",
+      "imageId": "40546402"
+    },
+    "xiaosu": {
+      "source": "https://www.pexels.com/photo/7060330/",
+      "imageId": "7060330"
+    },
+    "yuqing": {
+      "source": "https://www.pexels.com/photo/38876527/",
+      "imageId": "38876527"
+    },
+    "binglan": {
+      "source": "https://www.pexels.com/photo/29244128/",
+      "imageId": "29244128"
+    },
+    "tangxuan": {
+      "source": "https://www.pexels.com/photo/33280219/",
+      "imageId": "33280219"
+    },
+    "qingshu": {
+      "source": "https://www.pexels.com/photo/7617393/",
+      "imageId": "7617393"
+    },
+    "luoming": {
+      "source": "https://www.pexels.com/photo/17484793/",
+      "imageId": "17484793"
+    },
+    "huayue": {
+      "source": "https://www.pexels.com/photo/39020776/",
+      "imageId": "39020776"
+    },
+    "yunce": {
+      "source": "https://www.pexels.com/photo/5781530/",
+      "imageId": "5781530"
+    },
+    "yingtao": {
+      "source": "https://www.pexels.com/photo/27355908/",
+      "imageId": "27355908"
+    },
+    "jishan": {
+      "source": "https://www.pexels.com/photo/14097412/",
+      "imageId": "14097412"
+    },
+    "meiyan": {
+      "source": "https://www.pexels.com/photo/11137996/",
+      "imageId": "11137996"
+    },
+    "suhe": {
+      "source": "https://www.pexels.com/photo/19852754/",
+      "imageId": "19852754"
+    },
+    "lanqi": {
+      "source": "https://www.pexels.com/photo/17825319/",
+      "imageId": "17825319"
+    },
+    "exian": {
+      "source": "https://www.pexels.com/photo/18999724/",
+      "imageId": "18999724"
+    },
+    "lingkong": {
+      "source": "https://www.pexels.com/photo/36748450/",
+      "imageId": "36748450"
+    },
+    "zhongye": {
+      "source": "https://www.pexels.com/photo/33427842/",
+      "imageId": "33427842"
+    },
+    "xiayu": {
+      "source": "https://www.pexels.com/photo/13202807/",
+      "imageId": "13202807"
+    },
+    "chenxing": {
+      "source": "https://www.pexels.com/photo/33287672/",
+      "imageId": "33287672"
+    },
+    "weiguang": {
+      "source": "https://www.pexels.com/photo/3829881/",
+      "imageId": "3829881"
+    },
+    "yueji": {
+      "source": "https://www.pexels.com/photo/39082416/",
+      "imageId": "39082416"
+    },
+    "yinxuan": {
+      "source": "https://www.pexels.com/photo/1075776/",
+      "imageId": "1075776"
+    },
+    "chengxi": {
+      "source": "https://www.pexels.com/photo/34373606/",
+      "imageId": "34373606"
+    },
+    "guzhen": {
+      "source": "https://www.pexels.com/photo/6138908/",
+      "imageId": "6138908"
+    },
+    "linzhao": {
+      "source": "https://www.pexels.com/photo/3195981/",
+      "imageId": "3195981"
+    },
+    "baiyu": {
+      "source": "https://www.pexels.com/photo/41068464/",
+      "imageId": "41068464"
+    },
+    "nanshi": {
+      "source": "https://www.pexels.com/photo/32055831/",
+      "imageId": "32055831"
+    },
+    "xuanlin": {
+      "source": "https://www.pexels.com/photo/34667445/",
+      "imageId": "34667445"
+    },
+    "shumeng": {
+      "source": "https://www.pexels.com/photo/2531089/",
+      "imageId": "2531089"
+    },
+    "luojue": {
+      "source": "https://www.pexels.com/photo/15870127/",
+      "imageId": "15870127"
+    },
+    "shilan": {
+      "source": "https://www.pexels.com/photo/40331518/",
+      "imageId": "40331518"
+    },
+    "hejue": {
+      "source": "https://www.pexels.com/photo/842811/",
+      "imageId": "842811"
+    },
+    "moyan": {
+      "source": "https://www.pexels.com/photo/5656415/",
+      "imageId": "5656415"
+    },
+    "shenzhou": {
+      "source": "https://www.pexels.com/photo/34618751/",
+      "imageId": "34618751"
+    },
+    "yiren": {
+      "source": "https://www.pexels.com/photo/10004177/",
+      "imageId": "10004177"
+    },
+    "qili": {
+      "source": "https://www.pexels.com/photo/18708555/",
+      "imageId": "18708555"
+    },
+    "zhaoye": {
+      "source": "https://www.pexels.com/photo/14564883/",
+      "imageId": "14564883"
+    },
+    "luyu": {
+      "source": "https://www.pexels.com/photo/5622874/",
+      "imageId": "5622874"
+    },
+    "huajin": {
+      "source": "https://www.pexels.com/photo/34747815/",
+      "imageId": "34747815"
+    },
+    "anmo": {
+      "source": "https://www.pexels.com/photo/31589335/",
+      "imageId": "31589335"
+    },
+    "luoqin": {
+      "source": "https://www.pexels.com/photo/3960371/",
+      "imageId": "3960371"
+    },
+    "beiyue": {
+      "source": "https://www.pexels.com/photo/37495271/",
+      "imageId": "37495271"
+    },
+    "jiashu": {
+      "source": "https://www.pexels.com/photo/34884824/",
+      "imageId": "34884824"
+    },
+    "muyao": {
+      "source": "https://www.pexels.com/photo/6069980/",
+      "imageId": "6069980"
+    },
+    "chenmu": {
+      "source": "https://www.pexels.com/photo/13833038/",
+      "imageId": "13833038"
+    },
+    "yinling": {
+      "source": "https://www.pexels.com/photo/13202041/",
+      "imageId": "13202041"
+    },
+    "moli": {
+      "source": "https://www.pexels.com/photo/22845476/",
+      "imageId": "22845476"
+    },
+    "liyue": {
+      "source": "https://www.pexels.com/photo/12551746/",
+      "imageId": "12551746"
+    },
+    "shuangye": {
+      "source": "https://www.pexels.com/photo/6996834/",
+      "imageId": "6996834"
+    },
+    "honglian": {
+      "source": "https://www.pexels.com/photo/13191410/",
+      "imageId": "13191410"
+    },
+    "xiangcao": {
+      "source": "https://www.pexels.com/photo/7484937/",
+      "imageId": "7484937"
+    },
+    "mohui": {
+      "source": "https://www.pexels.com/photo/31428201/",
+      "imageId": "31428201"
+    },
+    "qixia": {
+      "source": "https://www.pexels.com/photo/12037182/",
+      "imageId": "12037182"
+    },
+    "fusu": {
+      "source": "https://www.pexels.com/photo/11138001/",
+      "imageId": "11138001"
+    },
+    "beihan": {
+      "source": "https://www.pexels.com/photo/36511054/",
+      "imageId": "36511054"
+    },
+    "mulan": {
+      "source": "https://www.pexels.com/photo/39526260/",
+      "imageId": "39526260"
+    },
+    "qianxue": {
+      "source": "https://www.pexels.com/photo/3125505/",
+      "imageId": "3125505"
+    },
+    "heqiu": {
+      "source": "https://www.pexels.com/photo/15707951/",
+      "imageId": "15707951"
+    },
+    "lianyi": {
+      "source": "https://www.pexels.com/photo/40096244/",
+      "imageId": "40096244"
+    },
+    "zhangge": {
+      "source": "https://www.pexels.com/photo/18154546/",
+      "imageId": "18154546"
+    },
+    "qingluan": {
+      "source": "https://www.pexels.com/photo/40225639/",
+      "imageId": "40225639"
+    },
+    "viala": {
+      "source": "https://www.pexels.com/photo/37498667/",
+      "imageId": "37498667"
+    },
+    "alexen": {
+      "source": "https://www.pexels.com/photo/7670362/",
+      "imageId": "7670362"
+    },
+    "miya": {
+      "source": "https://www.pexels.com/photo/11917735/",
+      "imageId": "11917735"
+    },
+    "zavien": {
+      "source": "https://www.pexels.com/photo/31197807/",
+      "imageId": "31197807"
+    },
+    "elan": {
+      "source": "https://www.pexels.com/photo/35696916/",
+      "imageId": "35696916"
+    },
+    "faye": {
+      "source": "https://www.pexels.com/photo/20554843/",
+      "imageId": "20554843"
+    },
+    "mori": {
+      "source": "https://www.pexels.com/photo/3938465/",
+      "imageId": "3938465"
+    },
+    "shana": {
+      "source": "https://www.pexels.com/photo/33495060/",
+      "imageId": "33495060"
+    },
+    "adele": {
+      "source": "https://www.pexels.com/photo/41122706/",
+      "imageId": "41122706"
+    },
+    "samir": {
+      "source": "https://www.pexels.com/photo/7935409/",
+      "imageId": "7935409"
+    },
+    "ayana": {
+      "source": "https://www.pexels.com/photo/5475580/",
+      "imageId": "5475580"
+    },
+    "lucas2": {
+      "source": "https://www.pexels.com/photo/30623520/",
+      "imageId": "30623520"
+    },
+    "freya": {
+      "source": "https://www.pexels.com/photo/8217825/",
+      "imageId": "8217825"
+    },
+    "tariq": {
+      "source": "https://www.pexels.com/photo/15792394/",
+      "imageId": "15792394"
+    },
+    "hanae": {
+      "source": "https://www.pexels.com/photo/13190257/",
+      "imageId": "13190257"
+    },
+    "maya": {
+      "source": "https://www.pexels.com/photo/13158007/",
+      "imageId": "13158007"
+    }
+  }
+}
