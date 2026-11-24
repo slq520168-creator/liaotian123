@@ -15,12 +15,6 @@ await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
 for(const name of staticEntries)await cp(new URL(name,root),new URL(name,out),{recursive:true});
 
-/* Self-host the licensed 2D runtime; lazy-loaded only for registered real models. */
-const avatarVendor=new URL('vendor/mesh-avatar-element/',out);
-await mkdir(avatarVendor,{recursive:true});
-await cp(new URL('node_modules/mesh-avatar-element/dist/standalone.js',root),new URL('standalone.js',avatarVendor));
-await cp(new URL('node_modules/mesh-avatar-element/LICENSE',root),new URL('LICENSE',avatarVendor));
-
 const threeSource=new URL('node_modules/three/',root);
 const threeOut=new URL('vendor/three/',out);
 await mkdir(new URL('build/',threeOut),{recursive:true});
