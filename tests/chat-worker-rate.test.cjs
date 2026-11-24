@@ -28,7 +28,7 @@ test('rate-limit UI displays the actual Retry-After rather than inventing 45 sec
 
 test('non-reasoning route precedes reasoning and empty upstream output falls through without fake replies',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
- const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\\n// fallback-test'))).default;
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// fallback-test'))).default;
  const original=globalThis.fetch,seen=[];
  globalThis.fetch=async(url,init)=>{const body=JSON.parse(init.body);seen.push(body);
   if(seen.length===1)return Response.json({choices:[{message:{content:'',reasoning_content:'private reasoning'}}]});
@@ -44,7 +44,7 @@ test('non-reasoning route precedes reasoning and empty upstream output falls thr
 });
 test('a quota-limited gateway is not retried through another model at that gateway',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
- const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\\n// quota-test'))).default;
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// quota-test'))).default;
  const original=globalThis.fetch,seen=[];
  globalThis.fetch=async(url)=>{seen.push(String(url));return new Response('{}',{status:429,headers:{'retry-after':'60'}});};
  try{

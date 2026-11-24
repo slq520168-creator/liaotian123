@@ -243,6 +243,7 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
   box-shadow:0 12px 34px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.09);
 }
 .rd-mini-image{object-fit:cover;object-position:center center;filter:none}
+.rd-mini-image.rd-full-body-art,#rdHeroPortrait.rd-full-body-art{object-fit:contain;object-position:center center;background:radial-gradient(ellipse at 50% 28%,#594871,#171324 75%)}
 .rd-mini-shade{
   pointer-events:none;
   background:linear-gradient(180deg,rgba(6,6,15,.1) 0%,transparent 39%,rgba(8,8,16,.08) 49%,rgba(9,8,16,.46) 72%,rgba(9,8,16,.93) 100%);

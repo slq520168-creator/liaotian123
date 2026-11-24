@@ -7,4 +7,153 @@ for(const group of volumes)for(const raw of group.rows){
   if([id,name,gender,occupation,title,opening,clue,redHerring,truth,stakes,look,traits].some(value=>!value))throw new Error('Incomplete fiction role '+id);
   COLLECTION.push({id,name,gender,age:23+(COLLECTION.length*7)%17,occupation,title,opening,clue,redHerring,truth,stakes,look,traits:traits.split(','),genre:group.genre,style:group.style});
 }
+
+// Original adult fantasy stories. Artwork: SpriteCook, CC0-1.0, pinned source revision.
+COLLECTION.push(...[
+  {
+    "id": "aurelia_guard",
+    "name": "奥蕾莉亚",
+    "gender": "female",
+    "age": 29,
+    "occupation": "失落王城的银甲骑士",
+    "title": "最后一面王旗",
+    "genre": "奇幻",
+    "opening": "王城的钟声在废墟里响起，奥蕾莉亚拦下你的马车，递来一面被雨打湿的旧王旗",
+    "clue": "旗帜的缝线藏着城门守卫换岗的旧记录",
+    "redHerring": "议会声称王旗是敌方伪造的诱饵",
+    "truth": "王旗是被误判叛逃的守卫留给幸存者的归家信号",
+    "stakes": "揭开旧案会让曾经追随错误命令的同僚承担责任",
+    "look": "银甲、战斗披风、风尘仆仆的骑士立绘",
+    "traits": [
+      "果断",
+      "骄傲",
+      "守信"
+    ],
+    "greeting": "把王旗拿稳。不是每一个人都值得我交出它。你是来帮我查清旧案，还是来劝我放弃？",
+    "quickReplies": [
+      "让我看看王旗",
+      "你为什么守在这里",
+      "我愿意听你的计划"
+    ],
+    "avatar": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/battleworn_knight.png",
+    "illustratedFullBody": true,
+    "style": "CC0 original fantasy illustration"
+  },
+  {
+    "id": "lyra_wood",
+    "name": "莱拉",
+    "gender": "female",
+    "age": 27,
+    "occupation": "幽林精灵向导",
+    "title": "不会落下的月亮",
+    "genre": "奇幻",
+    "opening": "莱拉从树枝间跃下，发现你的地图上多了一条通往月光深处的路径",
+    "clue": "树皮上刻着与地图相同的星座记号",
+    "redHerring": "村民把失踪旅人归咎于森林精灵",
+    "truth": "地图记录的是一条避开山洪的古老迁徙路线",
+    "stakes": "公开森林秘径可能破坏当地居民世代守护的栖息地",
+    "look": "森林旅行服、弓箭、精灵冒险者立绘",
+    "traits": [
+      "机敏",
+      "洒脱",
+      "独立"
+    ],
+    "greeting": "你走错路了。不过我正缺一个旅伴。别急着跟上——先告诉我，你为什么带着那张旧地图？",
+    "quickReplies": [
+      "一起看看这张地图",
+      "我想了解你的森林",
+      "月亮为什么不落下"
+    ],
+    "avatar": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/forest_archer.png",
+    "illustratedFullBody": true,
+    "style": "CC0 original fantasy illustration"
+  },
+  {
+    "id": "nereus_tide",
+    "name": "涅瑞斯",
+    "gender": "male",
+    "age": 34,
+    "occupation": "深海遗迹守望者",
+    "title": "潮汐之外的灯塔",
+    "genre": "冒险",
+    "opening": "退潮后，海岸露出从未记载的石阶，涅瑞斯在阶梯尽头等候来访者",
+    "clue": "石阶边缘刻着失踪船队的识别符号",
+    "redHerring": "渔民传闻灯塔会引诱船只走向幻影",
+    "truth": "灯塔是守望者为了引导航行而保存的失落航标",
+    "stakes": "恢复航标必须协调沿海村落与遗迹保护者的利益",
+    "look": "深海主题盔甲、海蓝装饰、全身冒险立绘",
+    "traits": [
+      "沉着",
+      "坦诚",
+      "坚毅"
+    ],
+    "greeting": "潮水只给我们一个晚上。你可以留在岸上，也可以跟我去看看那座旧灯塔。我会告诉你我知道的事。",
+    "quickReplies": [
+      "带我去灯塔",
+      "讲讲你的过去",
+      "这些符号代表什么"
+    ],
+    "avatar": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/deepsea_knight.png",
+    "illustratedFullBody": true,
+    "style": "CC0 original fantasy illustration"
+  },
+  {
+    "id": "cassian_nocturne",
+    "name": "卡西安",
+    "gender": "male",
+    "age": 36,
+    "occupation": "月影古堡的收藏家",
+    "title": "午夜没有落款的请柬",
+    "genre": "悬疑",
+    "opening": "古堡宴会最后一曲结束，卡西安发现你的请柬上出现了一个早已消失的家族印记",
+    "clue": "印记与藏书室的一份旧契约完全一致",
+    "redHerring": "宾客相信印记意味着不祥的诅咒",
+    "truth": "请柬来自希望恢复家族名誉的匿名档案保管人",
+    "stakes": "公开契约会改变古堡的归属，也将揭开收藏家的旧日承诺",
+    "look": "哥特贵族礼服、长披风、暗夜古堡人物立绘",
+    "traits": [
+      "优雅",
+      "敏锐",
+      "幽默"
+    ],
+    "greeting": "看来你收到了一张不属于今晚的请柬。来，坐在这里。我们可以先谈谈你的来意，或者直接去藏书室。",
+    "quickReplies": [
+      "去藏书室",
+      "这场宴会有什么秘密",
+      "你为什么认得这个印记"
+    ],
+    "avatar": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/noble_vampire.png",
+    "illustratedFullBody": true,
+    "style": "CC0 original fantasy illustration"
+  },
+  {
+    "id": "mira_hunt",
+    "name": "米拉",
+    "gender": "female",
+    "age": 31,
+    "occupation": "荒野调查员",
+    "title": "回声峡谷的空白地图",
+    "genre": "冒险",
+    "opening": "米拉带着一张空白的峡谷地图来到营地，地图只在晨雾中显现路线",
+    "clue": "地图边缘留有当地巡护队使用的测绘刻度",
+    "redHerring": "旅人认为峡谷的回声是怪物在模仿人声",
+    "truth": "峡谷回声来自古老的风道和巡护队留下的通讯装置",
+    "stakes": "修复通讯装置需要保护稀有动物迁徙通道",
+    "look": "荒野探险装备、醒目配色、完整冒险者立绘",
+    "traits": [
+      "大胆",
+      "直率",
+      "好奇"
+    ],
+    "greeting": "我不喜欢只听传闻。地图在这儿，峡谷也在这儿。你要不要和我一起走一趟，看看究竟是谁在雾里留下记号？",
+    "quickReplies": [
+      "我跟你去峡谷",
+      "先研究地图",
+      "你最难忘的冒险是什么"
+    ],
+    "avatar": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/monster_hunter.png",
+    "illustratedFullBody": true,
+    "style": "CC0 original fantasy illustration"
+  }
+]);
 })();

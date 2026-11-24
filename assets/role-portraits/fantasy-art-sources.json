@@ -1,0 +1,38 @@
+{
+  "source": "https://github.com/SpriteCook/spritecook-free-game-assets/tree/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime",
+  "license": "CC0-1.0",
+  "licenseFile": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/LICENSE.txt",
+  "roles": [
+    {
+      "id": "aurelia_guard",
+      "art": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/battleworn_knight.png",
+      "age": 29,
+      "fictional": true
+    },
+    {
+      "id": "lyra_wood",
+      "art": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/forest_archer.png",
+      "age": 27,
+      "fictional": true
+    },
+    {
+      "id": "nereus_tide",
+      "art": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/deepsea_knight.png",
+      "age": 34,
+      "fictional": true
+    },
+    {
+      "id": "cassian_nocturne",
+      "art": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/noble_vampire.png",
+      "age": 36,
+      "fictional": true
+    },
+    {
+      "id": "mira_hunt",
+      "art": "https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/monster_hunter.png",
+      "age": 31,
+      "fictional": true
+    }
+  ],
+  "note": "These five images are pinned third-party HTTPS references, not locally hosted originals. Existing local art is unchanged."
+}
