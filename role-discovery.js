@@ -115,7 +115,7 @@
       img.hidden = true;
       img.closest('.rd-mini-card, .rd-card')?.classList.add('rd-portrait-unavailable');
     };
-    img.src = url || 'assets/avatars/nuannuan-portrait.jpg';
+    if(url) img.src=url;else{img.removeAttribute('src');img.hidden=true;img.closest('.rd-mini-card, .rd-card')?.classList.add('rd-portrait-unavailable');}
   }
   const image = (char, className, eager = false) => {
     const img = document.createElement('img');
@@ -170,8 +170,8 @@
     const char = allCharacters().find(item => typeof activeCharacterId !== 'undefined' && item.id === activeCharacterId);
     const cover = $('rdChatCover');
     if (!cover || !char) return;
-    const src = char.avatar || 'assets/avatars/nuannuan-portrait.jpg';
-    if (cover.getAttribute('src') !== src) cover.setAttribute('src', src);
+    const src=char.avatar||'';
+    if(cover.dataset.roleId!==String(char.id)||cover.getAttribute('src')!==src){cover.dataset.roleId=String(char.id);cover.hidden=!src;if(src)cover.src=src;else cover.removeAttribute('src');}
     cover.alt = '';
     const name = $('rdReplyName');
     if (name) name.textContent = char.name;
@@ -214,14 +214,14 @@
     }
   }
   function closeHistory() {
-    document.body.classList.remove('rd-history-open');
+    document.body.classList.remove('rd-history-open','rd-scene-only');
     const btn = $('rdHistoryToggle');
-    if (btn) { btn.setAttribute('aria-pressed','false'); btn.setAttribute('aria-label','查看对话记录'); }
+    if (btn) { btn.setAttribute('aria-pressed','false'); btn.setAttribute('aria-label','切换沉浸模式'); }
   }
   function toggleHistory() {
-    const open = document.body.classList.toggle('rd-history-open');
+    const open = !document.body.classList.toggle('rd-scene-only');
     const btn = $('rdHistoryToggle');
-    if (btn) { btn.setAttribute('aria-pressed', String(open)); btn.setAttribute('aria-label', open ? '关闭对话记录' : '查看对话记录'); }
+    if (btn) { btn.setAttribute('aria-pressed', String(!open)); btn.setAttribute('aria-label', open ? '切换沉浸模式' : '返回完整聊天'); }
     if (open) { const box = $('messagesContainer'); if (box) box.scrollTop = box.scrollHeight; }
   }
   function startChat(char) {
@@ -229,6 +229,7 @@
     switchView(false);
     if (typeof switchCharacter === 'function') switchCharacter(char.id);
     syncBackdrop();
+    requestAnimationFrame(()=>{const box=$('messagesContainer');if(box)box.scrollTop=box.scrollHeight;});
     if (typeof closeSidebar === 'function') closeSidebar();
     requestAnimationFrame(() => {
       window.__ROLE_HUMAN_RENDERER?.resize?.();
@@ -250,7 +251,8 @@
       card.classList.add('rd-enter');
     }
     renderHero();
-    renderGrid();
+    const id=current()?.id;
+    $('rdCharacterGrid').querySelectorAll('[data-character-id]').forEach(card=>card.classList.toggle('is-current',card.dataset.characterId===id));
   }
   function selectCharacter(id) {
     const index = available().findIndex(char => char.id === id);
@@ -263,8 +265,10 @@
     if(state.favorites.has(char.id))state.favorites.delete(char.id);
     else state.favorites.add(char.id);
     persistFavorites();
-    if(state.filter==='liked')state.index=0;
-    render();
+    if(state.filter==='liked'){state.index=0;render();return;}
+    renderHero();
+    const button=[...$('rdCharacterGrid').querySelectorAll('[data-character-id]')].find(card=>card.dataset.characterId===char.id)?.querySelector('.rd-mini-fav');
+    if(button){const liked=state.favorites.has(char.id);button.classList.toggle('is-liked',liked);button.setAttribute('aria-pressed',String(liked));button.setAttribute('aria-label',(liked?'取消收藏':'收藏')+char.name);button.textContent=liked?'♥':'♡';}
   }
   function toggleFavorite(){
     const char=current();
@@ -352,7 +356,8 @@
       favorite.setAttribute('aria-pressed',String(state.favorites.has(char.id)));
       favorite.textContent=state.favorites.has(char.id)?'♥':'♡';
       favorite.addEventListener('click',()=>toggleFavoriteFor(char));
-      card.append(open,favorite);fragment.append(card);
+      const preview=document.createElement('button');preview.type='button';preview.className='rd-photo-button rd-mini-photo';preview.textContent='⤢';preview.setAttribute('aria-label','查看'+char.name+'完整图片');preview.addEventListener('click',()=>openPhoto(char));
+      card.append(open,favorite,preview);fragment.append(card);
     }
     container.replaceChildren(fragment);
     $('rdGridCount').textContent=list.length+' 位角色';
@@ -372,6 +377,7 @@
       const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
       if (Math.abs(dx) <= 7 || Math.abs(dx) < Math.abs(dy)) return;
       drag.moved = true;
+      if(!card.hasPointerCapture(event.pointerId))card.setPointerCapture(event.pointerId);
       card.style.transition = 'none';
       card.style.transform = 'translateX(' + Math.max(-90, Math.min(90, dx * 0.45)) + 'px) rotate(' + Math.max(-7, Math.min(7, dx * 0.045)) + 'deg)';
     });
@@ -379,11 +385,12 @@
       const drag = state.drag;
       if (!drag || drag.id !== event.pointerId) return;
       state.drag = null;
+      if(card.hasPointerCapture(event.pointerId))card.releasePointerCapture(event.pointerId);
       if (drag.moved) state.suppressClickUntil = Date.now() + 360;
       card.style.transition = '';
       card.style.transform = '';
       const dx = event.clientX - drag.x;
-      if (drag.moved && Math.abs(dx) > 58) selectIndex(state.index + (dx < 0 ? 1 : -1));
+      if (event.type==='pointerup' && drag.moved && Math.abs(dx) > 58) selectIndex(state.index + (dx < 0 ? 1 : -1));
     };
     card.addEventListener('pointerup', finish);
     card.addEventListener('pointercancel', finish);
@@ -392,6 +399,35 @@
       if (event.key === 'ArrowLeft') { event.preventDefault(); selectIndex(state.index - 1); }
       if (event.key === 'Enter') { event.preventDefault(); startChat(current()); }
     });
+  }
+  let photoRole=null,photoResume=null;
+  function openPhoto(char){
+    if(!char)return;
+    const dialog=$('rdPhotoDialog'),img=$('rdFullPhoto'),video=$('rdFullVideo');
+    photoRole=char;photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
+    $('rdPhotoName').textContent=char.name;
+    $('rdPhotoError').hidden=Boolean(char.avatar);
+    img.hidden=!char.avatar;img.alt=char.name+'完整人物图片';
+    img.onerror=()=>{img.hidden=true;$('rdPhotoError').hidden=false;};
+    if(char.avatar)img.src=char.avatar;else img.removeAttribute('src');
+    video.hidden=true;$('rdPhotoMode').hidden=!roleVideo(char);
+    $('rdPhotoMode').textContent='播放视频';
+    $('rdPhotoChat').hidden=root.hidden&&typeof activeCharacterId!=='undefined'&&activeCharacterId===char.id;
+    dialog.showModal();
+  }
+  function togglePhotoVideo(){
+    const v=$('rdFullVideo'),img=$('rdFullPhoto'),btn=$('rdPhotoMode'),url=roleVideo(photoRole);
+    if(!url)return;
+    if(!v.hidden){v.onerror=null;v.pause();v.hidden=true;v.removeAttribute('src');v.load();img.hidden=!img.naturalWidth;$('rdPhotoError').hidden=!img.hidden;btn.textContent='播放视频';return;}
+    v.src=url;v.hidden=false;img.hidden=true;$('rdPhotoError').hidden=true;btn.textContent='查看图片';
+    v.onerror=()=>{if(!v.hidden)togglePhotoVideo();};
+    v.play().catch(()=>{/* native video controls remain available */});
+  }
+  function closePhoto(){
+    const v=$('rdFullVideo'),img=$('rdFullPhoto');v.onerror=null;v.pause();v.hidden=true;v.removeAttribute('src');v.load();img.onerror=null;img.removeAttribute('src');photoRole=null;
+    if(photoResume==='rdHeroVideo'&&!root.hidden)renderHero();
+    if(photoResume==='rdChatVideo'&&root.hidden)syncBackdrop();
+    photoResume=null;
   }
   function boot() {
     for(const key of ['rdHeroVideo','rdChatVideo']){
@@ -413,10 +449,12 @@
       }else if(!root.hidden)renderHero();
       else syncBackdrop();
     });
-    $('rdHeroPortrait').addEventListener('error', event => {
-      if (event.target.src.endsWith('/nuannuan-portrait.jpg')) return;
-      event.target.src = 'assets/avatars/nuannuan-portrait.jpg';
-    });
+    $('rdHeroPhoto').addEventListener('click',()=>openPhoto(current()));
+    $('rdChatPhoto').addEventListener('click',()=>openPhoto(allCharacters().find(char=>char.id===activeCharacterId)));
+    $('rdPhotoClose').addEventListener('click',()=>$('rdPhotoDialog').close());
+    $('rdPhotoDialog').addEventListener('close',closePhoto);
+    $('rdPhotoChat').addEventListener('click',()=>{const char=photoRole;$('rdPhotoDialog').close();if(char)startChat(char);});
+    $('rdPhotoMode').addEventListener('click',togglePhotoVideo);
     $('rdPrevious').addEventListener('click', () => selectIndex(state.index - 1));
     $('rdNext').addEventListener('click', () => selectIndex(state.index + 1));
     $('rdFavorite').addEventListener('click', toggleFavorite);
@@ -468,9 +506,7 @@
       const avatarObserver = new MutationObserver(() => { syncBackdrop();const s=$('rdScene');if(s){s.value=window.RoleChatActions?.scene?.()||'default';document.body.dataset.roleScene=s.value;} });
       avatarObserver.observe(avatar, {attributes: true, attributeFilter: ['src']});
     }
-    $('rdChatCover').addEventListener('error', e => {
-      if (!e.target.src.endsWith('/nuannuan-portrait.jpg')) e.target.src = 'assets/avatars/nuannuan-portrait.jpg';
-    });
+    $('rdChatCover').addEventListener('error',e=>{e.target.hidden=true;});
     attachGestures();
     const back = document.createElement('button');
     back.type = 'button';

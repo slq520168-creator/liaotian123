@@ -16,9 +16,9 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261003-logo1">
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="stylesheet" href="styles.css?v=20261117-create3d53">
-  <link rel="stylesheet" href="role-discovery.css?v=20261123-discover01">
+  <link rel="stylesheet" href="role-discovery.css?v=20261124-role2d77">
   <link rel="stylesheet" href="role-story.css?v=20261124-create3d68">
-  <link rel="stylesheet" href="role-chat-immersive.css?v=20261123-discover01">
+  <link rel="stylesheet" href="role-chat-immersive.css?v=20261124-role2d77">
   <link rel="stylesheet" href="role-2d-creator.css?v=20261123-character01">
 </head>
 <body class="role-discovery-open">
@@ -71,8 +71,8 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="icon-btn rd-history-toggle" type="button" id="rdHistoryToggle" title="查看对话记录" aria-label="查看对话记录" aria-pressed="false">☷</button>
-          <button class="btn btn-outline btn-sm" id="switchCharBtn">切换/创建角色</button>
+          <button class="icon-btn rd-history-toggle" type="button" id="rdHistoryToggle" title="切换沉浸模式" aria-label="切换沉浸模式" aria-pressed="false">☷</button>
+          <button class="icon-btn rd-photo-button" id="rdChatPhoto" type="button" aria-label="查看人物图片" title="查看人物图片">▧</button><button class="btn btn-outline btn-sm" id="switchCharBtn">切换/创建角色</button>
           <button class="icon-btn" id="clearChatBtn" title="清空对话" aria-label="清空当前角色对话">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
               <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
@@ -131,9 +131,7 @@
         <div class="rd-nav-actions"><button type="button" class="rd-header-button rd-primary" id="rdCreateRole">＋ 创建角色</button></div>
       </nav>
       <div class="rd-intro">
-        <span class="rd-eyebrow">CHARACTER · STORY · CONNECTION</span>
-        <h1>每种性格，<em>都有一段故事。</em></h1>
-        <p>从陌生到熟悉，挑一个想走进的世界。</p>
+        <h1>发现角色</h1>
       </div>
       <div class="rd-stage">
         <div class="rd-deck">
@@ -141,7 +139,7 @@
           <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
             <img id="rdHeroPortrait" src="assets/role-portraits/luoyan.webp" alt="当前角色形象" fetchpriority="high" decoding="async">
             <video id="rdHeroVideo" class="rd-character-video" aria-label="角色视频预览" loop muted playsinline preload="none" hidden></video>
-            <span class="rd-character-tag" id="rdHeroTag">爵士歌手</span>
+            <button class="rd-photo-button rd-hero-photo" id="rdHeroPhoto" type="button" aria-label="查看完整人物图片">⤢</button><span class="rd-character-tag" id="rdHeroTag">爵士歌手</span>
             <div class="rd-card-info"><span class="rd-hero-scene" id="rdHeroScene"></span><div class="rd-card-title"><strong id="rdHeroName">罗烟</strong><span class="rd-age" id="rdHeroAge">29</span></div><div class="rd-hero-traits" id="rdHeroTraits"></div><p class="rd-card-bio" id="rdHeroBio"></p></div>
           </div>
           <div id="rdHeroEmpty" class="rd-card-empty" hidden>没有找到对应角色，试试其他筛选条件。</div>
@@ -186,6 +184,7 @@
     </div>
   </section>
 
+  <dialog id="rdPhotoDialog" class="rd-photo-dialog" aria-labelledby="rdPhotoName"><header><strong id="rdPhotoName"></strong><button type="button" id="rdPhotoClose" aria-label="关闭图片">×</button></header><div class="rd-photo-media"><img id="rdFullPhoto" alt=""><video id="rdFullVideo" controls playsinline preload="none" hidden></video><p id="rdPhotoError" hidden>人物图片暂不可用</p></div><footer><button type="button" id="rdPhotoMode" hidden>播放视频</button><button type="button" id="rdPhotoChat">开始聊天</button></footer></dialog>
   <div class="modal-overlay" id="roleCodeModalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleCodeTitle">
       <div class="modal-header"><h2 id="roleCodeTitle">角色代码</h2><button class="icon-btn" id="closeRoleCodeBtn" type="button" aria-label="关闭角色代码">&times;</button></div>
@@ -281,7 +280,7 @@
   <script src="memory.js?v=20261117-create3d53" defer></script>
   <script src="role-code.js?v=20261117-create3d53" defer></script>
   <script src="app.js?v=20261117-create3d53" defer></script>
-  <script src="role-discovery.js?v=20261123-discover01" defer></script>
+  <script src="role-discovery.js?v=20261124-role2d77" defer></script>
     <script src="role-2d-creator.js?v=20261123-character01" defer></script>
   </body>
 </html>
