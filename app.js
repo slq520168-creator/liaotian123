@@ -767,6 +767,12 @@ function handleSendMessage() {
   requestCharacterReply(char);
 }
 
+function replyProfile(latest, preference, storyActive = false) {
+  const requested = /(?:讲|写|继续|接着|编|展开).{0,8}(?:故事|剧情|长文|小说)|(?:详细|长一点|多写|完整解释|展开说)|·\s*第\d+章选择】/.test(latest);
+  const simple = /^(?:你好|嗨|哈喽|在吗|早安|晚安|嗯|哦|好|哈哈|谢谢|想你)[呀啊呢哦哈！!。？?~～\s]*$/u.test(latest.trim()) || /^[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D\s]+$/u.test(latest.trim());
+  const extended = requested || (!simple && (preference === 'long' || storyActive));
+  return {extended,maxTokens:extended?4096:180};
+}
 function buildSystemPrompt(char) {
   const gender = char.gender === 'male' ? '成年男性' : char.gender === 'female' ? '成年女性' : '成年角色';
   const scenes = char.conversation && typeof char.conversation === 'object' ?
@@ -781,13 +787,16 @@ function buildSystemPrompt(char) {
     '\n本轮顺着对方正在聊的事接话。变化措辞和节奏，直接输出角色说的话，不复述这些规则。';
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const memory = ROLE_MEMORY.prompt(roleMemories[char.id] || ROLE_MEMORY.normalize(null), playerProfile, latest, previousVisits[char.id]);
-  const lengthRule = replyLength === 'short' && !/长文|长一点|多写|详细|完整|故事|展开/.test(latest) ? '本轮一到两句自然接话，优先快而贴切；用户明确要故事、长文时仍要完整。' : replyLength === 'long' ? '本轮认真长聊，按对方需要展开具体细节，可换行但不留空白行。对方指定篇幅时尽量满足，尽量有结尾；没有指定篇幅时按内容自然决定，不硬凑字数，不套清单。' : '普通闲聊可短到一句或两三句；要故事、长文、解释时完整展开。只发表情也要懂得接情绪，可用文字和少量贴切表情回应。';
+  const plotRule=window.RoleStory?.contextFor?.(char.id)||'';
+  const profile = replyProfile(latest, replyLength, Boolean(plotRule && typeof document !== 'undefined' && document.getElementById('roleStoryPanel')?.hidden === false));
+  const lengthRule = profile.extended
+    ? '仅在用户要求长文或正在推进故事时，按需要展开，保持完整。'
+    : '本轮是普通聊天：像手机私聊，默认一句，最多两句短口语，通常8到35个中文字，最多约60字。简单问候只接一句。不要展开剧情、动作旁白、环境描写、解释、总结或无关追问。最多一个贴切表情，也可以不用。不要复述用户的消息。';
   const lastBot = (chatHistories[char.id] || []).filter(msg => msg.sender === 'bot'&&!validPortraitMessage(msg,char)).at(-1)?.text || '';
   const preferences = roleMemories[char.id]?.preferences.join(' ') || '';
   const noQuestion = /(?:不要|别|少|不用).{0,16}(?:追问|反问|问号|问题)/.test(preferences) || /[？?]\s*$/.test(lastBot) && !/[？?]\s*$/.test(latest);
-  const plotRule=window.RoleStory?.contextFor?.(char.id)||'';
   const styleRule = '\n当前聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label + '。\n' + ROLE_CHAT_STYLES[chatStyle].rules.join('\n');
-  return (base + (plotRule?'\n'+plotRule:'') + styleRule + '\n' + lengthRule + '\n回复排版紧凑，必要时使用单次换行，段落之间不插入空白行。' + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system);
+  return (base + (plotRule?'\n'+plotRule:'') + styleRule + '\n' + lengthRule + '\n回复排版紧凑，必要时使用单次换行，段落之间不插入空白行。' + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system - 350) + '\n表情可选：🤭、👀、😌、(≧◡≦)、(*ﾉωﾉ)、(｡•̀ᴗ-)✧、(╥﹏╥)。按性格和情绪偶尔使用一个，不堆叠、不照搬。\n最终本轮输出要求：' + lengthRule;
 }
 
 function buildRequestMessages(char) {
@@ -847,8 +856,9 @@ async function requestCharacterReply(char) {
   if(cooldown>Date.now()){if(activeCharacterId===char.id)renderMessages();return;}
   const controller = new AbortController();
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
-  const longRequest = replyLength === 'long' || /长文|长一点|多写|详细|完整|故事|展开/.test(latest);
-  const job = {controller, timedOut: false, text: '', messages: buildRequestMessages(char), maxTokens: longRequest ? 6000 : replyLength === 'short' ? 180 : 300};
+  const profile = replyProfile(latest, replyLength, Boolean(window.RoleStory?.has?.(char.id) && typeof document !== 'undefined' && document.getElementById('roleStoryPanel')?.hidden === false));
+  const longRequest = profile.extended;
+  const job = {controller, timedOut: false, text: '', messages: buildRequestMessages(char), maxTokens: profile.maxTokens};
   pendingReplies.set(char.id, job);
   replyErrors.delete(char.id);
   if (activeCharacterId === char.id) {
@@ -898,9 +908,8 @@ async function requestCharacterReply(char) {
     const buffered = !job.text;
     if (buffered) {job.revealing = true; job.finalMessageId = reply.id;}
     chatHistories[char.id].push(reply);
-    const gallery=portraitSources(char);
-    if(/·\s*第1章选择】/.test(latest)&&gallery.length>1&&!(chatHistories[char.id]||[]).some(m=>validPortraitMessage(m,char)&&m.imagePath===gallery[1]))addPortraitMessage(char,gallery[1]);
-    window.RoleStory?.commitPending?.(char.id,latest,text);
+    const advanced=window.RoleStory?.commitPending?.(char.id,latest,text);
+    if(advanced&&activeCharacterId===char.id)window.RoleDiscovery?.refreshScene?.();
     previousVisits[char.id] = '';
     saveDataToStorage();
     // Save first so closing/reloading the page cannot lose the real reply.

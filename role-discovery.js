@@ -7,6 +7,20 @@
   // No retired 3D MP4 clips; only explicit real character videos.
   const roleVideo=char=>char&&typeof char.video==='string'&&/^https:\/\/[^\s]{1,900}$/i.test(char.video)?char.video:'';
   const videoFailed=new Set();
+  // Animate the existing media only, once per source change; no generated images.
+  function mediaArrival(el, expected = el?.getAttribute('src')) {
+    if (!el || !expected) return;
+    el._mediaArrival?.cancel?.();
+    const enter = () => {
+      if (el.getAttribute('src') !== expected || el.hidden ||
+          matchMedia('(prefers-reduced-motion: reduce)').matches || typeof el.animate !== 'function') return;
+      el._mediaArrival?.cancel?.();
+      el._mediaArrival = el.animate([{opacity:.08,scale:'1.025'},{opacity:1,scale:'1'}],
+        {duration:440,easing:'ease-out'});
+    };
+    if (el.tagName === 'IMG' && !el.complete) el.addEventListener('load',enter,{once:true});
+    else enter();
+  }
   function hideVideoReplay(el){
     const parent=el?.parentElement,button=parent?.querySelector('.rd-video-retry');
     if(button)button.hidden=true;
@@ -62,7 +76,7 @@
     el._playPending=true;
     Promise.resolve(el.play()).then(()=>{
       if(el._playVersion!==version||el.dataset.source!==url)return;
-      if(!el.paused&&!document.hidden){el.hidden=false;hideVideoReplay(el);}
+      if(!el.paused&&!document.hidden){const entering=el.hidden;el.hidden=false;hideVideoReplay(el);if(entering)mediaArrival(el);}
     }).catch(error=>{
       if(el._playVersion!==version||el.dataset.source!==url)return;
       el.hidden=true;
@@ -176,8 +190,9 @@
     const char = allCharacters().find(item => typeof activeCharacterId !== 'undefined' && item.id === activeCharacterId);
     const cover = $('rdChatCover');
     if (!cover || !char) return;
-    const src=char.avatar||'';
-    if(cover.dataset.roleId!==String(char.id)||cover.getAttribute('src')!==src){cover.dataset.roleId=String(char.id);cover.hidden=!src;if(src)cover.src=src;else cover.removeAttribute('src');}
+    const chapter=Number(window.RoleStory?.readState?.(char.id)?.chapter)||0;
+    const src=(chapter>0&&window.RoleStory?.has?.(char.id)?char.portraitGallery?.[1]:'')||char.avatar||'';
+    if(cover.dataset.roleId!==String(char.id)||cover.getAttribute('src')!==src){cover.dataset.roleId=String(char.id);cover.hidden=!src;if(src){cover.src=src;mediaArrival(cover);}else cover.removeAttribute('src');}
     cover.alt = '';
     const name = $('rdReplyName');
     if (name) name.textContent = char.name;
@@ -309,6 +324,7 @@
       illustration.closest('.rd-card')?.classList.remove('rd-portrait-unavailable');
       delete illustration.dataset.imageRetried;
       setRolePortrait(illustration,char);
+      mediaArrival(illustration);
     }
     const videoSrc = roleVideo(char);
     playVideo($('rdHeroVideo'),videoSrc);
@@ -464,7 +480,7 @@
       const gallery=photoRole.portraitGallery,img=$('rdFullPhoto');
       photoIndex=(photoIndex+1)%gallery.length;
       img.hidden=false;$('rdPhotoError').hidden=true;
-      img.src=gallery[photoIndex];
+      img.src=gallery[photoIndex];mediaArrival(img);
       $('rdPhotoMode').textContent='下一张 · '+(photoIndex+1)+'/'+gallery.length;
       return;
     }
@@ -488,7 +504,7 @@
       const video=$(key);
       video?.addEventListener('error',event=>{if(event.target.dataset.source)videoFailed.add(event.target.dataset.source);stopVideo(event.target);});
       video?.addEventListener('playing',()=>{
-        if(video.dataset.source&&!document.hidden){video.hidden=false;hideVideoReplay(video);}
+        if(video.dataset.source&&!document.hidden){const entering=video.hidden;video.hidden=false;hideVideoReplay(video);if(entering)mediaArrival(video);}
       });
     }
     document.addEventListener('visibilitychange',()=>{
@@ -607,7 +623,7 @@
     if (location.hash !== '#discover') history.replaceState({siroleView: 'discover'}, '', location.pathname + location.search + '#discover');
     queueReplySync();
   }
-  window.RoleDiscovery=Object.freeze({showLobby:()=>switchView(true),openChat:id=>{const char=allCharacters().find(item=>item.id===id);if(char)startChat(char);},openPortrait:(id,src)=>{const char=allCharacters().find(item=>item.id===id);if(char&&(char.avatar===src||char.portraitGallery?.includes(src)))openPhoto(char,src);},refresh:render});
+  window.RoleDiscovery=Object.freeze({refreshScene:syncBackdrop,showLobby:()=>switchView(true),openChat:id=>{const char=allCharacters().find(item=>item.id===id);if(char)startChat(char);},openPortrait:(id,src)=>{const char=allCharacters().find(item=>item.id===id);if(char&&(char.avatar===src||char.portraitGallery?.includes(src)))openPhoto(char,src);},refresh:render});
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once: true});
   else boot();
 })();

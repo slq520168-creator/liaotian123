@@ -160,7 +160,8 @@ body.role-chat-immersive .rd-reply-retry{margin-top:10px;padding:5px 14px;border
 /* Real MP4 video backgrounds: only the current role's video is attached. */
 body.role-chat-immersive .rd-chat-scene>.rd-chat-video{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;object-position:center 22%;filter:saturate(1.07) brightness(.81);pointer-events:none}
 body.role-chat-immersive .rd-chat-scene>.rd-chat-video[hidden]{display:none!important}
-body.role-chat-immersive .rd-chat-scene:has(.rd-chat-video:not([hidden]))>img{visibility:hidden}
+/* Keep the selected portrait under the real video during its entrance fade. */
+body.role-chat-immersive .rd-chat-scene:has(.rd-chat-video:not([hidden]))>img{visibility:visible}
 
 /* iOS low-power/autoplay-blocked fallback: never pretend a still image is a video. */
 .rd-video-retry{position:absolute;right:14px;top:14px;z-index:8;min-height:38px;padding:7px 12px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(15,12,28,.85);color:#fff;font:600 12px/1.3 system-ui,-apple-system,sans-serif;cursor:pointer;touch-action:manipulation}

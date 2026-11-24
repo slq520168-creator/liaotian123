@@ -12,6 +12,7 @@ function functionSource(start, end) {
 const functions = [
   functionSource('function warmReplyConnection()', '\nfunction setupEventListeners('),
   functionSource('function formatCharacterReply(', '\nfunction appendMessageToDOM('),
+  functionSource('function replyProfile(', '\nfunction buildSystemPrompt('),
   functionSource('function replyGraphemes(', '\nfunction selectFormAvatar(')
 ].join('\n');
 const char = {id: 'custom_transport', name: '测试角色'};
@@ -60,6 +61,11 @@ await assert.rejects(context.readModelReply(sse('data: {"done":true}\n\n'), () =
 await assert.rejects(context.readModelReply(sse('data: {"delta":"部分回复"}\n\ndata: {"error":"reply_unavailable"}\n\n'), () => {}), /回复中断/);
 assert.equal(await context.readModelReply(new Response(JSON.stringify({text: 'JSON兼容回复'}), {headers: {'content-type': 'application/json'}}), () => {}), 'JSON兼容回复');
 
+assert.equal(context.replyProfile('你好','auto',false).extended,false);
+assert.equal(context.replyProfile('你好','long',true).extended,false);
+assert.equal(context.replyProfile('今天好累','auto',false).maxTokens,180);
+assert.equal(context.replyProfile('讲个故事','auto',false).extended,true);
+assert.equal(context.replyProfile('【故事 · 第1章选择】继续','short',true).extended,true);
 const calls = [];
 context.fetch = async (url, options) => {
   calls.push({url, options, body: options.body && JSON.parse(options.body)});
