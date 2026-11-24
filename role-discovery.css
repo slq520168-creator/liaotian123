@@ -237,3 +237,54 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
 /* Subtle provenance disclosure without crowding two-column editorial portraits. */
 .rd-photo-disclaimer{max-width:950px;margin:16px auto 24px;color:#a99caf;font-size:10px;line-height:1.5;text-align:center}
 @media(max-width:670px){.rd-photo-disclaimer{margin:14px 6px 22px;font-size:9px}}
+
+
+/* Premium two-column editorial portraits: more visual space, clear faces and outfits.
+   All 124 role cards stay in the DOM; image decoding is deferred only off-screen. */
+.rd-mini-card{
+  isolation:isolate;
+  background:radial-gradient(circle at 35% 24%,color-mix(in srgb,var(--rd-accent,#cbb2f8) 30%,#151223),#0e0c17 72%);
+  border-color:rgba(227,214,243,.19);
+  box-shadow:0 12px 34px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.09);
+}
+.rd-mini-image{object-fit:cover;object-position:center 24%;filter:none!important}
+.rd-mini-shade{
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(6,6,15,.1) 0%,transparent 39%,rgba(8,8,16,.08) 49%,rgba(9,8,16,.46) 72%,rgba(9,8,16,.93) 100%);
+}
+.rd-mini-details{gap:7px;bottom:0;left:0;right:0;padding:32px 17px 17px;
+  background:linear-gradient(180deg,transparent 0%,rgba(8,8,16,.74) 34%,rgba(8,8,16,.98) 91%)}
+.rd-mini-role{font-size:12px;font-weight:730;color:var(--rd-accent,#d7b6fa)}
+.rd-mini-details strong{font-size:clamp(25px,2.5vw,32px);line-height:1.13;letter-spacing:.01em;
+ text-shadow:0 2px 14px rgba(0,0,0,.65)}
+.rd-mini-traits i{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:7px}
+.rd-mini-hook{color:#eae5f2;line-height:1.52}
+.rd-mini-enter{display:block;color:var(--rd-accent,#e0b9f4);font-weight:810;letter-spacing:.04em;
+ border-top:1px solid rgba(255,255,255,.16);padding-top:9px}
+.rd-mini-category{font-weight:750;border-color:rgba(255,255,255,.22)}
+.rd-portrait-unavailable .rd-mini-image{display:none}
+.rd-portrait-unavailable .rd-mini-shade{
+  background:radial-gradient(ellipse 78% 40% at 24% 25%,rgba(255,255,255,.13),transparent 80%),
+  linear-gradient(160deg,transparent,rgba(7,6,16,.92));
+}
+.rd-portrait-unavailable .rd-mini-shade::after{
+  content:'人物图片暂不可用';position:absolute;left:12px;right:12px;top:35%;text-align:center;
+  font-size:12px;color:rgba(255,255,255,.67);letter-spacing:.06em;
+}
+@media(min-width:671px){.rd-mini-card{aspect-ratio:4/5;min-height:0}.rd-mini-details{padding:36px 20px 19px}}
+@media(max-width:670px){
+ .rd-mini-card{min-height:clamp(294px,82vw,352px);aspect-ratio:9/16}
+ .rd-mini-details{gap:5px;padding:28px 11px 12px}
+ .rd-mini-role{font-size:10px}
+ .rd-mini-details strong{font-size:clamp(20px,5.4vw,26px);line-height:1.11}
+ .rd-mini-traits{gap:4px;min-height:19px}
+ .rd-mini-traits i{font-size:9px;line-height:16px;padding:1px 6px}
+ .rd-mini-hook{font-size:10.5px;line-height:1.42;min-height:2.84em}
+ .rd-mini-enter{font-size:10px;padding-top:8px}
+}
+@media(max-width:410px){
+ .rd-mini-card{min-height:298px}
+ .rd-mini-details strong{font-size:20px}
+ .rd-mini-hook{font-size:10px}
+ .rd-mini-traits i{font-size:8.5px;padding:1px 4px}
+}

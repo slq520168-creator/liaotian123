@@ -99,17 +99,31 @@
     if(state.filter==='mine'||state.filter==='liked')return 0;
     return (FEATURED_RANK.get(a.id)??99)-(FEATURED_RANK.get(b.id)??99);
   });
+  // Never replace failed character art with the same unrelated face.
+  // A failed transformed Pexels request retries that very character's original photo only.
+  function setRolePortrait(img, char) {
+    const url = String(char?.avatar || '');
+    img.alt = char.name + '的角色立绘';
+    img.dataset.roleId = String(char.id);
+    img.onerror = () => {
+      if(img.dataset.imageRetried !== 'yes' && /^https:\/\/images\.pexels\.com\/photos\/\d+\/pexels-photo-\d+\.jpeg\?/i.test(url)){
+        img.dataset.imageRetried = 'yes';
+        img.src = url.split('?')[0] + '?auto=compress&cs=tinysrgb&w=800';
+        return;
+      }
+      img.onerror = null;
+      img.hidden = true;
+      img.closest('.rd-mini-card, .rd-card')?.classList.add('rd-portrait-unavailable');
+    };
+    img.src = url || 'assets/avatars/nuannuan-portrait.jpg';
+  }
   const image = (char, className, eager = false) => {
     const img = document.createElement('img');
     img.className = className;
-    img.src = char.avatar || 'assets/avatars/nuannuan-portrait.jpg';
-    img.alt = char.name + '的角色立绘';
     img.loading = eager ? 'eager' : 'lazy';
+    if(eager)img.fetchPriority='high';
     img.decoding = 'async';
-    img.onerror = () => {
-      img.onerror = null;
-      img.src = 'assets/avatars/nuannuan-portrait.jpg';
-    };
+    setRolePortrait(img,char);
     return img;
   };
   const current = () => {
@@ -278,7 +292,11 @@
     if (!char) return;
     if (illustration.dataset.charId !== String(char.id)) {
       illustration.dataset.charId = String(char.id);
-      illustration.src = char.avatar || 'assets/avatars/nuannuan-portrait.jpg';
+      illustration.hidden = false;
+      illustration.classList.remove('rd-art-retry');
+      illustration.closest('.rd-card')?.classList.remove('rd-portrait-unavailable');
+      delete illustration.dataset.imageRetried;
+      setRolePortrait(illustration,char);
     }
     const videoSrc = roleVideo(char);
     playVideo($('rdHeroVideo'),videoSrc);
@@ -301,6 +319,7 @@
   function renderGrid() {
     const container=$('rdCharacterGrid'),list=available(),currentId=current()?.id,fragment=document.createDocumentFragment();
 
+    let renderOrder=0;
     for(const char of list){
       const card=document.createElement('article');
       card.className='rd-mini-card'+(char.id===currentId?' is-current':'');
@@ -309,7 +328,7 @@
       const open=document.createElement('button');
       open.type='button';open.className='rd-mini-open';
       open.setAttribute('aria-label','与'+char.name+'开始聊天：'+(char.headline||char.tag||'角色')+'，'+(char.traits||[]).join('、'));
-      open.appendChild(image(char,'rd-mini-image'));
+      open.appendChild(image(char,'rd-mini-image',renderOrder++<4));
       const shade=document.createElement('span');shade.className='rd-mini-shade';open.append(shade);
       const category=document.createElement('span');category.className='rd-mini-category';
       category.textContent=(char.mark||'✦')+' '+(char.countryLabel ? char.countryLabel+' · '+(char.category||'故事') : (char.category||'原创'))+(char.storybook?' · 6章':'');open.append(category);

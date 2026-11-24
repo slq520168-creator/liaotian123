@@ -186,3 +186,17 @@ test('all characters are rendered, no batching, and all source images have uniqu
  assert.match(html,/role-story-cover-catalog\.js/);
  assert.doesNotMatch(engine,/function poster\(/);
 });
+
+test('premium role cards show full portrait composition with safe independent image failure handling',()=>{
+ const ui=read('role-discovery.js'),css=read('role-discovery.css'),config=read('config/app.js');
+ assert.match(ui,/for\(const char of list\)/,'all characters must remain rendered');
+ assert.doesNotMatch(ui,/visibleCount|gridObserver|gridScope|rdLoadMore/,'no pagination or hidden cards');
+ assert.match(ui,/setRolePortrait\(img,char\)/);
+ assert.match(ui,/img\.dataset\.imageRetried/);
+ assert.match(ui,/rd-portrait-unavailable/);
+ assert.doesNotMatch(ui,/img\.src = 'assets\/avatars\/nuannuan-portrait\.jpg';/,'failed remote photos cannot become the same fallback face');
+ assert.match(ui,/renderOrder\+\+<4/,'visible images load without waiting for scroll');
+ assert.match(css,/aspect-ratio:9\/16/);
+ assert.match(css,/\.rd-portrait-unavailable/);
+ assert.match(config,/20261124-role2d74/);
+});
