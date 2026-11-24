@@ -671,9 +671,9 @@ function renderMessages() {
   messagesDiv.replaceChildren();
   const char = characters.find(item => item.id === activeCharacterId);
   if (!char) return;
-  (chatHistories[char.id] || []).forEach(msg => appendMessageToDOM(msg, char));
   const job = pendingReplies.get(char.id);
-  if (job?.text) appendMessageToDOM({id: 'stream_' + char.id, sender: 'bot', text: job.text}, char);
+  (chatHistories[char.id] || []).forEach(msg => {if (!job?.revealing || msg.id !== job.finalMessageId) appendMessageToDOM(msg, char);});
+  if (job?.text) appendMessageToDOM({id: job.finalMessageId || 'stream_' + char.id, sender: 'bot', text: job.text}, char);
   else if (job) renderTypingIndicator(char);
   const failure = replyErrors.get(char.id);
   if (failure) {
@@ -807,6 +807,40 @@ function buildRequestMessages(char) {
   return [{role: 'system', content: buildSystemPrompt(char)}, ...recent];
 }
 
+// Pace the presentation of an already received reply, never invent model text.
+function replyGraphemes(text) {
+  return typeof Intl.Segmenter === 'function'
+    ? Array.from(new Intl.Segmenter(undefined, {granularity:'grapheme'}).segment(text), item => item.segment)
+    : Array.from(text);
+}
+async function revealCharacterReply(char, job, text) {
+  if (typeof document === 'undefined' || document.hidden || activeCharacterId !== char.id ||
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
+  const units = replyGraphemes(text);
+  const step = Math.max(1, Math.ceil(units.length / 120));
+  const started = Date.now();
+  let visible = '', offset = 0;
+  while (offset < units.length && pendingReplies.get(char.id) === job &&
+         !job.controller.signal.aborted && activeCharacterId === char.id && !document.hidden) {
+    if (Date.now() - started >= 9000) break;
+    const take = Math.min(step, units.length - offset);
+    const chunk = units.slice(offset, offset + take).join('');
+    visible += chunk;
+    offset += take;
+    job.text = visible;
+    const bubble = messagesDiv.querySelector('[data-message-id="' + job.finalMessageId + '"] .message-bubble');
+    if (bubble) {
+      const pinned = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 96;
+      bubble.textContent = visible;
+      if (pinned) scrollToBottom();
+    } else renderMessages();
+    if (offset >= units.length) break;
+    const punctuation = /[。！？!?…\n]$/u.test(chunk) ? 105 : /[，、,；;：:]$/u.test(chunk) ? 55 : 0;
+    const delay = (units.length > 180 ? 16 : 22 + Math.random() * 16) + punctuation;
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
+
 async function requestCharacterReply(char) {
   if (pendingReplies.has(char.id) || !characters.some(item => item.id === char.id)) return;
   const cooldown=replyErrors.get(char.id)?.retryAt||0;
@@ -859,12 +893,18 @@ async function requestCharacterReply(char) {
     }
     if (!text.trim()) throw new Error('没有收到回复，请重试。');
     if (pendingReplies.get(char.id) !== job || !chatHistories[char.id]) return;
-    chatHistories[char.id].push({id: makeId(), sender: 'bot', text: formatCharacterReply(text).slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()});
+    clearTimeout(timer); // Network timeout must not interrupt a completed reply's display.
+    const reply = {id: makeId(), sender: 'bot', text: formatCharacterReply(text).slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()};
+    const buffered = !job.text;
+    if (buffered) {job.revealing = true; job.finalMessageId = reply.id;}
+    chatHistories[char.id].push(reply);
     const gallery=portraitSources(char);
     if(/·\s*第1章选择】/.test(latest)&&gallery.length>1&&!(chatHistories[char.id]||[]).some(m=>validPortraitMessage(m,char)&&m.imagePath===gallery[1]))addPortraitMessage(char,gallery[1]);
     window.RoleStory?.commitPending?.(char.id,latest,text);
     previousVisits[char.id] = '';
     saveDataToStorage();
+    // Save first so closing/reloading the page cannot lose the real reply.
+    if (buffered) await revealCharacterReply(char, job, reply.text);
   } catch (error) {
     if (pendingReplies.get(char.id) !== job) return;
     if (error.name === 'AbortError' && !job.timedOut) return;

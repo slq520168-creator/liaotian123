@@ -12,7 +12,7 @@ function functionSource(start, end) {
 const functions = [
   functionSource('function warmReplyConnection()', '\nfunction setupEventListeners('),
   functionSource('function formatCharacterReply(', '\nfunction appendMessageToDOM('),
-  functionSource('async function requestCharacterReply(', '\nfunction selectFormAvatar(')
+  functionSource('function replyGraphemes(', '\nfunction selectFormAvatar(')
 ].join('\n');
 const char = {id: 'custom_transport', name: '测试角色'};
 const messages = [{role: 'system', content: '角色与记忆'}, {role: 'user', content: '下午好'}];
@@ -136,4 +136,28 @@ await context.requestCharacterReply(char);
 assert.equal(context.chatHistories[char.id].length,1,'模型不可用时不保存虚假回复');
 assert.match(context.replyErrors.get(char.id).message,/暂时没连上/);
 await assert.rejects(context.readModelReply(Response.json({choices: []}), () => {}), /没有收到回复/);
-console.log('聊天传输通过：真实JSON接口、流式兼容、冷却不重试、失败无虚假回复。');
+// Exercise real presentation logic without network or a browser DOM.
+const full = '你好吗？👩‍👩‍👧‍👦 好呀。';
+assert.equal(context.replyGraphemes(full).join(''), full);
+assert(context.replyGraphemes(full).includes('👩‍👩‍👧‍👦'), 'ZWJ emoji stays intact');
+const displayed = [];
+const bubble = {set textContent(value) {displayed.push(value);}};
+context.document = {hidden:false};
+context.messagesContainer = {scrollHeight:100,scrollTop:0,clientHeight:100};
+context.messagesDiv.querySelector = () => bubble;
+context.scrollToBottom = () => {};
+const job = {controller:new AbortController(),text:'',finalMessageId:'test'};
+context.pendingReplies.set(char.id,job);
+await context.revealCharacterReply(char,job,full);
+assert(displayed.length > 2 && displayed[0] !== full, 'reply must display progressively');
+assert.equal(displayed.at(-1),full);
+displayed.length=0;
+context.window.matchMedia = () => ({matches:true});
+await context.revealCharacterReply(char,job,full);
+assert.equal(displayed.length,0,'reduced motion skips animation');
+delete context.window.matchMedia;
+context.activeCharacterId='another';
+await context.revealCharacterReply(char,job,full);
+assert.equal(displayed.length,0,'other character is never updated');
+context.pendingReplies.delete(char.id);
+console.log('聊天传输通过：真实JSON接口、流式兼容、渐进呈现、完整表情、冷却不重试、失败无虚假回复。');

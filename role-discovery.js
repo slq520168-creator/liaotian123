@@ -200,13 +200,13 @@
     const last = botRows[botRows.length - 1];
     const isTyping = last?.classList.contains('typing-row');
     const nextText = isTyping ? '' : (last?.querySelector('.message-bubble')?.textContent || '').trim();
-    const identity = String(typeof activeCharacterId !== 'undefined' ? activeCharacterId : '') + ':' + String(last?.dataset.messageId || '') + ':' + nextText;
+    const identity = String(typeof activeCharacterId !== 'undefined' ? activeCharacterId : '') + ':' + String(last?.dataset.messageId || (isTyping ? 'typing' : ''));
     if (live.dataset.replyKey !== identity) {
       const prev = live.dataset.replyKey || '';
       live.dataset.replyKey = identity;
-      text.textContent = nextText;
       if (prev) { live.classList.remove('rd-reply-enter'); void live.offsetWidth; live.classList.add('rd-reply-enter'); }
     }
+    if (text.textContent !== nextText) text.textContent = nextText;
     live.hidden = !last;
     live.classList.toggle('rd-is-typing', Boolean(isTyping));
     if (!isTyping && nextText) window.RoleAvatarStage?.setReply?.(nextText);
