@@ -112,7 +112,7 @@ test('editorial character catalog has 24 distinct speakable roles and advanced f
  assert.match(ui,/toggleFavoriteFor\(char\)/);
  assert.match(ui,/char\.category/);
  assert.match(ui,/startChat\(char\)/);
- assert.match(css,/rd-mini-traits/);
+ assert.match(css,/rd-mini-title/);
  for(const category of ['都市','治愈','悬疑','奇幻','古风','科幻','冒险'])assert.ok(html.includes('data-role-filter="'+category+'"'));
  assert.match(read('config/app.js'),/RoleCatalogPolicy/);
  assert.match(read('config/app.js'),/char\.roleKind='2d'/);
@@ -126,8 +126,8 @@ test('role gallery displays exactly two cards per row at all widths with legible
  assert.match(cols[0],/repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(css,/\.rd-mini-image\{[^}]*object-fit:cover/s);
  assert.match(css,/\.rd-mini-hook\{[^}]*-webkit-line-clamp:2/s);
- assert.match(js,/roleTraits\(char\)\.slice\(0,3\)/);
- assert.match(js,/open\.addEventListener\('click',\(\)=>startChat\(char\)\)/);
+ assert.match(js,/open\.addEventListener\('click',\(\)=>toggleCardPreview\(card\)\)/);
+ assert.match(js,/chat\.addEventListener\('click',\(\)=>startChat\(char,Boolean\(story\)\)\)/);
  assert.match(js,/favorite\.addEventListener\('click',\(\)=>toggleFavoriteFor\(char\)\)/);
 });
 
@@ -209,4 +209,17 @@ test('gallery startup and sizing are independent of optional media viewer',()=>{
  assert.match(ui,/Array\.isArray\(char\?\.traits\)/);
  assert.match(css,/min-height:clamp\(294px,82vw,352px\);aspect-ratio:9\/16/);
  assert.match(css,/\.rd-photo-dialog:not\(\[open\]\)\{display:none\}/);
+});
+
+test('card preview, true video playback and saved story progress use existing character data',()=>{
+ const ui=read('role-discovery.js'),html=read('index.html'),css=read('role-discovery.css');
+ assert.match(html,/data-role-filter="stories"/);
+ assert.match(ui,/window\.RoleStory\.description\(char\.id\)/);
+ assert.match(ui,/window\.RoleStory\.openPanel\(\)/);
+ assert.match(ui,/galleryScroll=root\.scrollTop/);
+ assert.match(ui,/root\.scrollTop = galleryScroll/);
+ assert.match(ui,/if\(roleVideo\(char\)\)\{/);
+ assert.match(ui,/togglePhotoVideo\(\)/);
+ assert.match(css,/\.rd-mini-preview\[hidden\]\{display:none\}/);
+ assert.match(ui,/speech\.textContent=String\(story\?story\.chapterTitle/);
 });

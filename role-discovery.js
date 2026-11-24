@@ -86,6 +86,7 @@
     if (!char || !char.id) return false;
     if (['都市','治愈','悬疑','奇幻','古风','科幻','冒险','惊魂','民俗','言情','动漫'].includes(state.filter) && char.category !== state.filter) return false;
     if (state.filter === 'featured' && !FEATURED_RANK.has(char.id)) return false;
+    if (state.filter === 'stories' && !window.RoleStory?.has?.(char.id)) return false;
     if (state.filter === 'international' && char.region !== 'international') return false;
     if (state.filter === 'photo' && !char.photoRealistic) return false;
     if (state.filter === 'female' && char.gender !== 'female') return false;
@@ -146,7 +147,10 @@
     });
     render();
   }
+  let galleryScroll=0;
   function switchView(showLobby, updateHistory = true) {
+    if(!showLobby&&!root.hidden)galleryScroll=root.scrollTop;
+    if(showLobby)closeCardPreview();
     root.hidden = !showLobby;
     document.body.classList.toggle('role-discovery-open', showLobby);
     document.body.classList.toggle('role-chat-immersive', !showLobby);
@@ -156,7 +160,7 @@
     closeHistory();
     if (showLobby) {
       render();
-      root.scrollTop = 0;
+      root.scrollTop = galleryScroll;
     } else {
       window.__ROLE_HUMAN_RENDERER?.resize?.();
       window.__ROLE_HUMAN_RENDERER?.syncCharacter?.();
@@ -225,16 +229,18 @@
     if (btn) { btn.setAttribute('aria-pressed', String(!open)); btn.setAttribute('aria-label', open ? '切换沉浸模式' : '返回完整聊天'); btn.textContent=open?'沉浸模式':'完整聊天'; }
     if (open) { const box = $('messagesContainer'); if (box) box.scrollTop = box.scrollHeight; }
   }
-  function startChat(char) {
+  function startChat(char,openStory=false) {
     if (!char) return;
+    closeCardPreview();
     switchView(false);
     if (typeof switchCharacter === 'function') switchCharacter(char.id);
     syncBackdrop();
+    if(openStory&&window.RoleStory?.has?.(char.id)){const panel=$('roleStoryPanel');if(panel?.hidden)window.RoleStory.openPanel();else window.RoleStory.render();}
     requestAnimationFrame(()=>{const box=$('messagesContainer');if(box)box.scrollTop=box.scrollHeight;});
     if (typeof closeSidebar === 'function') closeSidebar();
     requestAnimationFrame(() => {
       window.__ROLE_HUMAN_RENDERER?.resize?.();
-      if (matchMedia('(pointer:fine)').matches) $('userInput')?.focus({preventScroll: true});
+      if (!openStory&&matchMedia('(pointer:fine)').matches) $('userInput')?.focus({preventScroll: true});
     });
   }
   function openCreate() {
@@ -321,37 +327,65 @@
     card.setAttribute('aria-label', '查看' + char.name + '，左右滑动切换角色');
   }
   const COLOR_BY_CATEGORY=Object.freeze({'都市':'#e0a7cb','治愈':'#b0e2c6','悬疑':'#a2b1dc','奇幻':'#d3a8f7','古风':'#e7c38b','科幻':'#87c4e8','冒险':'#eac28d'});
+  let activeCardPreview=null;
+  function closeCardPreview(restoreFocus=false){
+    const card=activeCardPreview;activeCardPreview=null;
+    if(!card)return;
+    card.classList.remove('is-preview');
+    const trigger=card.querySelector('.rd-mini-open'),panel=card.querySelector('.rd-mini-preview');
+    if(panel)panel.hidden=true;
+    trigger?.setAttribute('aria-expanded','false');
+    if(restoreFocus&&card.isConnected)trigger?.focus({preventScroll:true});
+  }
+  function toggleCardPreview(card){
+    if(activeCardPreview===card){closeCardPreview(true);return;}
+    closeCardPreview();
+    activeCardPreview=card;
+    card.classList.add('is-preview');
+    card.querySelector('.rd-mini-preview').hidden=false;
+    card.querySelector('.rd-mini-open').setAttribute('aria-expanded','true');
+  }
+  function storyFor(char){return window.RoleStory?.has?.(char.id)?window.RoleStory.description(char.id):null;}
+  function storyProgress(story){return story.finished?'已完结':story.chapter?'继续 · 第'+(story.chapter+1)+'章':'六章互动故事';}
   function renderGrid() {
     const container=$('rdCharacterGrid'),list=available(),currentId=current()?.id,fragment=document.createDocumentFragment();
-
     if(!container)return;
+    closeCardPreview();
     let renderOrder=0;
     for(const char of list){
+      const story=storyFor(char);
       const card=document.createElement('article');
       card.className='rd-mini-card'+(char.id===currentId?' is-current':'');
-      card.dataset.characterId=char.id;if(char.storybook)card.dataset.story='chaptered';
+      card.dataset.characterId=char.id;if(story)card.dataset.story='chaptered';
       card.style.setProperty('--rd-accent',COLOR_BY_CATEGORY[char.category]||'#cbb2f8');
       const open=document.createElement('button');
       open.type='button';open.className='rd-mini-open';
-      open.setAttribute('aria-label','与'+char.name+'开始聊天：'+(char.headline||char.tag||'角色')+'，'+roleTraits(char).join('、'));
+      open.setAttribute('aria-label','预览'+char.name+'：'+(char.headline||char.tag||'角色'));
+      open.setAttribute('aria-expanded','false');
       open.appendChild(image(char,'rd-mini-image',renderOrder++<4));
       const shade=document.createElement('span');shade.className='rd-mini-shade';open.append(shade);
-      const category=document.createElement('span');category.className='rd-mini-category';
-      category.textContent=(char.mark||'✦')+' '+(char.countryLabel ? char.countryLabel+' · '+(char.category||'故事') : (char.category||'原创'))+(char.storybook?' · 6章':'');open.append(category);
-      if(roleVideo(char)){
-        const video=document.createElement('span');video.className='rd-mini-video';video.textContent='▶';
-        video.setAttribute('aria-label','可播放角色视频');open.append(video);
+      if(story){
+        const category=document.createElement('span');category.className='rd-mini-category';
+        category.textContent=story.genre+' · '+storyProgress(story);open.append(category);
       }
       const info=document.createElement('span');info.className='rd-mini-details';
-      const role=document.createElement('span');role.className='rd-mini-role';role.textContent=char.headline||char.tag||'自定义角色';
-      const name=document.createElement('strong');name.textContent=char.name;
-      const traits=document.createElement('span');traits.className='rd-mini-traits';
-      for(const trait of roleTraits(char).slice(0,3)){const chip=document.createElement('i');chip.textContent=trait;traits.append(chip);}
+      const title=document.createElement('span');title.className='rd-mini-title';
+      const name=document.createElement('strong');name.textContent=char.name;title.append(name);
+      const age=Number(char.age);if(Number.isFinite(age)&&age>=18){const label=document.createElement('span');label.className='rd-mini-age';label.textContent=String(age);title.append(label);}
+      const role=document.createElement('span');role.className='rd-mini-role';role.textContent=story?story.title:char.headline||char.tag||'自定义角色';
       const hook=document.createElement('span');hook.className='rd-mini-hook';
-      hook.textContent=String(char.hook||char.greeting||char.personality||'').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,65);
-      const enter=document.createElement('span');enter.className='rd-mini-enter';enter.textContent='进入聊天  ›';enter.setAttribute('aria-hidden','true');
-      info.append(role,name,traits,hook,enter);open.append(info);
-      open.addEventListener('click',()=>startChat(char));
+      hook.textContent=String(char.hook||char.greeting||char.personality||'').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,88);
+      info.append(title,role,hook);open.append(info);
+      open.addEventListener('click',()=>toggleCardPreview(card));
+      const panel=document.createElement('div');panel.className='rd-mini-preview';panel.hidden=true;
+      const speech=document.createElement('p');speech.className='rd-mini-opening';
+      // Opening text comes from the character's saved greeting or current chapter, never a fabricated live reply.
+      speech.textContent=String(story?story.chapterTitle+' · '+story.text:char.greeting||char.hook||char.personality||'').slice(0,180);
+      panel.append(speech);
+      const chat=document.createElement('button');chat.type='button';chat.className='rd-mini-enter';
+      chat.textContent=story?(story.finished?'查看结局':story.chapter?'继续故事':'开始故事'):'开始聊天';
+      chat.addEventListener('click',()=>startChat(char,Boolean(story)));panel.append(chat);
+      if(story){const normal=document.createElement('button');normal.type='button';normal.className='rd-mini-chat-secondary';normal.textContent='自由聊天';normal.addEventListener('click',()=>startChat(char));panel.append(normal);}
       const favorite=document.createElement('button');
       favorite.type='button';favorite.className='rd-mini-fav'+(state.favorites.has(char.id)?' is-liked':'');
       favorite.setAttribute('aria-label',(state.favorites.has(char.id)?'取消收藏':'收藏')+char.name);
@@ -359,12 +393,17 @@
       favorite.textContent=state.favorites.has(char.id)?'♥':'♡';
       favorite.addEventListener('click',()=>toggleFavoriteFor(char));
       const preview=document.createElement('button');preview.type='button';preview.className='rd-photo-button rd-mini-photo';preview.textContent='⤢';preview.setAttribute('aria-label','查看'+char.name+'完整图片');preview.addEventListener('click',()=>openPhoto(char));
-      card.append(open,favorite,preview);fragment.append(card);
+      card.append(open,panel,favorite,preview);
+      if(roleVideo(char)){
+        const play=document.createElement('button');play.type='button';play.className='rd-mini-video';play.textContent='▶';
+        play.setAttribute('aria-label','播放'+char.name+'的视频');play.addEventListener('click',()=>{openPhoto(char);if($('rdPhotoDialog')?.open&&photoRole===char)togglePhotoVideo();});
+        card.append(play);
+      }
+      fragment.append(card);
     }
     container.replaceChildren(fragment);
-    if($('rdGridCount'))$('rdGridCount').textContent=list.length+' 位角色';
+    if($('rdGridCount'))$('rdGridCount').textContent=list.length+(state.filter==='stories'?' 部故事':' 位角色');
     if($('rdGridEmpty'))$('rdGridEmpty').hidden=list.length>0;
-
   }
   function render() { renderGrid(); renderHero(); }
   function attachGestures() {
@@ -470,6 +509,8 @@
       if (state.drag || Date.now() < state.suppressClickUntil || event.target.closest('button')) return;
       startChat(current());
     });
+    root.addEventListener('pointerdown',event=>{if(activeCardPreview&&!activeCardPreview.contains(event.target))closeCardPreview();});
+    root.addEventListener('keydown',event=>{if(event.key==='Escape'&&activeCardPreview){event.preventDefault();closeCardPreview(true);}});
     $('rdSearch').addEventListener('input', event => {
       state.query = event.target.value;
       state.index = 0;
