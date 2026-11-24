@@ -174,10 +174,11 @@ function loadDataFromStorage() {
       chatHistories[char.id] = history.filter(msg => msg && ['user', 'bot'].includes(msg.sender) && typeof msg.text === 'string').map(msg => ({
         id: typeof msg.id === 'string' ? msg.id : makeId(),
         sender: msg.sender, text: msg.text,
+        ...(validPortraitMessage(msg,char)?{kind:'portrait',imagePath:msg.imagePath}:{}),
         createdAt: typeof msg.createdAt === 'string' ? msg.createdAt.slice(0, 30) : '',
         timestamp: typeof msg.timestamp === 'string' ? msg.timestamp.slice(0, 20) : ''
       }));
-      if (chatHistories[char.id].length && chatHistories[char.id][chatHistories[char.id].length - 1].sender === 'user') {
+      if (chatHistories[char.id].filter(m=>!validPortraitMessage(m,char)).at(-1)?.sender === 'user') {
         replyErrors.set(char.id, {message: '回复未完成，请重试。'});
       }
     });
@@ -396,6 +397,7 @@ function setupEventListeners() {
     }
   });
   sendBtn.addEventListener('click', handleSendMessage);
+  byId('roleImageMessageBtn')?.addEventListener('click',sendPortraitMessage);
   byId('openCreateModalBtn').addEventListener('click', () => {
     closeSidebar();
     openModal();
@@ -604,6 +606,27 @@ function formatCharacterReply(text) {
   return text.replace(/\r\n?/g, '\n').split('\n').filter(line => line.trim()).join('\n').trim();
 }
 
+function portraitSources(char){
+  if(!char?.isPreset)return [];
+  return [...new Set([char.avatar,...(Array.isArray(char.portraitGallery)?char.portraitGallery:[])])].filter(src=>typeof src==='string'&&/^assets\/(?:avatars\/[a-z0-9_-]+\.(?:jpg|jpeg|png|webp)|role-portraits\/(?:(?:stories|originals)\/)?[a-z0-9_-]+\.webp)$/i.test(src));
+}
+function validPortraitMessage(msg,char){
+  return msg?.kind==='portrait'&&msg.sender==='bot'&&portraitSources(char).includes(msg.imagePath);
+}
+function addPortraitMessage(char,requestedPath=null){
+  const history=chatHistories[char.id],gallery=portraitSources(char);
+  if(!Array.isArray(history)||!gallery.length)return false;
+  const last=history.filter(m=>validPortraitMessage(m,char)).at(-1)?.imagePath;
+  const src=gallery.includes(requestedPath)?requestedPath:gallery[(gallery.indexOf(last)+1)%gallery.length];
+  history.push({id:makeId(),sender:'bot',kind:'portrait',imagePath:src,text:'角色相册',timestamp:getCurrentTime(),createdAt:new Date().toISOString()});
+  saveDataToStorage();
+  return true;
+}
+function sendPortraitMessage(){
+  const char=characters.find(item=>item.id===activeCharacterId);
+  if(!char||pendingReplies.has(char.id)||!addPortraitMessage(char))return;
+  renderMessages();updateComposer();
+}
 function appendMessageToDOM(msg, char) {
   const row = document.createElement('div');
   row.className = 'message-row ' + msg.sender;
@@ -623,7 +646,17 @@ function appendMessageToDOM(msg, char) {
   content.className = 'message-content';
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-  bubble.textContent = msg.sender === 'bot' ? formatCharacterReply(msg.text) : msg.text;
+  if(validPortraitMessage(msg,char)){
+    bubble.classList.add('role-image-bubble');
+    const open=document.createElement('button');
+    open.type='button';open.className='role-message-image-open';open.setAttribute('aria-label','放大'+char.name+'的相册图片');
+    const img=document.createElement('img');img.src=msg.imagePath;img.alt=char.name+'的相册图片';img.loading='lazy';img.decoding='async';
+    img.addEventListener('error',()=>{open.hidden=true;caption.textContent='相册图片暂不可用';},{once:true});
+    open.append(img);open.addEventListener('click',()=>window.RoleDiscovery?.openPortrait?.(char.id,msg.imagePath));
+    const caption=document.createElement('span');caption.className='role-image-caption';caption.textContent='角色相册';
+    const save=document.createElement('a');save.href=msg.imagePath;save.download=msg.imagePath.split('/').pop();save.textContent='保存';save.setAttribute('aria-label','保存角色图片');caption.append(' · ',save);
+    bubble.append(open,caption);
+  }else bubble.textContent = msg.sender === 'bot' ? formatCharacterReply(msg.text) : msg.text;
   const time = document.createElement('span');
   time.className = 'message-time';
   time.textContent = msg.timestamp || '';
@@ -652,7 +685,7 @@ function renderMessages() {
     retry.type = 'button';
     retry.className = 'btn btn-outline btn-sm';
     retry.textContent = '重试';
-    retry.addEventListener('click', () => requestCharacterReply(char));
+    retry.addEventListener('click', () => {if((failure.retryAt||0)>Date.now()){text.textContent='服务暂忙，请 '+Math.ceil((failure.retryAt-Date.now())/1000)+' 秒后重试。';return;}requestCharacterReply(char);});
     errorRow.append(text, retry);
     messagesDiv.appendChild(errorRow);
   }
@@ -697,6 +730,7 @@ function renderQuickReplies(char) {
 function updateComposer() {
   const busy = pendingReplies.has(activeCharacterId);
   sendBtn.disabled = busy || !userInput.value.trim();
+  const imageBtn=byId('roleImageMessageBtn'),char=characters.find(item=>item.id===activeCharacterId);if(imageBtn){imageBtn.hidden=!portraitSources(char).length;imageBtn.disabled=busy;}
   sendBtn.setAttribute('aria-label', busy ? '等待角色回复' : '发送消息');
   quickRepliesDiv.querySelectorAll('button').forEach(button => { button.disabled = busy; });
   replyStatus.textContent = '';
@@ -746,7 +780,7 @@ function buildSystemPrompt(char) {
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const memory = ROLE_MEMORY.prompt(roleMemories[char.id] || ROLE_MEMORY.normalize(null), playerProfile, latest, previousVisits[char.id]);
   const lengthRule = replyLength === 'short' && !/长文|长一点|多写|详细|完整|故事|展开/.test(latest) ? '本轮一到两句自然接话，优先快而贴切；用户明确要故事、长文时仍要完整。' : replyLength === 'long' ? '本轮认真长聊，按对方需要展开具体细节，可换行但不留空白行。对方指定篇幅时尽量满足，尽量有结尾；没有指定篇幅时按内容自然决定，不硬凑字数，不套清单。' : '普通闲聊可短到一句或两三句；要故事、长文、解释时完整展开。只发表情也要懂得接情绪，可用文字和少量贴切表情回应。';
-  const lastBot = (chatHistories[char.id] || []).filter(msg => msg.sender === 'bot').at(-1)?.text || '';
+  const lastBot = (chatHistories[char.id] || []).filter(msg => msg.sender === 'bot'&&!validPortraitMessage(msg,char)).at(-1)?.text || '';
   const preferences = roleMemories[char.id]?.preferences.join(' ') || '';
   const noQuestion = /(?:不要|别|少|不用).{0,16}(?:追问|反问|问号|问题)/.test(preferences) || /[？?]\s*$/.test(lastBot) && !/[？?]\s*$/.test(latest);
   const plotRule=window.RoleStory?.contextFor?.(char.id)||'';
@@ -755,7 +789,7 @@ function buildSystemPrompt(char) {
 }
 
 function buildRequestMessages(char) {
-  const stored=chatHistories[char.id]||[];
+  const stored=(chatHistories[char.id]||[]).filter(m=>!validPortraitMessage(m,char));
   const lastUser=stored.findLastIndex(msg=>msg.sender==='user');
   const history=lastUser<0?[]:stored.slice(Math.max(0,lastUser-19),lastUser+1);
   const latestUser=history.length-1;
@@ -801,6 +835,7 @@ async function requestCharacterReply(char) {
         if (!response.ok) {
           const serverRetryAfter=Number(response.headers.get('retry-after')); const retryAfter=Number.isFinite(serverRetryAfter)&&serverRetryAfter>0?Math.ceil(Math.min(600,serverRetryAfter)):null;
           const error = new Error(response.status === 429 ? (retryAfter ? '请求较多，请 ' + retryAfter + ' 秒后重试。' : '请求较多，请稍后重试。') : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : response.status === 400 ? '消息格式异常，请重新发送。' : response.status === 413 ? '消息较长，请分段发送。' : response.status === 422 ? '这条消息暂时无法继续，请调整表达。' : response.status === 503 ? '模型暂时没连上，消息已保留。' : '连接失败，请重试。');
+          if(response.status===429&&retryAfter)error.retryAt=Date.now()+retryAfter*1000;
           error.retryable = [408, 500, 502, 503, 504].includes(response.status);
           throw error;
         }
@@ -821,6 +856,8 @@ async function requestCharacterReply(char) {
     if (!text.trim()) throw new Error('没有收到回复，请重试。');
     if (pendingReplies.get(char.id) !== job || !chatHistories[char.id]) return;
     chatHistories[char.id].push({id: makeId(), sender: 'bot', text: formatCharacterReply(text).slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()});
+    const gallery=portraitSources(char);
+    if(/·\s*第1章选择】/.test(latest)&&gallery.length>1&&!(chatHistories[char.id]||[]).some(m=>validPortraitMessage(m,char)&&m.imagePath===gallery[1]))addPortraitMessage(char,gallery[1]);
     previousVisits[char.id] = '';
     saveDataToStorage();
   } catch (error) {
@@ -828,6 +865,7 @@ async function requestCharacterReply(char) {
     if (error.name === 'AbortError' && !job.timedOut) return;
     replyErrors.set(char.id, {
       partial: job.text,
+      retryAt: Number(error.retryAt)||0,
       offline: navigator.onLine === false,
       message: navigator.onLine === false ? '网络已断开。' : job.timedOut ? '回复超时，请重试。' :
         job.text ? '回复中断，请重试。' : error instanceof TypeError ? '连接失败，请重试。' : error.message
@@ -1225,7 +1263,7 @@ async function restoreBackup() {
         chatHistories[char.id] = incoming.concat(chatHistories[char.id] || []).filter(msg => {
           if (!msg || typeof msg.text !== 'string' || !['bot', 'user'].includes(msg.sender) || typeof msg.id !== 'string' || ids.has(msg.id)) return false;
           ids.add(msg.id); return true;
-        }).map(msg => ({id: msg.id, sender: msg.sender, text: msg.text.slice(0, CHAT_LIMITS.message), timestamp: String(msg.timestamp || '').slice(0, 20), createdAt: String(msg.createdAt || '').slice(0, 30)}));
+        }).map(msg => ({id: msg.id, sender: msg.sender, text: msg.text.slice(0, CHAT_LIMITS.message), timestamp: String(msg.timestamp || '').slice(0, 20), createdAt: String(msg.createdAt || '').slice(0, 30),...(validPortraitMessage(msg,char)?{kind:'portrait',imagePath:msg.imagePath}:{})}));
       }
       const incomingMemory = ROLE_MEMORY.normalize(backup.memories?.[char.id]);
       const old = roleMemories[char.id] || ROLE_MEMORY.normalize(null);

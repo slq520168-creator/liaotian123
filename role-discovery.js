@@ -443,19 +443,19 @@
     });
   }
   let photoRole=null,photoResume=null,photoIndex=0;
-  function openPhoto(char){
+  function openPhoto(char,selectedPath=null){
     if(!char)return;
     const dialog=$('rdPhotoDialog'),img=$('rdFullPhoto'),video=$('rdFullVideo');
     if(!dialog||!img||!video||typeof dialog.showModal!=='function')return;
-    photoRole=char;photoIndex=0;photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
+    photoRole=char;photoIndex=Math.max(0,Array.isArray(char.portraitGallery)?char.portraitGallery.indexOf(selectedPath):0);photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
     $('rdPhotoName').textContent=char.name;
     $('rdPhotoError').hidden=Boolean(char.avatar);
     img.hidden=!char.avatar;img.alt=char.name+'完整人物图片';
     img.onerror=()=>{img.hidden=true;$('rdPhotoError').hidden=false;};
-    if(char.avatar)img.src=char.avatar;else img.removeAttribute('src');
+    if(char.avatar)img.src=char.portraitGallery?.[photoIndex]||char.avatar;else img.removeAttribute('src');
     video.hidden=true;const gallery=Array.isArray(char.portraitGallery)&&char.portraitGallery.length>1;
     $('rdPhotoMode').hidden=!gallery&&!roleVideo(char);
-    $('rdPhotoMode').textContent=gallery?'下一张 · 1/2':'播放视频';
+    $('rdPhotoMode').textContent=gallery?'下一张 · '+(photoIndex+1)+'/'+char.portraitGallery.length:'播放视频';
     $('rdPhotoChat').hidden=root.hidden&&typeof activeCharacterId!=='undefined'&&activeCharacterId===char.id;
     dialog.showModal();
   }
@@ -607,7 +607,7 @@
     if (location.hash !== '#discover') history.replaceState({siroleView: 'discover'}, '', location.pathname + location.search + '#discover');
     queueReplySync();
   }
-  window.RoleDiscovery=Object.freeze({showLobby:()=>switchView(true),openChat:id=>{const char=allCharacters().find(item=>item.id===id);if(char)startChat(char);},refresh:render});
+  window.RoleDiscovery=Object.freeze({showLobby:()=>switchView(true),openChat:id=>{const char=allCharacters().find(item=>item.id===id);if(char)startChat(char);},openPortrait:(id,src)=>{const char=allCharacters().find(item=>item.id===id);if(char&&(char.avatar===src||char.portraitGallery?.includes(src)))openPhoto(char,src);},refresh:render});
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once: true});
   else boot();
 })();
