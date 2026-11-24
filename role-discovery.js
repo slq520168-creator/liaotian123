@@ -217,12 +217,12 @@
   function closeHistory() {
     document.body.classList.remove('rd-history-open','rd-scene-only');
     const btn = $('rdHistoryToggle');
-    if (btn) { btn.setAttribute('aria-pressed','false'); btn.setAttribute('aria-label','切换沉浸模式'); }
+    if (btn) { btn.setAttribute('aria-pressed','false'); btn.setAttribute('aria-label','切换沉浸模式');btn.textContent='沉浸模式'; }
   }
   function toggleHistory() {
     const open = !document.body.classList.toggle('rd-scene-only');
     const btn = $('rdHistoryToggle');
-    if (btn) { btn.setAttribute('aria-pressed', String(!open)); btn.setAttribute('aria-label', open ? '切换沉浸模式' : '返回完整聊天'); }
+    if (btn) { btn.setAttribute('aria-pressed', String(!open)); btn.setAttribute('aria-label', open ? '切换沉浸模式' : '返回完整聊天'); btn.textContent=open?'沉浸模式':'完整聊天'; }
     if (open) { const box = $('messagesContainer'); if (box) box.scrollTop = box.scrollHeight; }
   }
   function startChat(char) {
@@ -478,6 +478,10 @@
     root.querySelectorAll('[data-role-filter]').forEach(btn => btn.addEventListener('click', () => setFilter(btn.dataset.roleFilter)));
     $('rdGoHome')?.addEventListener('click', () => switchView(true));
     $('rdHistoryToggle').addEventListener('click', toggleHistory);
+    const menu=$('rdChatMenu');
+    menu?.addEventListener('click',event=>{if(event.target.closest('button'))menu.open=false;});
+    document.addEventListener('pointerdown',event=>{if(menu?.open&&!menu.contains(event.target))menu.open=false;});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&menu?.open){menu.open=false;menu.querySelector('summary')?.focus();}});
     const scene=$('rdScene');
     if(scene){
       scene.value=window.RoleChatActions?.scene?.()||'default';

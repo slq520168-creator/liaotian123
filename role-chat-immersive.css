@@ -9,7 +9,7 @@ body.role-chat-immersive .chat-main>.rd-chat-scene{
 }
 body.role-chat-immersive .rd-chat-scene img{
   width:100%;height:100%;object-fit:cover;object-position:center 21%;
-  filter:saturate(1.05) brightness(.65);transform:none!important;
+  filter:saturate(1.02) brightness(.88);transform:none!important;
   animation:none!important;
 }
 body.role-chat-immersive .rd-chat-scene:after{
@@ -29,8 +29,8 @@ body.role-chat-immersive .chat-main>.role-human-stage canvas{background:transpar
 body.role-chat-immersive .chat-main>.chat-header,
 body.role-chat-immersive .chat-main>.role-human-stage.active~.chat-header{
   position:relative!important;flex:0 0 auto;
-  z-index:30!important;min-height:66px;height:auto!important;
-  display:flex;align-items:center;padding:calc(9px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left))!important;
+  z-index:30!important;min-height:56px;height:auto!important;gap:8px;
+  display:flex;align-items:center;padding:calc(5px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left))!important;
   background:linear-gradient(180deg,rgba(13,9,24,.72),rgba(13,9,24,.14))!important;
   border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
 }
@@ -41,16 +41,13 @@ body.role-chat-immersive .chat-main>.role-human-stage.active~.chat-header .char-
 body.role-chat-immersive .chat-header .icon-btn{color:#f5efff!important}
 body.role-chat-immersive .chat-header .header-actions{display:flex;align-items:center;gap:4px}
 body.role-chat-immersive .chat-header #switchCharBtn{display:none!important}
-body.role-chat-immersive .chat-header .rd-history-toggle{
-  display:grid!important;place-items:center;min-width:39px!important;width:39px;height:39px;font-size:25px;
-  border-radius:13px;background:rgba(31,23,44,.42);border:1px solid rgba(255,255,255,.13)
-}
+body.role-chat-immersive .chat-header .rd-history-toggle{font-size:13px}
 body.role-chat-immersive.rd-history-open .chat-header .rd-history-toggle{background:rgba(165,105,242,.50)}
 body.role-chat-immersive .chat-main>.messages-container,
 body.role-chat-immersive .chat-main>.role-human-stage.active~.messages-container{
  position:relative!important;z-index:18!important;inset:auto!important;flex:1 1 auto;
  height:auto!important;width:100%!important;min-height:0!important;
- background:linear-gradient(180deg,rgba(9,7,17,.08),rgba(13,10,23,.58))!important;
+ background:linear-gradient(180deg,rgba(9,7,17,.04),rgba(13,10,23,.26))!important;
  overflow-y:auto!important;padding:14px max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left))!important;
  overscroll-behavior:contain;
 }
@@ -85,7 +82,7 @@ body.role-chat-immersive .chat-main>.rd-live-reply{
  backdrop-filter:blur(17px) saturate(1.2);-webkit-backdrop-filter:blur(17px) saturate(1.2);
 }
 body.role-chat-immersive .chat-main>.rd-live-reply[hidden]{display:none!important}
-body.role-chat-immersive.rd-scene-only .chat-main>.rd-live-reply:not([hidden]){display:block}
+body.role-chat-immersive.rd-scene-only .chat-main>.rd-live-reply:not([hidden]){display:block;position:relative;inset:auto;margin:0 auto 8px;flex:0 0 auto}
 body.role-chat-immersive .rd-live-reply .rd-reply-top{display:flex;align-items:center;gap:7px;color:#d7baff;font-size:11px;margin-bottom:7px}
 body.role-chat-immersive .rd-live-reply .rd-speaking-indicator{width:7px;height:7px;background:#b77cff;border-radius:50%;box-shadow:0 0 0 4px rgba(172,101,251,.14);animation:rdSpeaking 2s ease-in-out infinite}
 body.role-chat-immersive #rdReplyText{font-size:14px;line-height:1.62;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -166,15 +163,38 @@ body.role-chat-immersive .rd-chat-scene:has(.rd-chat-video:not([hidden]))>img{vi
 .rd-video-retry[hidden]{display:none!important}
 body.role-chat-immersive .rd-chat-scene>.rd-video-retry{top:78px;pointer-events:auto}
 
-body.role-chat-immersive .rd-chat-actions{position:relative;flex:0 0 auto;z-index:31;display:flex;justify-content:flex-end;gap:6px;align-items:center;padding:6px 12px;background:rgba(14,11,23,.65)}
+body.role-chat-immersive .rd-chat-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center}
 body.role-chat-immersive .rd-chat-actions select,body.role-chat-immersive .rd-action-icon{height:35px;background:rgba(21,15,35,.75);border:1px solid rgba(231,211,255,.28);border-radius:11px;color:#fff;backdrop-filter:blur(10px)}
-body.role-chat-immersive .rd-chat-actions select{max-width:123px;padding:0 8px;font-size:12px}
-body.role-chat-immersive .rd-action-icon{display:grid;place-items:center;width:35px;padding:0;font-size:22px;cursor:pointer}
+body.role-chat-immersive .rd-chat-actions select{width:100%;max-width:none;padding:0 8px;font-size:12px}
+body.role-chat-immersive .rd-action-icon{display:grid;place-items:center;width:100%;padding:0;font-size:13px;cursor:pointer}
 body:not(.role-chat-immersive) .rd-chat-actions{display:none}
 body.role-chat-immersive[data-role-scene="night"] .rd-chat-scene img,body.role-chat-immersive[data-role-scene="night"] .rd-chat-scene video{filter:saturate(1.25) brightness(.62) hue-rotate(15deg)}
 body.role-chat-immersive[data-role-scene="seaside"] .rd-chat-scene img,body.role-chat-immersive[data-role-scene="seaside"] .rd-chat-scene video{filter:saturate(1.15) brightness(.95) sepia(.11)}
 body.role-chat-immersive[data-role-scene="cafe"] .rd-chat-scene img,body.role-chat-immersive[data-role-scene="cafe"] .rd-chat-scene video{filter:sepia(.14) brightness(.88)}
-@media(max-width:420px){body.role-chat-immersive .rd-chat-actions{gap:5px}body.role-chat-immersive .rd-chat-actions select{max-width:108px}body.role-chat-immersive .rd-action-icon{width:32px;height:32px}}
 
 body.role-chat-immersive.rd-scene-only .rd-chat-scene img{filter:saturate(1.05) brightness(.96)}
 body.role-chat-immersive .rd-chat-scene>img[hidden]{display:none}
+
+/* Compact conversation header and composer */
+body.role-chat-immersive .rd-chat-menu{position:relative;flex-shrink:0}
+body.role-chat-immersive .rd-chat-menu summary{list-style:none;display:grid;place-items:center;width:44px;height:44px;color:white;font-size:28px;cursor:pointer;border-radius:50%}
+body.role-chat-immersive .rd-chat-menu summary::-webkit-details-marker{display:none}
+body.role-chat-immersive .rd-menu-panel{position:absolute;right:0;top:calc(100% + 7px);width:min(295px,calc(100vw - 28px));max-height:65dvh;overflow:auto;padding:10px;display:grid;gap:8px;background:#1b1824;border:1px solid #ffffff24;border-radius:16px;box-shadow:0 12px 35px #0008}
+body.role-chat-immersive .rd-chat-menu:not([open])>.rd-menu-panel{display:none}
+body.role-chat-immersive .rd-menu-panel>button:not([hidden]){display:flex!important;align-items:center;justify-content:flex-start;gap:9px;width:100%;height:auto;min-height:40px;font-size:13px;padding:8px 12px;border:0;border-radius:9px;background:#ffffff09;color:#fff;box-shadow:none}
+body.role-chat-immersive .rd-menu-panel>button[hidden],body.role-chat-immersive .rd-menu-panel #switchCharBtn{display:none!important}
+body.role-chat-immersive .rd-menu-panel .chat-tools{display:grid;grid-template-columns:1fr 1fr;white-space:normal;margin:0!important;gap:6px!important;overflow:visible}
+body.role-chat-immersive .rd-menu-panel .chat-tool-group{display:flex;flex-direction:column;align-items:stretch}
+body.role-chat-immersive .rd-menu-panel .user-avatar-button .avatar{width:30px;height:30px}
+body.role-chat-immersive .rd-menu-panel #clearChatBtn{color:#ffb7b7!important}
+body.role-chat-immersive .chat-header .current-character-info{flex:1;min-width:0}
+body.role-chat-immersive .chat-header .char-tag{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+body.role-chat-immersive .chat-header .rd-chat-back{width:38px;min-width:38px}
+body.role-chat-immersive .chat-main>.input-container{padding:8px 12px calc(8px + env(safe-area-inset-bottom))!important}
+body.role-chat-immersive .input-area #emojiBtn{flex:0 0 34px;width:34px;height:38px;background:transparent;border:0;color:#d8c9eb;font-size:23px;padding:0}
+body.role-chat-immersive .input-area textarea{font-size:16px;line-height:1.5}
+body.role-chat-immersive .input-area .btn-send{width:38px;height:38px;min-width:38px;padding:0;display:grid;place-items:center;border-radius:50%}
+body.role-chat-immersive .input-area .btn-send span{display:none}
+body.role-chat-immersive .reply-error{align-self:flex-start;max-width:100%;background:#201927db;color:#f1d5d5;border:1px solid #ffffff22;border-radius:12px;font-size:12px;padding:6px 9px;gap:8px}
+body.role-chat-immersive .reply-error button{color:#e4c9ff;background:transparent;border-color:#ffffff30;min-height:30px;font-size:12px}
+body.role-chat-immersive #avatarUploadStatus:empty,body.role-chat-immersive #replyStatus:empty{display:none}

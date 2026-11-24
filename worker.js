@@ -23,7 +23,7 @@ function valid(payload){
  return size<=55000&&messages[0].role==='system'&&messages.at(-1).role==='user'?messages:null;
 }
 async function model(messages,max_tokens,provider){
- const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),13000);
+ const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),provider.timeout||16000);
  try{
   const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8}),signal:abort.signal,redirect:'error'});
   if(!response.ok)throw Error('model error');
@@ -47,8 +47,8 @@ export default{async fetch(req,env){
   try{
    const max_tokens=Math.max(128,Math.min(2048,Number(payload.max_tokens)||400));
    for(const provider of [
-     {url:'https://text.pollinations.ai/openai/chat/completions',model:'openai-fast'},
-     {url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b'}
+     {url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b',timeout:18000},
+     {url:'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',model:'qwen3.6-35b-a3b',timeout:18000}
    ]) {
      try{return out(200,{ok:true,text:await model(messages,max_tokens,provider)});}
      catch{/* No fabricated text; try the next independent real model. */}

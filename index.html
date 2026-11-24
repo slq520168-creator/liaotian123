@@ -15,10 +15,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32.png?v=20261003-logo1">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261003-logo1">
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
-  <link rel="stylesheet" href="styles.css?v=20261117-create3d53">
-  <link rel="stylesheet" href="role-discovery.css?v=20261124-role2d78">
+  <link rel="stylesheet" href="styles.css?v=20261124-role2d79">
+  <link rel="stylesheet" href="role-discovery.css?v=20261124-role2d79">
   <link rel="stylesheet" href="role-story.css?v=20261124-create3d68">
-  <link rel="stylesheet" href="role-chat-immersive.css?v=20261124-role2d78">
+  <link rel="stylesheet" href="role-chat-immersive.css?v=20261124-role2d79">
   <link rel="stylesheet" href="role-2d-creator.css?v=20261123-character01">
 </head>
 <body class="role-discovery-open">
@@ -58,11 +58,6 @@
     <main class="chat-main">
       <div class="rd-chat-scene" aria-hidden="true"><img id="rdChatCover" src="assets/avatars/nuannuan-portrait.jpg" alt=""><video id="rdChatVideo" class="rd-chat-video" playsinline muted loop preload="none" hidden></video></div>
       <header class="chat-header">
-        <button class="icon-btn menu-btn" id="openSidebarBtn" title="打开角色菜单" aria-label="打开角色菜单" aria-expanded="false">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-          </svg>
-        </button>
         <div class="current-character-info" id="currentCharacterInfo">
           <button class="message-avatar-button" id="roleDetailsBtn" type="button" aria-label="查看当前角色人设与相处偏好"><img src="assets/avatars/nuannuan-portrait.jpg" alt="头像" class="avatar avatar-sm" id="headerAvatar"></button>
           <div class="char-details">
@@ -70,27 +65,13 @@
             <span class="char-tag" id="headerTag">温柔亲密 · 女</span>
           </div>
         </div>
-        <div class="header-actions">
-          <button class="icon-btn rd-history-toggle" type="button" id="rdHistoryToggle" title="切换沉浸模式" aria-label="切换沉浸模式" aria-pressed="false">☷</button>
-          <button class="icon-btn rd-photo-button" id="rdChatPhoto" type="button" aria-label="查看人物图片" title="查看人物图片">▧</button><button class="btn btn-outline btn-sm" id="switchCharBtn">切换/创建角色</button>
-          <button class="icon-btn" id="clearChatBtn" title="清空对话" aria-label="清空当前角色对话">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      <div class="messages-container" id="messagesContainer">
-        <div class="messages" id="messages"></div>
-      </div>
-
-      <nav class="rd-chat-actions" aria-label="聊天操作"><select id="rdScene" aria-label="切换场景"><option value="default">当前剧情</option><option value="cafe">咖啡馆</option><option value="night">城市夜晚</option><option value="seaside">海边日落</option><option value="home">温馨客厅</option><option value="fantasy">奇幻旅途</option></select><button type="button" class="rd-action-icon" id="rdRegenerate" title="重新生成" aria-label="重新生成回复">↻</button><button type="button" class="rd-action-icon" id="rdShare" title="分享" aria-label="分享聊天">↗</button><button type="button" class="rd-action-icon" id="rdSave" title="保存" aria-label="保存聊天">↓</button></nav>
-      <aside id="rdLiveReply" class="rd-live-reply" aria-label="人物正在回复" aria-live="polite" hidden><div class="rd-reply-top"><span class="rd-speaking-indicator"></span><strong id="rdReplyName">暖暖</strong></div><p id="rdReplyText"></p><span class="rd-reply-typing" aria-hidden="true"><i></i><i></i><i></i></span><button id="rdReplyRetry" class="rd-reply-retry" type="button" hidden>重试回复</button></aside>
-      <div class="input-container">
-        <div class="quick-replies" id="quickReplies"></div>
+        <div class="header-actions"><details id="rdChatMenu" class="rd-chat-menu"><summary aria-label="聊天设置与更多操作">⋯</summary><div class="rd-menu-panel">
+          <button class="icon-btn rd-history-toggle" type="button" id="rdHistoryToggle" title="切换沉浸模式" aria-label="切换沉浸模式" aria-pressed="false">沉浸模式</button>
+          <button class="icon-btn rd-photo-button" id="rdChatPhoto" type="button" aria-label="查看人物图片" title="查看人物图片">人物图片</button><button class="btn btn-outline btn-sm" id="switchCharBtn">切换/创建角色</button>
+          <button class="icon-btn" id="clearChatBtn" title="清空对话" aria-label="清空当前角色对话">清空对话</button>
+      <nav class="rd-chat-actions" aria-label="聊天操作"><select id="rdScene" aria-label="切换场景"><option value="default">当前剧情</option><option value="cafe">咖啡馆</option><option value="night">城市夜晚</option><option value="seaside">海边日落</option><option value="home">温馨客厅</option><option value="fantasy">奇幻旅途</option></select><button type="button" class="rd-action-icon" id="rdRegenerate" title="重新生成" aria-label="重新生成回复">重新生成</button><button type="button" class="rd-action-icon" id="rdShare" title="分享" aria-label="分享聊天">分享</button><button type="button" class="rd-action-icon" id="rdSave" title="保存" aria-label="保存聊天">保存</button></nav>
         <div class="chat-tools">
-          <button class="tool-btn" id="emojiBtn" type="button" aria-expanded="false" aria-controls="emojiPicker">😊 表情</button>
+          
           <div class="chat-tool-group" id="chatStyleControls"></div>
           <div class="chat-tool-group">
           <label for="replyLength">回复</label>
@@ -101,13 +82,31 @@
           </select>
           </div>
         </div>
-        <div id="emojiPicker" class="emoji-picker" hidden></div>
-        <div class="composer-row">
           <button class="user-avatar-button" id="changeUserAvatarBtn" type="button" aria-label="从相册设置我的头像" title="从相册设置我的头像">
             <img class="avatar" id="userAvatarPreview" src="assets/avatars/user.svg" alt="我的头像">
-            <span>头像</span>
+            <span>我的头像</span>
           </button>
+        <button class="icon-btn menu-btn" id="openSidebarBtn" title="打开角色菜单" aria-label="打开角色菜单" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          </svg><span>角色管理</span>
+        </button>
+
+</div></details></div>
+      </header>
+
+      <div class="messages-container" id="messagesContainer">
+        <div class="messages" id="messages"></div>
+      </div>
+
+      <aside id="rdLiveReply" class="rd-live-reply" aria-label="人物正在回复" aria-live="polite" hidden><div class="rd-reply-top"><span class="rd-speaking-indicator"></span><strong id="rdReplyName">暖暖</strong></div><p id="rdReplyText"></p><span class="rd-reply-typing" aria-hidden="true"><i></i><i></i><i></i></span><button id="rdReplyRetry" class="rd-reply-retry" type="button" hidden>重试回复</button></aside>
+      <div class="input-container">
+        <div class="quick-replies" id="quickReplies"></div>
+
+        <div id="emojiPicker" class="emoji-picker" hidden></div>
+        <div class="composer-row">
           <div class="input-area">
+          <button class="tool-btn" id="emojiBtn" type="button" aria-label="表情" title="表情" aria-expanded="false" aria-controls="emojiPicker">☺</button>
           <textarea id="userInput" placeholder="给角色发送消息..." aria-label="聊天消息" rows="1" maxlength="30000"></textarea>
           <button id="sendBtn" class="btn btn-send" title="发送消息（Enter 发送，Shift+Enter 换行）" disabled>
             <span>发送</span>
@@ -270,17 +269,17 @@
     </div>
   </div>
 
-  <script src="config/app.js?v=20261117-create3d53" defer></script>
-  <script src="roles.js?v=20261117-create3d53" defer></script>
+  <script src="config/app.js?v=20261124-role2d79" defer></script>
+  <script src="roles.js?v=20261124-role2d79" defer></script>
   <script src="role-story-volume-a.js?v=20261124-create3d68" defer></script>
   <script src="role-story-volume-b.js?v=20261124-create3d68" defer></script>
   <script src="role-photo-collection.js?v=20261124-role2d71" defer></script>
   <script src="role-story-cover-catalog.js?v=20261124-role2d76"></script>
   <script src="role-story-engine.js?v=20261124-create3d68" defer></script>
-  <script src="memory.js?v=20261117-create3d53" defer></script>
-  <script src="role-code.js?v=20261117-create3d53" defer></script>
-  <script src="app.js?v=20261117-create3d53" defer></script>
-  <script src="role-discovery.js?v=20261124-role2d78" defer></script>
+  <script src="memory.js?v=20261124-role2d79" defer></script>
+  <script src="role-code.js?v=20261124-role2d79" defer></script>
+  <script src="app.js?v=20261124-role2d79" defer></script>
+  <script src="role-discovery.js?v=20261124-role2d79" defer></script>
     <script src="role-2d-creator.js?v=20261123-character01" defer></script>
   </body>
 </html>

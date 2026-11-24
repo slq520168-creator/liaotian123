@@ -172,11 +172,11 @@ function openPanel(){
  render();
 }
 function installUI(){
- const header=document.querySelector('.chat-header .header-actions');
+ const header=document.querySelector('.chat-header .rd-menu-panel')||document.querySelector('.chat-header .header-actions');
  const main=document.querySelector('.chat-main');
  if(!header||!main||document.getElementById('rdStoryToggle'))return;
  const btn=document.createElement('button');btn.id='rdStoryToggle';btn.type='button';
- btn.className='icon-btn rd-story-toggle';btn.textContent='♧';btn.title='查看角色故事与剧情选项';
+ btn.className='icon-btn rd-story-toggle';btn.textContent='故事章节';btn.title='查看角色故事与剧情选项';
  btn.setAttribute('aria-label','打开完整故事章节');btn.setAttribute('aria-expanded','false');
  btn.addEventListener('click',openPanel);header.prepend(btn);
  const panel=document.createElement('aside');panel.id='roleStoryPanel';panel.className='role-story-panel';panel.hidden=true;

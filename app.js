@@ -13,8 +13,8 @@ const CHAT_LIMITS = Object.freeze({message: 30000, personality: 12000, system: 2
 const DEFAULT_AVATAR = 'assets/avatars/nuannuan-portrait.jpg';
 const DEFAULT_USER_AVATAR = 'assets/avatars/user.svg';
 const MAX_AVATAR_DATA_LENGTH = 180000;
-const REQUEST_TIMEOUT_MS = 40000;
-const LONG_REQUEST_TIMEOUT_MS = 100000;
+const REQUEST_TIMEOUT_MS = 50000;
+const LONG_REQUEST_TIMEOUT_MS = 50000;
 const SITE_VERSION = '20261117-create3d53';
 const UPDATE_COMPOSER_KEY = 'liaotian_update_composer';
 let lastSiteVersionCheck = 0;
@@ -93,7 +93,7 @@ function safeAvatar(value, fallback = DEFAULT_AVATAR) {
   if (src.length <= MAX_AVATAR_DATA_LENGTH && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(src)) return src;
   // Trusted built-in narrative cover SVGs only; never accept arbitrary user-provided SVG data URIs.
   if (src.length <= MAX_AVATAR_DATA_LENGTH && src.startsWith('data:image/svg+xml;charset=utf-8,') && typeof PRESET_CHARACTERS!=='undefined' && PRESET_CHARACTERS.some(char=>char.isPreset&&char.avatarIsStoryPoster&&char.avatar===src)) return src;
-  if (/^assets\/(?:avatars\/[a-z0-9_-]+\.(?:svg|jpg|jpeg|png|webp)|role-portraits\/[a-z0-9_-]+\.webp)$/i.test(src)) return src;
+  if (/^assets\/(?:avatars\/[a-z0-9_-]+\.(?:svg|jpg|jpeg|png|webp)|role-portraits\/(?:stories\/)?[a-z0-9_-]+\.webp)$/i.test(src)) return src;
   try {
     const url = new URL(src);
     if (url.protocol === 'https:' && !url.username && !url.password) return url.href;
@@ -651,7 +651,7 @@ function renderMessages() {
     const retry = document.createElement('button');
     retry.type = 'button';
     retry.className = 'btn btn-outline btn-sm';
-    retry.textContent = '重试回复';
+    retry.textContent = '重试';
     retry.addEventListener('click', () => requestCharacterReply(char));
     errorRow.append(text, retry);
     messagesDiv.appendChild(errorRow);
@@ -755,13 +755,15 @@ function buildSystemPrompt(char) {
 }
 
 function buildRequestMessages(char) {
-  const history = (chatHistories[char.id] || []).slice(-20);
-  const latestUser = history.findLastIndex(msg => msg.sender === 'user');
+  const stored=chatHistories[char.id]||[];
+  const lastUser=stored.findLastIndex(msg=>msg.sender==='user');
+  const history=lastUser<0?[]:stored.slice(Math.max(0,lastUser-19),lastUser+1);
+  const latestUser=history.length-1;
   const recent = [];
   let budget = CHAT_LIMITS.history;
   for (let i = history.length - 1; i >= 0; i--) {
     const full = i === latestUser;
-    const content = history[i].text.slice(0, full ? CHAT_LIMITS.message : Math.min(1600, budget));
+    const content = history[i].text.slice(0, full ? CHAT_LIMITS.message : Math.max(0,Math.min(1600, budget)));
     if (!content) continue;
     if (!full) budget -= content.length;
     recent.unshift({role: history[i].sender === 'user' ? 'user' : 'assistant', content});
@@ -787,7 +789,7 @@ async function requestCharacterReply(char) {
   }, window.LIAOTIAN_CONFIG?.chatApiKind === 'studio-free' ? 120000 : longRequest ? LONG_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
   try {
     let text = '';
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 1; attempt++) {
       try {
         if (navigator.onLine === false) throw new TypeError('offline');
         const response = await fetch(CHAT_API_URL, {
@@ -797,7 +799,7 @@ async function requestCharacterReply(char) {
         });
         if (!response.ok) {
           const serverRetryAfter=Number(response.headers.get('retry-after')); const retryAfter=Number.isFinite(serverRetryAfter)&&serverRetryAfter>0?Math.ceil(Math.min(600,serverRetryAfter)):null;
-          const error = new Error(response.status === 429 ? (retryAfter ? '请求较多，请 ' + retryAfter + ' 秒后重试。' : '请求较多，请稍后重试。') : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : '暂时没连上，请重试。');
+          const error = new Error(response.status === 429 ? (retryAfter ? '请求较多，请 ' + retryAfter + ' 秒后重试。' : '请求较多，请稍后重试。') : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : response.status === 400 ? '消息格式异常，请重新发送。' : response.status === 503 ? '模型暂时不可用，消息已保留。' : '连接失败，请重试。');
           error.retryable = [408, 500, 502, 503, 504].includes(response.status);
           throw error;
         }
