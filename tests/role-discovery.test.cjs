@@ -175,7 +175,7 @@ test('international characters have eight self-hosted, uniquely sourced WebP por
  assert.match(discovery,/state\.filter === 'international'/);
  assert.match(discovery,/char\.countryLabel/);
  assert.match(html,/data-role-filter="international"/);
- assert.match(html,/124 位角色/);
+ assert.match(html,/128 位角色/);
 });
 
 test('all characters are rendered, no batching, and all source images have unique identities',()=>{

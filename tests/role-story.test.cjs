@@ -17,14 +17,14 @@ function fixture(){
  for(const file of ['role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-cover-catalog.js','role-story-engine.js'])vm.runInContext(read(file),context,{filename:file});
  return {context,win,base,nodes,store};
 }
-test('109 original stories enrich 20 existing 2D characters to 129 without duplicate IDs',()=>{
+test('113 original stories enrich 20 existing 2D characters to 133 without duplicate IDs',()=>{
  const {base,win}=fixture();
- assert.equal(base.length,129);
- assert.equal(win.RoleStory.list(),109);
- assert.equal(new Set(base.map(x=>x.id)).size,129);
+ assert.equal(base.length,133);
+ assert.equal(win.RoleStory.list(),113);
+ assert.equal(new Set(base.map(x=>x.id)).size,133);
  const art=new Set(base.slice(20).map(x=>x.avatar));
- assert.equal(art.size,109,'no repeated portrait/poster source');
- assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('assets/role-portraits/stories/')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar)||x.illustratedFullBody===true&&x.avatar.startsWith('https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/'))));
+ assert.equal(art.size,113,'no repeated portrait/poster source');
+ assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('assets/role-portraits/stories/')||x.avatar.startsWith('assets/role-portraits/originals/')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar)||x.illustratedFullBody===true&&x.avatar.startsWith('https://raw.githubusercontent.com/SpriteCook/spritecook-free-game-assets/cd0db67d6f849c8d84e406a436aac76b733a7dba/examples/detailed-characters-anime/'))));
  assert.ok(base.slice(20).every(x=>!x.background.includes('核心线索：')&&!x.personality.includes('目标：')),'opening prompt must not spoil later evidence or sacrifices');
  assert.ok(['悬疑','惊魂','民俗','科幻','言情','都市','动漫','古风','奇幻','冒险'].every(c=>base.some(x=>x.category===c)));
  for(const char of base.slice(20)){const p=win.RoleStory.description(char.id);assert.equal(p.chapterCount,6);assert.equal(p.choices.length,2);assert.ok(p.text.length>30);assert.ok(win.RoleStory.contextFor(char.id).includes(char.name));}
@@ -124,3 +124,5 @@ test('all 88 story covers exist as independent real local WebP images',()=>{
 });
 
 test('five additional fantasy personas have independent greetings, art references and six-branch-story progression',()=>{const {base,win}=fixture();const ids=["aurelia_guard","lyra_wood","nereus_tide","cassian_nocturne","mira_hunt"];const extra=base.filter(x=>ids.includes(x.id));assert.equal(extra.length,5);assert.equal(new Set(extra.map(x=>x.greeting)).size,5);assert.equal(new Set(extra.map(x=>x.avatar)).size,5);for(const role of extra){assert.ok(role.age>=23);assert.equal(role.illustratedFullBody,true);assert.equal(win.RoleStory.description(role.id).chapterCount,6);}});
+
+test('four original illustrated personas have two verified local portraits and independent six-chapter stories',()=>{const {base,win}=fixture();const ids=["neon_rina","jazz_zelia","city_selene","stage_rose"];const images=new Set();for(const id of ids){const char=base.find(x=>x.id===id);assert.ok(char);assert.equal(char.category,'动漫');assert.ok(char.age>=25);assert.equal(char.portraitGallery.length,2);assert.equal(char.avatar,char.portraitGallery[0]);assert.equal(win.RoleStory.description(id).chapterCount,6);for(const f of char.portraitGallery){const bytes=fs.readFileSync(path.join(root,f));assert.ok(bytes.length>8000);assert.equal(bytes.toString('ascii',0,4),'RIFF');assert.equal(bytes.toString('ascii',8,12),'WEBP');images.add(f);}}assert.equal(images.size,8);});

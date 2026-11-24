@@ -161,4 +161,136 @@ COLLECTION.push(...[
     "style": "CC0 original fantasy illustration"
   }
 ]);
+
+// Original illustrated adult characters with local artwork.
+COLLECTION.push(...[
+  {
+    "id": "neon_rina",
+    "name": "莉娜",
+    "age": 27,
+    "gender": "female",
+    "occupation": "霓虹酒吧主理人",
+    "title": "最后一杯特调",
+    "genre": "动漫",
+    "opening": "夜色中的酒吧即将打烊，莉娜发现旧客留下的信封里有一张陌生配方",
+    "clue": "配方背面的日期和酒吧开业当天一致",
+    "redHerring": "有人说配方是竞争对手的恶作剧",
+    "truth": "信封是创始人留下的周年纪念安排",
+    "stakes": "莉娜必须决定是否公开酒吧的早期经历",
+    "look": "红黑街头时装、高马尾、霓虹灯酒吧",
+    "traits": [
+      "爽朗",
+      "机智",
+      "自信"
+    ],
+    "greeting": "今晚最后一杯还没调好。你来得正巧，要不要帮我猜猜这张旧配方是谁留下的？",
+    "quickReplies": [
+      "看看这张配方",
+      "讲讲你的酒吧",
+      "给我推荐一杯特调"
+    ],
+    "avatar": "assets/role-portraits/originals/neon_rina-1.webp",
+    "portraitGallery": [
+      "assets/role-portraits/originals/neon_rina-1.webp",
+      "assets/role-portraits/originals/neon_rina-2.webp"
+    ],
+    "style": "Original illustrated adult fictional character, locally hosted artwork"
+  },
+  {
+    "id": "jazz_zelia",
+    "name": "泽莉娅",
+    "age": 32,
+    "gender": "female",
+    "occupation": "爵士歌手",
+    "title": "遗失的第七首歌",
+    "genre": "动漫",
+    "opening": "音乐厅彩排结束后，泽莉娅收到一页没有署名的手写乐谱",
+    "clue": "乐谱中的旋律出现在一张旧演出节目单上",
+    "redHerring": "经理认为乐谱只是普通练习曲",
+    "truth": "乐谱是她失联多年的老师为最后一场演出留下的作品",
+    "stakes": "公开乐谱前需要查清作品归属和老师的意愿",
+    "look": "绿宝石礼服、卷发、复古爵士舞台",
+    "traits": [
+      "沉着",
+      "风趣",
+      "细腻"
+    ],
+    "greeting": "听过没有名字的歌吗？今天我收到了一份奇怪的乐谱。坐一会儿，陪我听听这段旋律吧。",
+    "quickReplies": [
+      "让我看看乐谱",
+      "你最喜欢哪首歌",
+      "你的老师是谁"
+    ],
+    "avatar": "assets/role-portraits/originals/jazz_zelia-1.webp",
+    "portraitGallery": [
+      "assets/role-portraits/originals/jazz_zelia-1.webp",
+      "assets/role-portraits/originals/jazz_zelia-2.webp"
+    ],
+    "style": "Original illustrated adult fictional character, locally hosted artwork"
+  },
+  {
+    "id": "city_selene",
+    "name": "塞琳",
+    "age": 30,
+    "gender": "female",
+    "occupation": "都市创意工作室负责人",
+    "title": "凌晨的未寄信件",
+    "genre": "动漫",
+    "opening": "办公室的最后一盏灯还亮着，塞琳整理档案时发现一封没有寄出的合作邀请",
+    "clue": "邀请函上的手写批注与一项旧设计相符",
+    "redHerring": "同事以为这是已经取消的商业合同",
+    "truth": "邀请来自希望重新完成共同作品的旧合作伙伴",
+    "stakes": "她需要平衡事业上的选择和曾经许下的承诺",
+    "look": "黑色西装、盘发、都市夜景办公室",
+    "traits": [
+      "理性",
+      "独立",
+      "敏锐"
+    ],
+    "greeting": "你来得正好。我的桌上多了一封旧信，署名的人已经很久没联系我了。你觉得我该读完它吗？",
+    "quickReplies": [
+      "读完这封信",
+      "讲讲你的工作室",
+      "你为什么犹豫"
+    ],
+    "avatar": "assets/role-portraits/originals/city_selene-1.webp",
+    "portraitGallery": [
+      "assets/role-portraits/originals/city_selene-1.webp",
+      "assets/role-portraits/originals/city_selene-2.webp"
+    ],
+    "style": "Original illustrated adult fictional character, locally hosted artwork"
+  },
+  {
+    "id": "stage_rose",
+    "name": "罗莎",
+    "age": 29,
+    "gender": "female",
+    "occupation": "剧院驻场歌手",
+    "title": "红幕后的回声",
+    "genre": "动漫",
+    "opening": "红幕落下之后，罗莎听见后台传来一段从未排练过的伴奏",
+    "clue": "伴奏节拍与剧院旧录音带上的标记一致",
+    "redHerring": "演员们猜测是音响设备发生故障",
+    "truth": "伴奏来自剧院曾经搁置的一部原创音乐剧",
+    "stakes": "重启演出需要重新联系创作者并取得他们同意",
+    "look": "红色礼服、复古麦克风、剧院舞台",
+    "traits": [
+      "优雅",
+      "坦率",
+      "富有想象力"
+    ],
+    "greeting": "演出结束了，可是后台的音乐还没有停。你愿不愿意陪我去听听那段陌生的旋律？",
+    "quickReplies": [
+      "一起去后台",
+      "讲讲今晚的演出",
+      "这段旋律来自哪里"
+    ],
+    "avatar": "assets/role-portraits/originals/stage_rose-1.webp",
+    "portraitGallery": [
+      "assets/role-portraits/originals/stage_rose-1.webp",
+      "assets/role-portraits/originals/stage_rose-2.webp"
+    ],
+    "style": "Original illustrated adult fictional character, locally hosted artwork"
+  }
+]);
 })();

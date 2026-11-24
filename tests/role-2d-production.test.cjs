@@ -31,7 +31,7 @@ test('16 distinct self-hosted 720px fashion portraits for adult fictional charac
  assert.match(html,/data-role-filter="photo"/);
  assert.match(engine,/seed\.avatar\|\|coverFor\(seed\)/);
  assert.doesNotMatch(engine,/function poster\(/);
- assert.match(html,/124 位角色/);
+ assert.match(html,/128 位角色/);
  assert.match(html,/照片中的人物本人参与聊天/);
 });
 test('retired character histories and memory are retained, not purged by 2D saves',()=>{

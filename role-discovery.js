@@ -80,7 +80,7 @@
     return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
   };
   const roleTraits=char=>Array.isArray(char?.traits)?char.traits.filter(x=>typeof x==='string'):[];
-  const FEATURED_IDS=["vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
+  const FEATURED_IDS=["neon_rina","jazz_zelia","city_selene","stage_rose","vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
   const FEATURED_RANK=new Map(FEATURED_IDS.map((id,i)=>[id,i]));
   const available = () => allCharacters().filter(char => {
     if (!char || !char.id || char.portraitDraft===true) return false;
@@ -442,23 +442,32 @@
       if (event.key === 'Enter') { event.preventDefault(); startChat(current()); }
     });
   }
-  let photoRole=null,photoResume=null;
+  let photoRole=null,photoResume=null,photoIndex=0;
   function openPhoto(char){
     if(!char)return;
     const dialog=$('rdPhotoDialog'),img=$('rdFullPhoto'),video=$('rdFullVideo');
     if(!dialog||!img||!video||typeof dialog.showModal!=='function')return;
-    photoRole=char;photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
+    photoRole=char;photoIndex=0;photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
     $('rdPhotoName').textContent=char.name;
     $('rdPhotoError').hidden=Boolean(char.avatar);
     img.hidden=!char.avatar;img.alt=char.name+'完整人物图片';
     img.onerror=()=>{img.hidden=true;$('rdPhotoError').hidden=false;};
     if(char.avatar)img.src=char.avatar;else img.removeAttribute('src');
-    video.hidden=true;$('rdPhotoMode').hidden=!roleVideo(char);
-    $('rdPhotoMode').textContent='播放视频';
+    video.hidden=true;const gallery=Array.isArray(char.portraitGallery)&&char.portraitGallery.length>1;
+    $('rdPhotoMode').hidden=!gallery&&!roleVideo(char);
+    $('rdPhotoMode').textContent=gallery?'下一张 · 1/2':'播放视频';
     $('rdPhotoChat').hidden=root.hidden&&typeof activeCharacterId!=='undefined'&&activeCharacterId===char.id;
     dialog.showModal();
   }
   function togglePhotoVideo(){
+    if(Array.isArray(photoRole?.portraitGallery)&&photoRole.portraitGallery.length>1){
+      const gallery=photoRole.portraitGallery,img=$('rdFullPhoto');
+      photoIndex=(photoIndex+1)%gallery.length;
+      img.hidden=false;$('rdPhotoError').hidden=true;
+      img.src=gallery[photoIndex];
+      $('rdPhotoMode').textContent='下一张 · '+(photoIndex+1)+'/'+gallery.length;
+      return;
+    }
     const v=$('rdFullVideo'),img=$('rdFullPhoto'),btn=$('rdPhotoMode'),url=roleVideo(photoRole);
     if(!url)return;
     if(!v.hidden){v.onerror=null;v.pause();v.hidden=true;v.removeAttribute('src');v.load();img.hidden=!img.naturalWidth;$('rdPhotoError').hidden=!img.hidden;btn.textContent='播放视频';return;}

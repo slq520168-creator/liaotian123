@@ -1,0 +1,66 @@
+[
+  {
+    "path": "assets/role-portraits/originals/neon_rina-1.webp",
+    "sha256": "9d0296fa9ea3ad549601f9d24740556e21fa41f0e2fd835c78090cc3fcc676f1",
+    "source": "image-gen-1(20261123-182213).png",
+    "originalSha256": "0a4adc32194cafc8fe0aa31722bfcd63516c8597bd756e05bb9caae575619842",
+    "width": 960,
+    "height": 1280
+  },
+  {
+    "path": "assets/role-portraits/originals/neon_rina-2.webp",
+    "sha256": "0f8b8b3656ed8835f714e7bab9562b7492ad85501a8d42629a7b21fb09e92403",
+    "source": "image-gen-1(20261123-182624).png",
+    "originalSha256": "caaef89709d27f6db2ca7afb82ccd94e441decd184cb7baefcdc70f10895d952",
+    "width": 960,
+    "height": 1280
+  },
+  {
+    "path": "assets/role-portraits/originals/jazz_zelia-1.webp",
+    "sha256": "03cc4d0822d4ca5c1210009eaae4751425bda018b5c4df31140ec6cd05a8cdc4",
+    "source": "image-gen-2(20261123-182217).png",
+    "originalSha256": "2a3d8196223db346efb7af0848d7762e06af58d88d97039d14bbadd3421ca7e5",
+    "width": 960,
+    "height": 1280
+  },
+  {
+    "path": "assets/role-portraits/originals/jazz_zelia-2.webp",
+    "sha256": "093b0ad66d49995b626c6f79353a6a3725168c40d9f76a30b168f8885c8556de",
+    "source": "image-gen-2(20261123-182627).png",
+    "originalSha256": "c55f9c155faef97ddfd5846959f1c61c88e73960b95120b2b91f284b10e5bc2e",
+    "width": 960,
+    "height": 1280
+  },
+  {
+    "path": "assets/role-portraits/originals/city_selene-1.webp",
+    "sha256": "ca0c7034a0f5bfa8cffc0ad84a4827938b5c9a93b698fd61ca7b6dfe5a3c83c4",
+    "source": "image-gen-3(20261123-182221).png",
+    "originalSha256": "ac0842a5d88df387e62329707334621a001d5e5c6bb5d7e71dc61d45a582b295",
+    "width": 960,
+    "height": 1280
+  },
+  {
+    "path": "assets/role-portraits/originals/city_selene-2.webp",
+    "sha256": "f665d4bfd835a18ceb709f33dac799ac04afe5f9456740d891aa54510cb3618a",
+    "source": "image-gen-3(20261123-182633).png",
+    "originalSha256": "58a34c87c2eb2ce1f1b651dbf562adeed564f905cab20c873528ba99ca977d88",
+    "width": 960,
+    "height": 1280
+  },
+  {
+    "path": "assets/role-portraits/originals/stage_rose-1.webp",
+    "sha256": "3d8cb8c33ba62a1a8c0d0ee3f0a6d7b3f032d56a5fdd3cbb0c0c5f8e932ce9d5",
+    "source": "image-gen-4(9).png",
+    "originalSha256": "bc9d51c59b4fbca06a2aef3b3a911793edc33c816147af622dfd96332ee2a16c",
+    "width": 960,
+    "height": 1280
+  },
+  {
+    "path": "assets/role-portraits/originals/stage_rose-2.webp",
+    "sha256": "ec3aa776d4070e8dc9f60ce5e540ccc52019d5c268299624ceb549f995977bab",
+    "source": "image-gen-4(10).png",
+    "originalSha256": "cad50d2c72944f9f2984f773eaf6a1c0c08c5b433432fc5102e458ea45be9b40",
+    "width": 960,
+    "height": 1280
+  }
+]
