@@ -83,3 +83,14 @@ test('no procedural SVG people, 88 distinct photo sources for all generated stor
  assert.doesNotMatch(engine,/function poster\(|data:image\/svg\+xml/);
  assert.match(engine,/seed\.avatar\|\|coverFor\(seed\)/);
 });
+
+test('miscast role covers use distinct validated story-appropriate photo sources',()=>{
+ const source=read('role-story-cover-catalog.js');
+ const entries={"miya":"14249578","ayana":"4212980","yinxuan":"31071841","huajin":"15496342","muyao":"3902726","qingshu":"34521643","weiguang":"36729239","qiyun":"16451873","fusu":"37670353","yinling":"38950571"};
+ for(const [id,photo] of Object.entries(entries)){
+   assert.ok(source.includes('"'+id+'": "https://images.pexels.com/photos/'+photo+'/pexels-photo-'+photo+'.jpeg'),id+' must use updated visual');
+ }
+ const pictures=[...source.matchAll(/"([a-z][a-z0-9]+)": "https:\/\/images\.pexels\.com\/photos\/(\d+)\//g)];
+ assert.equal(pictures.length,88);
+ assert.equal(new Set(pictures.map(x=>x[2])).size,88);
+});
