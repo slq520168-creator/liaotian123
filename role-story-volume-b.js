@@ -12,6 +12,7 @@ for(const group of volumes)for(const raw of group.rows){
 COLLECTION.push(...[
   {
     "id": "aurelia_guard",
+    "portraitDraft": true,
     "name": "奥蕾莉亚",
     "gender": "female",
     "age": 29,
@@ -41,6 +42,7 @@ COLLECTION.push(...[
   },
   {
     "id": "lyra_wood",
+    "portraitDraft": true,
     "name": "莱拉",
     "gender": "female",
     "age": 27,
@@ -70,6 +72,7 @@ COLLECTION.push(...[
   },
   {
     "id": "nereus_tide",
+    "portraitDraft": true,
     "name": "涅瑞斯",
     "gender": "male",
     "age": 34,
@@ -99,6 +102,7 @@ COLLECTION.push(...[
   },
   {
     "id": "cassian_nocturne",
+    "portraitDraft": true,
     "name": "卡西安",
     "gender": "male",
     "age": 36,
@@ -128,6 +132,7 @@ COLLECTION.push(...[
   },
   {
     "id": "mira_hunt",
+    "portraitDraft": true,
     "name": "米拉",
     "gender": "female",
     "age": 31,

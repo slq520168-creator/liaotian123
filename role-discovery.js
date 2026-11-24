@@ -80,10 +80,10 @@
     return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
   };
   const roleTraits=char=>Array.isArray(char?.traits)?char.traits.filter(x=>typeof x==='string'):[];
-  const FEATURED_IDS=["aurelia_guard","lyra_wood","cassian_nocturne","mira_hunt","nereus_tide","vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
+  const FEATURED_IDS=["vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
   const FEATURED_RANK=new Map(FEATURED_IDS.map((id,i)=>[id,i]));
   const available = () => allCharacters().filter(char => {
-    if (!char || !char.id) return false;
+    if (!char || !char.id || char.portraitDraft===true) return false;
     if (['都市','治愈','悬疑','奇幻','古风','科幻','冒险','惊魂','民俗','言情','动漫'].includes(state.filter) && char.category !== state.filter) return false;
     if (state.filter === 'featured' && !FEATURED_RANK.has(char.id)) return false;
     if (state.filter === 'stories' && !window.RoleStory?.has?.(char.id)) return false;

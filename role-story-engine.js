@@ -37,7 +37,7 @@ seeds.forEach((seed,index)=>{
  id:seed.id,name:seed.name,age:seed.age,gender:seed.gender,isPreset:true,roleKind:'2d',
  category:seed.genre,headline:seed.occupation,tag:seed.genre+' · '+seed.occupation,
  traits:seed.traits,hook:seed.opening,sceneLabel:seed.title,
- avatar:seed.avatar||coverFor(seed),avatarIsStoryPoster:false,storybook:true,illustratedFullBody:seed.illustratedFullBody===true,
+ avatar:seed.avatar||coverFor(seed),avatarIsStoryPoster:false,storybook:true,illustratedFullBody:seed.illustratedFullBody===true,portraitDraft:seed.portraitDraft===true,
  photoRealistic:Boolean(seed.photoRealistic),region:seed.region||'',countryLabel:seed.countryLabel||'',
  mark:'✦',greeting:intro,
  personality:seed.age+'岁的'+seed.occupation+'。'+seed.traits.join('、')+'。有独立人格、隐秘的过去与完整动机。故事真相与人物代价必须随章节逐步揭示。',

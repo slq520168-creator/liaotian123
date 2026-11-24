@@ -22,22 +22,22 @@ function valid(payload){
  for(const item of payload.messages){if(!item||!['system','user','assistant'].includes(item.role)||typeof item.content!=='string'||!item.content.trim()||item.content.length>30000)return null;size+=item.content.length;messages.push({role:item.role,content:item.content});}
  return size<=66000&&messages[0].role==='system'&&messages.at(-1).role==='user'?messages:null;
 }
-// Explicit anonymous routes. No paid API keys or cross-project bindings.
+// Use only documented anonymous access or a dedicated, explicitly provisioned free LLM7 token. No cross-project keys.
 const CHAT_ROUTES=[
  {id:'llm7-mistral',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'mistral-Nemo-Instruct-2407',timeout:13000},
- {id:'ovh-mistral',host:'ovh',url:'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',model:'mistral@latest',timeout:13000},
+ {id:'ovh-mistral',host:'ovh',url:'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',model:'Mistral-Small-3.2-24B-Instruct-2506',timeout:13000},
  {id:'llm7-gpt',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b',reasoning:true,timeout:14000}
 ];
 const cooldowns=new Map();
 function retrySeconds(raw){if(!raw)return 30;const n=Number(raw);return Math.max(1,Math.min(600,Number.isFinite(n)?n:Math.ceil((Date.parse(raw)-Date.now())/1000)||30));}
-async function model(messages,requested,provider,deadline,signal){
+async function model(messages,requested,provider,deadline,signal,token){
  const abort=new AbortController();
  const cancel=()=>abort.abort();
  if(signal?.aborted)cancel();else signal?.addEventListener('abort',cancel,{once:true});
  const timeout=setTimeout(cancel,Math.min(provider.timeout,Math.max(1,deadline-Date.now())));
  try{
   const max_tokens=Math.max(provider.reasoning?1500:256,requested);
-  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8}),signal:abort.signal,redirect:'error'});
+  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8}),signal:abort.signal,redirect:'error'});
   if(!response.ok){
    const e=Object.assign(Error('upstream_http_'+response.status),{status:response.status});
    if(response.status===429||response.status===402)e.cooldown=retrySeconds(response.headers.get('retry-after'));
@@ -68,9 +68,11 @@ export default{async fetch(req,env){
    const requested=Math.max(180,Math.min(4096,Math.floor(Number(payload.max_tokens)||400)));
    const deadline=Date.now()+42000,attempted=[];
    for(const provider of CHAT_ROUTES){
+    const token=provider.host==='llm7'?String(env.ROLE_LLM7_FREE_TOKEN||'').trim():'';
+    if(provider.host==='llm7'&&!token)continue;
     if(req.signal.aborted||Date.now()>deadline-1000)break;
     if((cooldowns.get(provider.host)||0)>Date.now())continue;
-    try{return out(200,{ok:true,text:await model(messages,requested,provider,deadline,req.signal)});}
+    try{return out(200,{ok:true,text:await model(messages,requested,provider,deadline,req.signal,token)});}
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
      if(e.cooldown)cooldowns.set(provider.host,Date.now()+e.cooldown*1000);

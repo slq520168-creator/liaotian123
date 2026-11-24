@@ -175,7 +175,7 @@ test('international characters have eight self-hosted, uniquely sourced WebP por
  assert.match(discovery,/state\.filter === 'international'/);
  assert.match(discovery,/char\.countryLabel/);
  assert.match(html,/data-role-filter="international"/);
- assert.match(html,/129 位角色/);
+ assert.match(html,/124 位角色/);
 });
 
 test('all characters are rendered, no batching, and all source images have unique identities',()=>{
@@ -223,3 +223,5 @@ test('card preview, true video playback and saved story progress use existing ch
  assert.match(css,/\.rd-mini-preview\[hidden\]\{display:none\}/);
  assert.match(ui,/speech\.textContent=String\(story\?story\.chapterTitle/);
 });
+
+test('unapproved game-sprite artwork is withheld from public discovery without deleting story data',()=>{const js=read('role-discovery.js'),config=read('config/app.js'),seed=read('role-story-volume-b.js');assert.match(js,/char\.portraitDraft===true/);assert.match(config,/char\?\.portraitDraft===true/);assert.equal((seed.match(/"portraitDraft": true/g)||[]).length,5);});
