@@ -79,6 +79,7 @@
     if (typeof characters !== 'undefined' && Array.isArray(characters) && characters.length) return characters;
     return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
   };
+  const roleTraits=char=>Array.isArray(char?.traits)?char.traits.filter(x=>typeof x==='string'):[];
   const FEATURED_IDS=["vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
   const FEATURED_RANK=new Map(FEATURED_IDS.map((id,i)=>[id,i]));
   const available = () => allCharacters().filter(char => {
@@ -93,7 +94,7 @@
     if (state.filter === 'recent' && !(typeof chatHistories!=='undefined'&&(chatHistories[char.id]||[]).some(x=>x.sender==='user'))) return false;
     if (state.filter === 'liked' && !state.favorites.has(char.id)) return false;
     const query = state.query.trim().toLocaleLowerCase();
-    return !query || [char.name,char.latinName,char.countryLabel,char.region,char.tag,char.personality,char.interests,char.background,char.category,char.headline,char.hook,char.sceneLabel,...(char.traits||[])].some(value=>String(value||'').toLocaleLowerCase().includes(query));
+    return !query || [char.name,char.latinName,char.countryLabel,char.region,char.tag,char.personality,char.interests,char.background,char.category,char.headline,char.hook,char.sceneLabel,...roleTraits(char)].some(value=>String(value||'').toLocaleLowerCase().includes(query));
   }).sort((a,b)=>{
     if(state.filter==='recent')return String((typeof chatHistories!=='undefined'&&chatHistories[b.id]?.at(-1)?.createdAt)||'').localeCompare(String((typeof chatHistories!=='undefined'&&chatHistories[a.id]?.at(-1)?.createdAt)||''));
     if(state.filter==='mine'||state.filter==='liked')return 0;
@@ -310,7 +311,7 @@
     bio.textContent = String(char.hook || char.personality || char.greeting || '').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,140);
     const heroScene=$('rdHeroScene'),heroTraits=$('rdHeroTraits');
     if(heroScene)heroScene.textContent=char.sceneLabel || char.headline || '';
-    if(heroTraits)heroTraits.replaceChildren(...(char.traits||[]).slice(0,3).map(value=>{const item=document.createElement('span');item.textContent=value;return item;}));
+    if(heroTraits)heroTraits.replaceChildren(...roleTraits(char).slice(0,3).map(value=>{const item=document.createElement('span');item.textContent=value;return item;}));
     tag.textContent = char.tag || '遇见新角色';
     const liked = state.favorites.has(char.id);
     favorite.classList.toggle('is-liked', liked);
@@ -323,6 +324,7 @@
   function renderGrid() {
     const container=$('rdCharacterGrid'),list=available(),currentId=current()?.id,fragment=document.createDocumentFragment();
 
+    if(!container)return;
     let renderOrder=0;
     for(const char of list){
       const card=document.createElement('article');
@@ -331,7 +333,7 @@
       card.style.setProperty('--rd-accent',COLOR_BY_CATEGORY[char.category]||'#cbb2f8');
       const open=document.createElement('button');
       open.type='button';open.className='rd-mini-open';
-      open.setAttribute('aria-label','与'+char.name+'开始聊天：'+(char.headline||char.tag||'角色')+'，'+(char.traits||[]).join('、'));
+      open.setAttribute('aria-label','与'+char.name+'开始聊天：'+(char.headline||char.tag||'角色')+'，'+roleTraits(char).join('、'));
       open.appendChild(image(char,'rd-mini-image',renderOrder++<4));
       const shade=document.createElement('span');shade.className='rd-mini-shade';open.append(shade);
       const category=document.createElement('span');category.className='rd-mini-category';
@@ -344,7 +346,7 @@
       const role=document.createElement('span');role.className='rd-mini-role';role.textContent=char.headline||char.tag||'自定义角色';
       const name=document.createElement('strong');name.textContent=char.name;
       const traits=document.createElement('span');traits.className='rd-mini-traits';
-      for(const trait of (char.traits||[]).slice(0,3)){const chip=document.createElement('i');chip.textContent=trait;traits.append(chip);}
+      for(const trait of roleTraits(char).slice(0,3)){const chip=document.createElement('i');chip.textContent=trait;traits.append(chip);}
       const hook=document.createElement('span');hook.className='rd-mini-hook';
       hook.textContent=String(char.hook||char.greeting||char.personality||'').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,65);
       const enter=document.createElement('span');enter.className='rd-mini-enter';enter.textContent='进入聊天  ›';enter.setAttribute('aria-hidden','true');
@@ -360,11 +362,11 @@
       card.append(open,favorite,preview);fragment.append(card);
     }
     container.replaceChildren(fragment);
-    $('rdGridCount').textContent=list.length+' 位角色';
-    $('rdGridEmpty').hidden=list.length>0;
+    if($('rdGridCount'))$('rdGridCount').textContent=list.length+' 位角色';
+    if($('rdGridEmpty'))$('rdGridEmpty').hidden=list.length>0;
 
   }
-  function render() { renderHero(); renderGrid(); }
+  function render() { renderGrid(); renderHero(); }
   function attachGestures() {
     const card = $('rdHeroCard');
     card.addEventListener('pointerdown', event => {
@@ -377,7 +379,7 @@
       const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
       if (Math.abs(dx) <= 7 || Math.abs(dx) < Math.abs(dy)) return;
       drag.moved = true;
-      if(!card.hasPointerCapture(event.pointerId))card.setPointerCapture(event.pointerId);
+      if(card.hasPointerCapture&&card.setPointerCapture&&!card.hasPointerCapture(event.pointerId))card.setPointerCapture(event.pointerId);
       card.style.transition = 'none';
       card.style.transform = 'translateX(' + Math.max(-90, Math.min(90, dx * 0.45)) + 'px) rotate(' + Math.max(-7, Math.min(7, dx * 0.045)) + 'deg)';
     });
@@ -385,7 +387,7 @@
       const drag = state.drag;
       if (!drag || drag.id !== event.pointerId) return;
       state.drag = null;
-      if(card.hasPointerCapture(event.pointerId))card.releasePointerCapture(event.pointerId);
+      if(card.hasPointerCapture?.(event.pointerId))card.releasePointerCapture?.(event.pointerId);
       if (drag.moved) state.suppressClickUntil = Date.now() + 360;
       card.style.transition = '';
       card.style.transform = '';
@@ -404,6 +406,7 @@
   function openPhoto(char){
     if(!char)return;
     const dialog=$('rdPhotoDialog'),img=$('rdFullPhoto'),video=$('rdFullVideo');
+    if(!dialog||!img||!video||typeof dialog.showModal!=='function')return;
     photoRole=char;photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
     $('rdPhotoName').textContent=char.name;
     $('rdPhotoError').hidden=Boolean(char.avatar);
@@ -430,6 +433,8 @@
     photoResume=null;
   }
   function boot() {
+    // Render the existing catalog before optional media controls can affect startup.
+    renderGrid();
     for(const key of ['rdHeroVideo','rdChatVideo']){
       const video=$(key);
       video?.addEventListener('error',event=>{if(event.target.dataset.source)videoFailed.add(event.target.dataset.source);stopVideo(event.target);});
@@ -449,12 +454,12 @@
       }else if(!root.hidden)renderHero();
       else syncBackdrop();
     });
-    $('rdHeroPhoto').addEventListener('click',()=>openPhoto(current()));
-    $('rdChatPhoto').addEventListener('click',()=>openPhoto(allCharacters().find(char=>char.id===activeCharacterId)));
-    $('rdPhotoClose').addEventListener('click',()=>$('rdPhotoDialog').close());
-    $('rdPhotoDialog').addEventListener('close',closePhoto);
-    $('rdPhotoChat').addEventListener('click',()=>{const char=photoRole;$('rdPhotoDialog').close();if(char)startChat(char);});
-    $('rdPhotoMode').addEventListener('click',togglePhotoVideo);
+    $('rdHeroPhoto')?.addEventListener('click',()=>openPhoto(current()));
+    $('rdChatPhoto')?.addEventListener('click',()=>openPhoto(allCharacters().find(char=>char.id===activeCharacterId)));
+    $('rdPhotoClose')?.addEventListener('click',()=>$('rdPhotoDialog').close());
+    $('rdPhotoDialog')?.addEventListener('close',closePhoto);
+    $('rdPhotoChat')?.addEventListener('click',()=>{const char=photoRole;$('rdPhotoDialog').close();if(char)startChat(char);});
+    $('rdPhotoMode')?.addEventListener('click',togglePhotoVideo);
     $('rdPrevious').addEventListener('click', () => selectIndex(state.index - 1));
     $('rdNext').addEventListener('click', () => selectIndex(state.index + 1));
     $('rdFavorite').addEventListener('click', toggleFavorite);

@@ -126,7 +126,7 @@ test('role gallery displays exactly two cards per row at all widths with legible
  assert.match(cols[0],/repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(css,/\.rd-mini-image\{[^}]*object-fit:cover/s);
  assert.match(css,/\.rd-mini-hook\{[^}]*-webkit-line-clamp:2/s);
- assert.match(js,/char\.traits\|\|\[\]\)\.slice\(0,3\)/);
+ assert.match(js,/roleTraits\(char\)\.slice\(0,3\)/);
  assert.match(js,/open\.addEventListener\('click',\(\)=>startChat\(char\)\)/);
  assert.match(js,/favorite\.addEventListener\('click',\(\)=>toggleFavoriteFor\(char\)\)/);
 });
@@ -199,4 +199,14 @@ test('premium role cards show full portrait composition with safe independent im
  assert.match(css,/aspect-ratio:9\/16/);
  assert.match(css,/\.rd-portrait-unavailable/);
  assert.match(config,/const version='20\d{6}-role2d\d+';/,'build version must advance without changing feature tests');
+});
+
+
+test('gallery startup and sizing are independent of optional media viewer',()=>{
+ const ui=read('role-discovery.js'),css=read('role-discovery.css');
+ assert.match(ui,/function boot\(\) \{[\s\S]*?renderGrid\(\);[\s\S]*?\$\('rdHeroPhoto'\)\?\.addEventListener/);
+ assert.match(ui,/function render\(\) \{ renderGrid\(\); renderHero\(\); \}/);
+ assert.match(ui,/Array\.isArray\(char\?\.traits\)/);
+ assert.match(css,/min-height:clamp\(294px,82vw,352px\);aspect-ratio:9\/16/);
+ assert.match(css,/\.rd-photo-dialog:not\(\[open\]\)\{display:none\}/);
 });
