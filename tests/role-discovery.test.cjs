@@ -177,3 +177,17 @@ test('international characters have eight self-hosted, uniquely sourced WebP por
  assert.match(html,/data-role-filter="international"/);
  assert.match(html,/124 位角色/);
 });
+
+test('large character catalog renders in bounded batches with working real load-more button and search reset',()=>{
+ const ui=read('role-discovery.js'),html=read('index.html'),css=read('role-discovery.css');
+ assert.match(ui,/visibleCount: 24/);
+ assert.match(ui,/const visible=list\.slice\(0,state\.visibleCount\)/);
+ assert.match(ui,/for\(const char of visible\)/);
+ assert.match(ui,/state\.gridScope=scope;state\.visibleCount=24/);
+ assert.match(ui,/state\.visibleCount\+24/);
+ assert.match(ui,/IntersectionObserver/);
+ assert.match(ui,/gridObserver\.observe\(more\)/);
+ assert.match(html,/id="rdLoadMore"/);
+ assert.match(css,/\.rd-load-more\[hidden\]/);
+ assert.match(ui,/\$\('rdGridCount'\)\.textContent=list\.length\+' 位角色'/);
+});

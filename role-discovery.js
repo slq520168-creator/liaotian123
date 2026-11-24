@@ -69,7 +69,7 @@
       if(error?.name==='NotAllowedError'&&!document.hidden)showVideoReplay(el);
     }).finally(()=>{if(el._playVersion===version)el._playPending=false;});
   }
-  const state = {index: 0, filter: 'all', query: '', favorites: new Set(), drag: null, suppressClickUntil: 0};
+  const state = {index: 0, filter: 'all', query: '', favorites: new Set(), drag: null, suppressClickUntil: 0, visibleCount: 24, gridScope: '', gridObserver: null};
   try {
     const stored = JSON.parse(localStorage.getItem(FAV_KEY) || '[]');
     if (Array.isArray(stored)) state.favorites = new Set(stored.filter(id => typeof id === 'string'));
@@ -300,7 +300,10 @@
   const COLOR_BY_CATEGORY=Object.freeze({'都市':'#e0a7cb','治愈':'#b0e2c6','悬疑':'#a2b1dc','奇幻':'#d3a8f7','古风':'#e7c38b','科幻':'#87c4e8','冒险':'#eac28d'});
   function renderGrid() {
     const container=$('rdCharacterGrid'),list=available(),currentId=current()?.id,fragment=document.createDocumentFragment();
-    for(const char of list){
+    const scope=state.filter+'\u0000'+state.query.trim().toLocaleLowerCase();
+    if(scope!==state.gridScope){state.gridScope=scope;state.visibleCount=24;}
+    const visible=list.slice(0,state.visibleCount);
+    for(const char of visible){
       const card=document.createElement('article');
       card.className='rd-mini-card'+(char.id===currentId?' is-current':'');
       card.dataset.characterId=char.id;if(char.storybook)card.dataset.story='chaptered';
@@ -337,6 +340,22 @@
     container.replaceChildren(fragment);
     $('rdGridCount').textContent=list.length+' 位角色';
     $('rdGridEmpty').hidden=list.length>0;
+    const more=$('rdLoadMore');
+    if(more){
+      const remaining=Math.max(0,list.length-visible.length);
+      more.hidden=remaining===0;
+      more.textContent='显示更多角色（剩余 '+remaining+' 位）';
+      more.onclick=()=>{
+        state.visibleCount=Math.min(list.length,state.visibleCount+24);
+        renderGrid();
+      };
+      if(!state.gridObserver&&'IntersectionObserver' in window){
+        state.gridObserver=new IntersectionObserver(entries=>{
+          if(entries.some(e=>e.isIntersecting)&&!more.hidden&&!root.hidden)more.click();
+        },{rootMargin:'350px 0px'});
+        state.gridObserver.observe(more);
+      }
+    }
   }
   function render() { renderHero(); renderGrid(); }
   function attachGestures() {
