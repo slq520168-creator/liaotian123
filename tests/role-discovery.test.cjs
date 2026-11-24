@@ -198,5 +198,5 @@ test('premium role cards show full portrait composition with safe independent im
  assert.match(ui,/renderOrder\+\+<4/,'visible images load without waiting for scroll');
  assert.match(css,/aspect-ratio:9\/16/);
  assert.match(css,/\.rd-portrait-unavailable/);
- assert.match(config,/20261124-role2d74/);
+ assert.match(config,/const version='20\d{6}-role2d\d+';/,'build version must advance without changing feature tests');
 });
