@@ -17,7 +17,7 @@ const payload={messages:[{role:'system',content:'你是虚构的成年咖啡师�
 const start=Date.now();
 const response=await fetch(base+'/api/chat',{method:'POST',headers:{'content-type':'application/json','origin':base},body:JSON.stringify(payload),signal:AbortSignal.timeout(50000)});
 let data={};try{data=await response.json()}catch{}
-console.log(JSON.stringify({release:expected,http:response.status,elapsedMs:Date.now()-start,replyChars:typeof data.text==='string'?data.text.trim().length:0,error:typeof data.error==='string'?data.error.slice(0,80):null,retryAfter:response.headers.get('retry-after'),diagnostic:response.headers.get('x-role-chat-diagnostic')}));
+console.log(JSON.stringify({release:expected,http:response.status,elapsedMs:Date.now()-start,replyChars:typeof data.text==='string'?data.text.trim().length:0,error:typeof data.error==='string'?data.error.slice(0,80):null,retryAfter:response.headers.get('retry-after'),diagnostic:response.headers.get('x-role-chat-diagnostic'),limiter:response.headers.get('x-role-chat-limiter'),provider:response.headers.get('x-role-chat-provider')}));
 if(response.status!==200){
  // A single independent synthetic upstream test distinguishes a provider error
  // from the Cloudflare execution environment. No customer data or credentials.

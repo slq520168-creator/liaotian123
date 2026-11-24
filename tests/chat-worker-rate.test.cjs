@@ -13,7 +13,7 @@ test('same-origin Worker allows a normal conversation burst and reports true thr
  try{
   for(let i=0;i<24;i++){const res=await worker.fetch(request('203.0.113.16'),assets);assert.equal(res.status,200,'normal burst should not be throttled '+i);assert.equal((await res.json()).text,'来自真正模型接口的测试模拟文本');}
   const limited=await worker.fetch(request('203.0.113.16'),assets);
-  assert.equal(limited.status,429);assert.ok(Number(limited.headers.get('retry-after'))>=1);
+  assert.equal(limited.status,429);assert.equal(limited.headers.get('x-role-chat-limiter'),'site');assert.ok(Number(limited.headers.get('retry-after'))>=1);
   const secondClient=await worker.fetch(request('203.0.113.17'),assets);
   assert.equal(secondClient.status,200,'other client is unaffected by first client budget');
   assert.equal(calls,25);
@@ -103,5 +103,25 @@ test('HTTP 200 quota envelope triggers independent Groq fallback and respects pr
   assert.equal(seen.filter(x=>x.url.includes('openrouter.ai')).length,1);
   assert.equal(seen.filter(x=>x.url.includes('api.groq.com')).length,2);
   assert.equal(seen[1].auth,'Bearer fixture-groq');
+ }finally{globalThis.fetch=original;}
+});
+
+
+test('provider quota reports its real retry time and diagnostic, never retries before allowed',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// real-quota-window'))).default;
+ const original=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url)=>{seen.push(String(url));return new Response('{}',{status:429,headers:{'retry-after':String(String(url).includes('openrouter.ai')?3600:900)}});};
+ const request=()=>new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.54'},body:JSON.stringify({messages:[{role:'system',content:'成年角色'},{role:'user',content:'你好'}]})});
+ try {
+  const env={ROLE_OPENROUTER_FREE_TOKEN:'fixture-router'};
+  const first=await worker.fetch(request(),env);
+  assert.equal(first.status,429);assert.equal(first.headers.get('x-role-chat-limiter'),'upstream');
+  assert.ok(Number(first.headers.get('retry-after'))>=899);
+  assert.match(first.headers.get('x-role-chat-diagnostic'),/openrouter-free:http_429/);
+  assert.match(first.headers.get('x-role-chat-diagnostic'),/ovh-mistral:http_429/);
+  const second=await worker.fetch(request(),env);
+  assert.equal(second.status,429);assert.match(second.headers.get('x-role-chat-diagnostic'),/cooldown_429/);
+  assert.equal(seen.length,2,'no repeated upstream call while retry-after is active');
  }finally{globalThis.fetch=original;}
 });

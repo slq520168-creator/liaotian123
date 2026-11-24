@@ -137,8 +137,12 @@ for (const status of [402, 429]) {
 calls.length = 0;
 context.warmReplyConnection();
 assert.equal(calls.length, 0, '免费服务不使用不支持的 GET 预热');
-context.fetch = async () => Response.json({error:'model_unavailable'},{status:503});
+assert.ok(context.replyErrors.get(char.id).retryAt > Date.now(), '429 retry window is retained');
+context.replyErrors.delete(char.id); // isolate the following independent 503 scenario
+let unavailableCalls=0;
+context.fetch = async () => {unavailableCalls++;return Response.json({error:'model_unavailable'},{status:503,headers:{'retry-after':'5'}});};
 await context.requestCharacterReply(char);
+assert.equal(unavailableCalls,1,'server cooldown prevents an immediate whole-chain replay');
 assert.equal(context.chatHistories[char.id].length,1,'模型不可用时不保存虚假回复');
 assert.match(context.replyErrors.get(char.id).message,/暂时没连上/);
 await assert.rejects(context.readModelReply(Response.json({choices: []}), () => {}), /没有收到回复/);

@@ -38,7 +38,7 @@ function currentRoleScene(id){return Object.hasOwn(ROLE_SCENES,roleScenes[id])?r
 function setRoleScene(id,scene){if(!characters.some(char=>char.id===id)||!Object.hasOwn(ROLE_SCENES,scene))return false;roleScenes[id]=scene;try{localStorage.setItem('liaotian_role_scenes_v1',JSON.stringify(roleScenes));}catch{}return true;}
 function regenerateCurrentReply(){
   const char=characters.find(char=>char.id===activeCharacterId);
-  if(!char||pendingReplies.has(char.id))return false;
+  if(!char||pendingReplies.has(char.id)||(replyErrors.get(char.id)?.retryAt||0)>Date.now())return false;
   const history=chatHistories[char.id]||[],last=history.findLastIndex(msg=>msg.sender==='user');
   if(last<0)return false;
   history.splice(last+1);replyErrors.delete(char.id);saveDataToStorage();requestCharacterReply(char);return true;
@@ -881,7 +881,7 @@ async function requestCharacterReply(char) {
           signal: controller.signal, credentials: 'omit', cache: 'no-store'
         });
         if (!response.ok) {
-          const serverRetryAfter=Number(response.headers.get('retry-after')); const retryAfter=Number.isFinite(serverRetryAfter)&&serverRetryAfter>0?Math.ceil(Math.min(600,serverRetryAfter)):null;
+          const serverRetryAfter=Number(response.headers.get('retry-after')); const retryAfter=Number.isFinite(serverRetryAfter)&&serverRetryAfter>0?Math.ceil(serverRetryAfter):null;
           const error = new Error(response.status === 429 ? (retryAfter ? '请求较多，请 ' + retryAfter + ' 秒后重试。' : '请求较多，请稍后重试。') : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : response.status === 400 ? '消息格式异常，请重新发送。' : response.status === 413 ? '消息较长，请分段发送。' : response.status === 422 ? '这条消息暂时无法继续，请调整表达。' : response.status === 503 ? '模型暂时没连上，消息已保留。' : '连接失败，请重试。');
           if([429,503].includes(response.status)&&retryAfter)error.retryAt=Date.now()+retryAfter*1000;
           // The same-origin Worker already tried its eligible providers. Never immediately replay that entire chain.

@@ -31,7 +31,7 @@ const CHAT_ROUTES=[
  {id:'llm7-gpt',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b',reasoning:true,timeout:14000}
 ];
 const cooldowns=new Map();
-function retrySeconds(raw){if(!raw)return 30;const n=Number(raw);return Math.max(1,Math.min(600,Number.isFinite(n)?n:Math.ceil((Date.parse(raw)-Date.now())/1000)||30));}
+function retrySeconds(raw){if(!raw)return 30;const n=Number(raw);const seconds=Number.isFinite(n)?n:(Date.parse(raw)-Date.now())/1000;return Number.isFinite(seconds)?Math.max(1,Math.ceil(seconds)):30;}
 function providerError(status,retryAfter){
  const error=Object.assign(Error('upstream_http_'+status),{status});
  if(status===429||status===402)error.cooldown=retrySeconds(retryAfter);
@@ -73,26 +73,27 @@ export default{async fetch(req,env){
   let payload;try{const body=await req.text();if(body.length>70000)return out(413,{ok:false,error:'request_too_large'});payload=JSON.parse(body);}catch{return out(400,{ok:false,error:'invalid_json'});}
   const messages=valid(payload);if(!messages)return out(400,{ok:false,error:'invalid_messages'});
   const retryAfter=shouldThrottle(req,Date.now());
-  if(retryAfter)return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(retryAfter)});
+  if(retryAfter)return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(retryAfter),'x-role-chat-limiter':'site'});
   inFlight++;
   try{
    const requested=Math.max(180,Math.min(4096,Math.floor(Number(payload.max_tokens)||400)));
    const deadline=Date.now()+42000,attempted=[],eligibleHosts=new Set(),quotaHosts=new Set();
-   for(const provider of CHAT_ROUTES){
-    const secret=provider.secret||(provider.host==='llm7'?'ROLE_LLM7_FREE_TOKEN':'');
-    const token=secret?String(env[secret]||'').trim():'';
-    if(secret&&!token)continue;
+   const routes=CHAT_ROUTES.map(provider=>{const secret=provider.secret||(provider.host==='llm7'?'ROLE_LLM7_FREE_TOKEN':'');return {provider,token:secret?String(env[secret]||'').trim():'',secret};}).filter(x=>!x.secret||x.token);
+   for(const {provider} of routes)eligibleHosts.add(provider.host);
+   for(const {provider,token} of routes){
     if(req.signal?.aborted||Date.now()>deadline-1000)break;
-    eligibleHosts.add(provider.host);
     if((cooldowns.get(provider.host)?.until||0)>Date.now()){
-     if(cooldowns.get(provider.host).quota)quotaHosts.add(provider.host);
+     const state=cooldowns.get(provider.host);
+     if(state.quota)quotaHosts.add(provider.host);
+     attempted.push(provider.id+':cooldown_'+(state.status||'transport'));
      continue;
     }
-    try{return out(200,{ok:true,text:await model(messages,requested,provider,deadline,req.signal,token)});}
+    try{return out(200,{ok:true,text:await model(messages,requested,provider,deadline,req.signal,token)},{'x-role-chat-provider':provider.id});}
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
+     if(req.signal?.aborted)break;
      if(!e.cooldown&&(e.name==='AbortError'||e.name==='TypeError'))e.cooldown=8;
-     if(e.cooldown){const quota=e.status===429||e.status===402;cooldowns.set(provider.host,{until:Date.now()+e.cooldown*1000,quota});if(quota)quotaHosts.add(provider.host);}
+     if(e.cooldown){const quota=e.status===429||e.status===402;cooldowns.set(provider.host,{until:Date.now()+e.cooldown*1000,quota,status:e.status||0});if(quota)quotaHosts.add(provider.host);}
      else quotaHosts.delete(provider.host);
      attempted.push(provider.id+':'+(Number.isInteger(e.status)?'http_'+e.status:e.name==='AbortError'?'timeout':e.message==='empty_visible_reply'?'empty_reply':e.name==='TypeError'?'transport_error':'internal_error'));
     }
@@ -100,9 +101,13 @@ export default{async fetch(req,env){
    // Never store reasoning text, fabricate a reply or pass upstream error bodies to the browser.
    if(eligibleHosts.size&&[...eligibleHosts].every(host=>quotaHosts.has(host))){
     const remaining=Math.min(...[...eligibleHosts].map(host=>cooldowns.get(host)?.until||Date.now()+1000));
-    return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(Math.max(1,Math.ceil((remaining-Date.now())/1000)))});
+    return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(Math.max(1,Math.ceil((remaining-Date.now())/1000))),'x-role-chat-limiter':'upstream','x-role-chat-diagnostic':attempted.join(',')||'quota_cooldown'});
    }
-   return out(503,{ok:false,error:'model_unavailable'},{'retry-after':'5','x-role-chat-diagnostic':attempted.join(',')||'no_available_route'});
+   // If every configured host is cooling down, report the earliest actual eligible retry, not a fabricated short interval.
+   const now=Date.now(),states=[...eligibleHosts].map(host=>cooldowns.get(host));
+   const allCooling=states.length>0&&states.every(state=>state?.until>now);
+   const retry=allCooling?Math.max(1,Math.ceil((Math.min(...states.map(state=>state.until))-now)/1000)):5;
+   return out(503,{ok:false,error:'model_unavailable'},{'retry-after':String(retry),'x-role-chat-diagnostic':attempted.join(',')||'no_available_route'});
   }finally{inFlight--;}
  }
  if(url.pathname.startsWith('/api/'))return out(404,{ok:false,error:'not_found'});
