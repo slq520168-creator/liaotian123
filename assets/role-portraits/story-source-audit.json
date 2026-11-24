@@ -2,359 +2,447 @@
   "source": "Pexels",
   "license": "https://www.pexels.com/license/",
   "total": 88,
-  "notice": "Real people in photos are NOT chatbot actors, characters, representatives or endorsers; independent publicity/model release review required before promotional monetization.",
+  "notice": "Reference photos illustrate fictional AI characters; depicted people are not actors, characters, or endorsers. Review model releases and Pexels license before paid promotional campaigns.",
   "roles": {
     "jiangwu": {
-      "source": "https://www.pexels.com/photo/34519173/",
-      "imageId": "34519173"
+      "source": "https://www.pexels.com/photo/40175557/",
+      "imageId": "40175557",
+      "localFile": "assets/role-portraits/stories/jiangwu.webp"
     },
     "luoyu": {
-      "source": "https://www.pexels.com/photo/40666382/",
-      "imageId": "40666382"
+      "source": "https://www.pexels.com/photo/10856197/",
+      "imageId": "10856197",
+      "localFile": "assets/role-portraits/stories/luoyu.webp"
     },
     "nanxue": {
-      "source": "https://www.pexels.com/photo/20862358/",
-      "imageId": "20862358"
+      "source": "https://www.pexels.com/photo/36991029/",
+      "imageId": "36991029",
+      "localFile": "assets/role-portraits/stories/nanxue.webp"
     },
     "chenshi": {
-      "source": "https://www.pexels.com/photo/3911274/",
-      "imageId": "3911274"
+      "source": "https://www.pexels.com/photo/9016327/",
+      "imageId": "9016327",
+      "localFile": "assets/role-portraits/stories/chenshi.webp"
     },
     "hejin": {
-      "source": "https://www.pexels.com/photo/37647057/",
-      "imageId": "37647057"
+      "source": "https://www.pexels.com/photo/28213236/",
+      "imageId": "28213236",
+      "localFile": "assets/role-portraits/stories/hejin.webp"
     },
     "xiezhi": {
-      "source": "https://www.pexels.com/photo/4163911/",
-      "imageId": "4163911"
+      "source": "https://www.pexels.com/photo/29823375/",
+      "imageId": "29823375",
+      "localFile": "assets/role-portraits/stories/xiezhi.webp"
     },
     "linyin": {
-      "source": "https://www.pexels.com/photo/3534454/",
-      "imageId": "3534454"
+      "source": "https://www.pexels.com/photo/32763808/",
+      "imageId": "32763808",
+      "localFile": "assets/role-portraits/stories/linyin.webp"
     },
     "weicen": {
-      "source": "https://www.pexels.com/photo/17668938/",
-      "imageId": "17668938"
+      "source": "https://www.pexels.com/photo/5582090/",
+      "imageId": "5582090",
+      "localFile": "assets/role-portraits/stories/weicen.webp"
     },
     "muyue": {
-      "source": "https://www.pexels.com/photo/886404/",
-      "imageId": "886404"
+      "source": "https://www.pexels.com/photo/35435492/",
+      "imageId": "35435492",
+      "localFile": "assets/role-portraits/stories/muyue.webp"
     },
     "loulan": {
-      "source": "https://www.pexels.com/photo/15568434/",
-      "imageId": "15568434"
+      "source": "https://www.pexels.com/photo/8470390/",
+      "imageId": "8470390",
+      "localFile": "assets/role-portraits/stories/loulan.webp"
     },
     "qiyun": {
-      "source": "https://www.pexels.com/photo/39647617/",
-      "imageId": "39647617"
+      "source": "https://www.pexels.com/photo/34952325/",
+      "imageId": "34952325",
+      "localFile": "assets/role-portraits/stories/qiyun.webp"
     },
     "shenyuan": {
-      "source": "https://www.pexels.com/photo/40546402/",
-      "imageId": "40546402"
+      "source": "https://www.pexels.com/photo/15463481/",
+      "imageId": "15463481",
+      "localFile": "assets/role-portraits/stories/shenyuan.webp"
     },
     "xiaosu": {
-      "source": "https://www.pexels.com/photo/7060330/",
-      "imageId": "7060330"
+      "source": "https://www.pexels.com/photo/35435482/",
+      "imageId": "35435482",
+      "localFile": "assets/role-portraits/stories/xiaosu.webp"
     },
     "yuqing": {
-      "source": "https://www.pexels.com/photo/38876527/",
-      "imageId": "38876527"
+      "source": "https://www.pexels.com/photo/20406869/",
+      "imageId": "20406869",
+      "localFile": "assets/role-portraits/stories/yuqing.webp"
     },
     "binglan": {
-      "source": "https://www.pexels.com/photo/29244128/",
-      "imageId": "29244128"
+      "source": "https://www.pexels.com/photo/8748437/",
+      "imageId": "8748437",
+      "localFile": "assets/role-portraits/stories/binglan.webp"
     },
     "tangxuan": {
-      "source": "https://www.pexels.com/photo/33280219/",
-      "imageId": "33280219"
+      "source": "https://www.pexels.com/photo/23570082/",
+      "imageId": "23570082",
+      "localFile": "assets/role-portraits/stories/tangxuan.webp"
     },
     "qingshu": {
-      "source": "https://www.pexels.com/photo/7617393/",
-      "imageId": "7617393"
+      "source": "https://www.pexels.com/photo/34521643/",
+      "imageId": "34521643",
+      "localFile": "assets/role-portraits/stories/qingshu.webp"
     },
     "luoming": {
-      "source": "https://www.pexels.com/photo/17484793/",
-      "imageId": "17484793"
+      "source": "https://www.pexels.com/photo/35467587/",
+      "imageId": "35467587",
+      "localFile": "assets/role-portraits/stories/luoming.webp"
     },
     "huayue": {
-      "source": "https://www.pexels.com/photo/39020776/",
-      "imageId": "39020776"
+      "source": "https://www.pexels.com/photo/34510644/",
+      "imageId": "34510644",
+      "localFile": "assets/role-portraits/stories/huayue.webp"
     },
     "yunce": {
-      "source": "https://www.pexels.com/photo/5781530/",
-      "imageId": "5781530"
+      "source": "https://www.pexels.com/photo/37436368/",
+      "imageId": "37436368",
+      "localFile": "assets/role-portraits/stories/yunce.webp"
     },
     "yingtao": {
-      "source": "https://www.pexels.com/photo/27355908/",
-      "imageId": "27355908"
+      "source": "https://www.pexels.com/photo/34510601/",
+      "imageId": "34510601",
+      "localFile": "assets/role-portraits/stories/yingtao.webp"
     },
     "jishan": {
-      "source": "https://www.pexels.com/photo/14097412/",
-      "imageId": "14097412"
+      "source": "https://www.pexels.com/photo/35467577/",
+      "imageId": "35467577",
+      "localFile": "assets/role-portraits/stories/jishan.webp"
     },
     "meiyan": {
-      "source": "https://www.pexels.com/photo/11137996/",
-      "imageId": "11137996"
+      "source": "https://www.pexels.com/photo/34510623/",
+      "imageId": "34510623",
+      "localFile": "assets/role-portraits/stories/meiyan.webp"
     },
     "suhe": {
-      "source": "https://www.pexels.com/photo/19852754/",
-      "imageId": "19852754"
+      "source": "https://www.pexels.com/photo/13400410/",
+      "imageId": "13400410",
+      "localFile": "assets/role-portraits/stories/suhe.webp"
     },
     "lanqi": {
-      "source": "https://www.pexels.com/photo/17825319/",
-      "imageId": "17825319"
+      "source": "https://www.pexels.com/photo/33161419/",
+      "imageId": "33161419",
+      "localFile": "assets/role-portraits/stories/lanqi.webp"
     },
     "exian": {
-      "source": "https://www.pexels.com/photo/18999724/",
-      "imageId": "18999724"
+      "source": "https://www.pexels.com/photo/8727118/",
+      "imageId": "8727118",
+      "localFile": "assets/role-portraits/stories/exian.webp"
     },
     "lingkong": {
-      "source": "https://www.pexels.com/photo/36748450/",
-      "imageId": "36748450"
+      "source": "https://www.pexels.com/photo/7655847/",
+      "imageId": "7655847",
+      "localFile": "assets/role-portraits/stories/lingkong.webp"
     },
     "zhongye": {
-      "source": "https://www.pexels.com/photo/33427842/",
-      "imageId": "33427842"
+      "source": "https://www.pexels.com/photo/8721722/",
+      "imageId": "8721722",
+      "localFile": "assets/role-portraits/stories/zhongye.webp"
     },
     "xiayu": {
-      "source": "https://www.pexels.com/photo/13202807/",
-      "imageId": "13202807"
+      "source": "https://www.pexels.com/photo/20434858/",
+      "imageId": "20434858",
+      "localFile": "assets/role-portraits/stories/xiayu.webp"
     },
     "chenxing": {
-      "source": "https://www.pexels.com/photo/33287672/",
-      "imageId": "33287672"
+      "source": "https://www.pexels.com/photo/6940247/",
+      "imageId": "6940247",
+      "localFile": "assets/role-portraits/stories/chenxing.webp"
     },
     "weiguang": {
-      "source": "https://www.pexels.com/photo/3829881/",
-      "imageId": "3829881"
+      "source": "https://www.pexels.com/photo/39899612/",
+      "imageId": "39899612",
+      "localFile": "assets/role-portraits/stories/weiguang.webp"
     },
     "yueji": {
-      "source": "https://www.pexels.com/photo/39082416/",
-      "imageId": "39082416"
+      "source": "https://www.pexels.com/photo/8108327/",
+      "imageId": "8108327",
+      "localFile": "assets/role-portraits/stories/yueji.webp"
     },
     "yinxuan": {
-      "source": "https://www.pexels.com/photo/1075776/",
-      "imageId": "1075776"
+      "source": "https://www.pexels.com/photo/34519173/",
+      "imageId": "34519173",
+      "localFile": "assets/role-portraits/stories/yinxuan.webp"
     },
     "chengxi": {
-      "source": "https://www.pexels.com/photo/34373606/",
-      "imageId": "34373606"
+      "source": "https://www.pexels.com/photo/20862358/",
+      "imageId": "20862358",
+      "localFile": "assets/role-portraits/stories/chengxi.webp"
     },
     "guzhen": {
-      "source": "https://www.pexels.com/photo/6138908/",
-      "imageId": "6138908"
+      "source": "https://www.pexels.com/photo/37647057/",
+      "imageId": "37647057",
+      "localFile": "assets/role-portraits/stories/guzhen.webp"
     },
     "linzhao": {
-      "source": "https://www.pexels.com/photo/3195981/",
-      "imageId": "3195981"
+      "source": "https://www.pexels.com/photo/3534454/",
+      "imageId": "3534454",
+      "localFile": "assets/role-portraits/stories/linzhao.webp"
     },
     "baiyu": {
-      "source": "https://www.pexels.com/photo/41068464/",
-      "imageId": "41068464"
+      "source": "https://www.pexels.com/photo/886404/",
+      "imageId": "886404",
+      "localFile": "assets/role-portraits/stories/baiyu.webp"
     },
     "nanshi": {
-      "source": "https://www.pexels.com/photo/32055831/",
-      "imageId": "32055831"
+      "source": "https://www.pexels.com/photo/39647617/",
+      "imageId": "39647617",
+      "localFile": "assets/role-portraits/stories/nanshi.webp"
     },
     "xuanlin": {
-      "source": "https://www.pexels.com/photo/34667445/",
-      "imageId": "34667445"
+      "source": "https://www.pexels.com/photo/7060330/",
+      "imageId": "7060330",
+      "localFile": "assets/role-portraits/stories/xuanlin.webp"
     },
     "shumeng": {
-      "source": "https://www.pexels.com/photo/2531089/",
-      "imageId": "2531089"
+      "source": "https://www.pexels.com/photo/29244128/",
+      "imageId": "29244128",
+      "localFile": "assets/role-portraits/stories/shumeng.webp"
     },
     "luojue": {
-      "source": "https://www.pexels.com/photo/15870127/",
-      "imageId": "15870127"
+      "source": "https://www.pexels.com/photo/28938765/",
+      "imageId": "28938765",
+      "localFile": "assets/role-portraits/stories/luojue.webp"
     },
     "shilan": {
-      "source": "https://www.pexels.com/photo/40331518/",
-      "imageId": "40331518"
+      "source": "https://www.pexels.com/photo/10618446/",
+      "imageId": "10618446",
+      "localFile": "assets/role-portraits/stories/shilan.webp"
     },
     "hejue": {
-      "source": "https://www.pexels.com/photo/842811/",
-      "imageId": "842811"
+      "source": "https://www.pexels.com/photo/6294839/",
+      "imageId": "6294839",
+      "localFile": "assets/role-portraits/stories/hejue.webp"
     },
     "moyan": {
-      "source": "https://www.pexels.com/photo/5656415/",
-      "imageId": "5656415"
+      "source": "https://www.pexels.com/photo/2421356/",
+      "imageId": "2421356",
+      "localFile": "assets/role-portraits/stories/moyan.webp"
     },
     "shenzhou": {
-      "source": "https://www.pexels.com/photo/34618751/",
-      "imageId": "34618751"
+      "source": "https://www.pexels.com/photo/18397314/",
+      "imageId": "18397314",
+      "localFile": "assets/role-portraits/stories/shenzhou.webp"
     },
     "yiren": {
-      "source": "https://www.pexels.com/photo/10004177/",
-      "imageId": "10004177"
+      "source": "https://www.pexels.com/photo/17960004/",
+      "imageId": "17960004",
+      "localFile": "assets/role-portraits/stories/yiren.webp"
     },
     "qili": {
-      "source": "https://www.pexels.com/photo/18708555/",
-      "imageId": "18708555"
+      "source": "https://www.pexels.com/photo/28729038/",
+      "imageId": "28729038",
+      "localFile": "assets/role-portraits/stories/qili.webp"
     },
     "zhaoye": {
-      "source": "https://www.pexels.com/photo/14564883/",
-      "imageId": "14564883"
+      "source": "https://www.pexels.com/photo/2747419/",
+      "imageId": "2747419",
+      "localFile": "assets/role-portraits/stories/zhaoye.webp"
     },
     "luyu": {
-      "source": "https://www.pexels.com/photo/5622874/",
-      "imageId": "5622874"
+      "source": "https://www.pexels.com/photo/34373606/",
+      "imageId": "34373606",
+      "localFile": "assets/role-portraits/stories/luyu.webp"
     },
     "huajin": {
-      "source": "https://www.pexels.com/photo/34747815/",
-      "imageId": "34747815"
+      "source": "https://www.pexels.com/photo/6138908/",
+      "imageId": "6138908",
+      "localFile": "assets/role-portraits/stories/huajin.webp"
     },
     "anmo": {
-      "source": "https://www.pexels.com/photo/31589335/",
-      "imageId": "31589335"
+      "source": "https://www.pexels.com/photo/7880141/",
+      "imageId": "7880141",
+      "localFile": "assets/role-portraits/stories/anmo.webp"
     },
     "luoqin": {
-      "source": "https://www.pexels.com/photo/3960371/",
-      "imageId": "3960371"
+      "source": "https://www.pexels.com/photo/3195981/",
+      "imageId": "3195981",
+      "localFile": "assets/role-portraits/stories/luoqin.webp"
     },
     "beiyue": {
-      "source": "https://www.pexels.com/photo/37495271/",
-      "imageId": "37495271"
+      "source": "https://www.pexels.com/photo/41068464/",
+      "imageId": "41068464",
+      "localFile": "assets/role-portraits/stories/beiyue.webp"
     },
     "jiashu": {
-      "source": "https://www.pexels.com/photo/34884824/",
-      "imageId": "34884824"
+      "source": "https://www.pexels.com/photo/12212788/",
+      "imageId": "12212788",
+      "localFile": "assets/role-portraits/stories/jiashu.webp"
     },
     "muyao": {
-      "source": "https://www.pexels.com/photo/6069980/",
-      "imageId": "6069980"
+      "source": "https://www.pexels.com/photo/32055831/",
+      "imageId": "32055831",
+      "localFile": "assets/role-portraits/stories/muyao.webp"
     },
     "chenmu": {
-      "source": "https://www.pexels.com/photo/13833038/",
-      "imageId": "13833038"
+      "source": "https://www.pexels.com/photo/7393316/",
+      "imageId": "7393316",
+      "localFile": "assets/role-portraits/stories/chenmu.webp"
     },
     "yinling": {
-      "source": "https://www.pexels.com/photo/13202041/",
-      "imageId": "13202041"
+      "source": "https://www.pexels.com/photo/17825319/",
+      "imageId": "17825319",
+      "localFile": "assets/role-portraits/stories/yinling.webp"
     },
     "moli": {
-      "source": "https://www.pexels.com/photo/22845476/",
-      "imageId": "22845476"
+      "source": "https://www.pexels.com/photo/13202807/",
+      "imageId": "13202807",
+      "localFile": "assets/role-portraits/stories/moli.webp"
     },
     "liyue": {
-      "source": "https://www.pexels.com/photo/12551746/",
-      "imageId": "12551746"
+      "source": "https://www.pexels.com/photo/3829881/",
+      "imageId": "3829881",
+      "localFile": "assets/role-portraits/stories/liyue.webp"
     },
     "shuangye": {
-      "source": "https://www.pexels.com/photo/6996834/",
-      "imageId": "6996834"
+      "source": "https://www.pexels.com/photo/12551746/",
+      "imageId": "12551746",
+      "localFile": "assets/role-portraits/stories/shuangye.webp"
     },
     "honglian": {
-      "source": "https://www.pexels.com/photo/13191410/",
-      "imageId": "13191410"
+      "source": "https://www.pexels.com/photo/6996834/",
+      "imageId": "6996834",
+      "localFile": "assets/role-portraits/stories/honglian.webp"
     },
     "xiangcao": {
-      "source": "https://www.pexels.com/photo/7484937/",
-      "imageId": "7484937"
+      "source": "https://www.pexels.com/photo/12037182/",
+      "imageId": "12037182",
+      "localFile": "assets/role-portraits/stories/xiangcao.webp"
     },
     "mohui": {
-      "source": "https://www.pexels.com/photo/31428201/",
-      "imageId": "31428201"
+      "source": "https://www.pexels.com/photo/36946512/",
+      "imageId": "36946512",
+      "localFile": "assets/role-portraits/stories/mohui.webp"
     },
     "qixia": {
-      "source": "https://www.pexels.com/photo/12037182/",
-      "imageId": "12037182"
+      "source": "https://www.pexels.com/photo/13190257/",
+      "imageId": "13190257",
+      "localFile": "assets/role-portraits/stories/qixia.webp"
     },
     "fusu": {
-      "source": "https://www.pexels.com/photo/11138001/",
-      "imageId": "11138001"
+      "source": "https://www.pexels.com/photo/34510681/",
+      "imageId": "34510681",
+      "localFile": "assets/role-portraits/stories/fusu.webp"
     },
     "beihan": {
-      "source": "https://www.pexels.com/photo/36511054/",
-      "imageId": "36511054"
+      "source": "https://www.pexels.com/photo/37436386/",
+      "imageId": "37436386",
+      "localFile": "assets/role-portraits/stories/beihan.webp"
     },
     "mulan": {
-      "source": "https://www.pexels.com/photo/39526260/",
-      "imageId": "39526260"
+      "source": "https://www.pexels.com/photo/37655840/",
+      "imageId": "37655840",
+      "localFile": "assets/role-portraits/stories/mulan.webp"
     },
     "qianxue": {
-      "source": "https://www.pexels.com/photo/3125505/",
-      "imageId": "3125505"
+      "source": "https://www.pexels.com/photo/17576155/",
+      "imageId": "17576155",
+      "localFile": "assets/role-portraits/stories/qianxue.webp"
     },
     "heqiu": {
-      "source": "https://www.pexels.com/photo/15707951/",
-      "imageId": "15707951"
+      "source": "https://www.pexels.com/photo/5868341/",
+      "imageId": "5868341",
+      "localFile": "assets/role-portraits/stories/heqiu.webp"
     },
     "lianyi": {
-      "source": "https://www.pexels.com/photo/40096244/",
-      "imageId": "40096244"
+      "source": "https://www.pexels.com/photo/34456287/",
+      "imageId": "34456287",
+      "localFile": "assets/role-portraits/stories/lianyi.webp"
     },
     "zhangge": {
-      "source": "https://www.pexels.com/photo/18154546/",
-      "imageId": "18154546"
+      "source": "https://www.pexels.com/photo/37436384/",
+      "imageId": "37436384",
+      "localFile": "assets/role-portraits/stories/zhangge.webp"
     },
     "qingluan": {
-      "source": "https://www.pexels.com/photo/40225639/",
-      "imageId": "40225639"
+      "source": "https://www.pexels.com/photo/34630936/",
+      "imageId": "34630936",
+      "localFile": "assets/role-portraits/stories/qingluan.webp"
     },
     "viala": {
-      "source": "https://www.pexels.com/photo/37498667/",
-      "imageId": "37498667"
+      "source": "https://www.pexels.com/photo/40096241/",
+      "imageId": "40096241",
+      "localFile": "assets/role-portraits/stories/viala.webp"
     },
     "alexen": {
-      "source": "https://www.pexels.com/photo/7670362/",
-      "imageId": "7670362"
+      "source": "https://www.pexels.com/photo/17709922/",
+      "imageId": "17709922",
+      "localFile": "assets/role-portraits/stories/alexen.webp"
     },
     "miya": {
-      "source": "https://www.pexels.com/photo/11917735/",
-      "imageId": "11917735"
+      "source": "https://www.pexels.com/photo/33411470/",
+      "imageId": "33411470",
+      "localFile": "assets/role-portraits/stories/miya.webp"
     },
     "zavien": {
-      "source": "https://www.pexels.com/photo/31197807/",
-      "imageId": "31197807"
+      "source": "https://www.pexels.com/photo/14032331/",
+      "imageId": "14032331",
+      "localFile": "assets/role-portraits/stories/zavien.webp"
     },
     "elan": {
-      "source": "https://www.pexels.com/photo/35696916/",
-      "imageId": "35696916"
+      "source": "https://www.pexels.com/photo/35775837/",
+      "imageId": "35775837",
+      "localFile": "assets/role-portraits/stories/elan.webp"
     },
     "faye": {
-      "source": "https://www.pexels.com/photo/20554843/",
-      "imageId": "20554843"
+      "source": "https://www.pexels.com/photo/26600668/",
+      "imageId": "26600668",
+      "localFile": "assets/role-portraits/stories/faye.webp"
     },
     "mori": {
-      "source": "https://www.pexels.com/photo/3938465/",
-      "imageId": "3938465"
+      "source": "https://www.pexels.com/photo/30835422/",
+      "imageId": "30835422",
+      "localFile": "assets/role-portraits/stories/mori.webp"
     },
     "shana": {
-      "source": "https://www.pexels.com/photo/33495060/",
-      "imageId": "33495060"
+      "source": "https://www.pexels.com/photo/34262658/",
+      "imageId": "34262658",
+      "localFile": "assets/role-portraits/stories/shana.webp"
     },
     "adele": {
-      "source": "https://www.pexels.com/photo/41122706/",
-      "imageId": "41122706"
+      "source": "https://www.pexels.com/photo/3752748/",
+      "imageId": "3752748",
+      "localFile": "assets/role-portraits/stories/adele.webp"
     },
     "samir": {
-      "source": "https://www.pexels.com/photo/7935409/",
-      "imageId": "7935409"
+      "source": "https://www.pexels.com/photo/3373997/",
+      "imageId": "3373997",
+      "localFile": "assets/role-portraits/stories/samir.webp"
     },
     "ayana": {
-      "source": "https://www.pexels.com/photo/5475580/",
-      "imageId": "5475580"
+      "source": "https://www.pexels.com/photo/35746724/",
+      "imageId": "35746724",
+      "localFile": "assets/role-portraits/stories/ayana.webp"
     },
     "lucas2": {
-      "source": "https://www.pexels.com/photo/30623520/",
-      "imageId": "30623520"
+      "source": "https://www.pexels.com/photo/36262101/",
+      "imageId": "36262101",
+      "localFile": "assets/role-portraits/stories/lucas2.webp"
     },
     "freya": {
-      "source": "https://www.pexels.com/photo/8217825/",
-      "imageId": "8217825"
+      "source": "https://www.pexels.com/photo/7787394/",
+      "imageId": "7787394",
+      "localFile": "assets/role-portraits/stories/freya.webp"
     },
     "tariq": {
-      "source": "https://www.pexels.com/photo/15792394/",
-      "imageId": "15792394"
+      "source": "https://www.pexels.com/photo/10467405/",
+      "imageId": "10467405",
+      "localFile": "assets/role-portraits/stories/tariq.webp"
     },
     "hanae": {
-      "source": "https://www.pexels.com/photo/13190257/",
-      "imageId": "13190257"
+      "source": "https://www.pexels.com/photo/35886518/",
+      "imageId": "35886518",
+      "localFile": "assets/role-portraits/stories/hanae.webp"
     },
     "maya": {
-      "source": "https://www.pexels.com/photo/13158007/",
-      "imageId": "13158007"
+      "source": "https://www.pexels.com/photo/9611563/",
+      "imageId": "9611563",
+      "localFile": "assets/role-portraits/stories/maya.webp"
     }
   }
 }

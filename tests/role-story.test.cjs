@@ -24,7 +24,7 @@ test('104 original stories enrich 20 existing 2D characters to 124 without dupli
  assert.equal(new Set(base.map(x=>x.id)).size,124);
  const art=new Set(base.slice(20).map(x=>x.avatar));
  assert.equal(art.size,104,'no repeated portrait/poster source');
- assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('https://images.pexels.com/photos/')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar))));
+ assert.ok(base.slice(20).every(x=>x.age>=23&&x.isPreset&&(x.avatar.startsWith('assets/role-portraits/stories/')||/^assets\/role-portraits\/intl-[a-z0-9]+\.webp$/.test(x.avatar))));
  assert.ok(base.slice(20).every(x=>!x.background.includes('核心线索：')&&!x.personality.includes('目标：')),'opening prompt must not spoil later evidence or sacrifices');
  assert.ok(['悬疑','惊魂','民俗','科幻','言情','都市','动漫','古风','奇幻','冒险'].every(c=>base.some(x=>x.category===c)));
  for(const char of base.slice(20)){const p=win.RoleStory.description(char.id);assert.equal(p.chapterCount,6);assert.equal(p.choices.length,2);assert.ok(p.text.length>30);assert.ok(win.RoleStory.contextFor(char.id).includes(char.name));}
@@ -93,4 +93,24 @@ test('miscast role covers use distinct validated story-appropriate photo sources
  const pictures=[...source.matchAll(/"([a-z][a-z0-9]+)": "https:\/\/images\.pexels\.com\/photos\/(\d+)\//g)];
  assert.equal(pictures.length,88);
  assert.equal(new Set(pictures.map(x=>x[2])).size,88);
+});
+
+test('all 88 story covers exist as independent real local WebP images',()=>{
+ const ctx={window:{}};
+ vm.runInNewContext(read('role-story-cover-catalog.js'),ctx);
+ const covers=ctx.window.LIAOTIAN_STORY_COVERS;
+ assert.equal(Object.keys(covers).length,88);
+ const crypto=require('node:crypto'),sha=new Set();
+ for(const [id,filename] of Object.entries(covers)){
+   assert.ok(filename.startsWith('assets/role-portraits/stories/'));
+   assert.ok(filename.endsWith('/'+id+'.webp'));
+   const bytes=fs.readFileSync(path.join(root,filename));
+   assert.ok(bytes.length>8000,id+' should be a real image');
+   assert.equal(bytes.toString('ascii',0,4),'RIFF');
+   assert.equal(bytes.toString('ascii',8,12),'WEBP');
+   sha.add(crypto.createHash('sha256').update(bytes).digest('hex'));
+ }
+ assert.equal(sha.size,88,'every role must show a different source image');
+ const audit=JSON.parse(read('assets/role-portraits/story-source-audit.json'));
+ assert.equal(Object.keys(audit.roles).length,88);
 });
