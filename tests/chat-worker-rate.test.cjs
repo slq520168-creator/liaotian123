@@ -50,7 +50,7 @@ test('a quota-limited gateway is not retried through another model at that gatew
  try{
   const body=JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]});
   const response=await worker.fetch(new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.49'},body}),{ROLE_LLM7_FREE_TOKEN:'fixture-only-token'});
-  assert.equal(response.status,503);assert.equal(seen.length,2);
+  assert.equal(response.status,429);assert.ok(Number(response.headers.get('retry-after'))>0);assert.equal(seen.length,2);
  }finally{globalThis.fetch=original;}
 });
 

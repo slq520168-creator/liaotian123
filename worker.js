@@ -66,22 +66,27 @@ export default{async fetch(req,env){
   inFlight++;
   try{
    const requested=Math.max(180,Math.min(4096,Math.floor(Number(payload.max_tokens)||400)));
-   const deadline=Date.now()+42000,attempted=[];
+   const deadline=Date.now()+42000,attempted=[],eligibleHosts=new Set(),quotaHosts=new Set();
    for(const provider of CHAT_ROUTES){
     const token=provider.host==='llm7'?String(env.ROLE_LLM7_FREE_TOKEN||'').trim():'';
     if(provider.host==='llm7'&&!token)continue;
     if(req.signal.aborted||Date.now()>deadline-1000)break;
-    if((cooldowns.get(provider.host)||0)>Date.now())continue;
+    eligibleHosts.add(provider.host);
+    if((cooldowns.get(provider.host)?.until||0)>Date.now()){
+     if(cooldowns.get(provider.host).quota)quotaHosts.add(provider.host);
+     continue;
+    }
     try{return out(200,{ok:true,text:await model(messages,requested,provider,deadline,req.signal,token)});}
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
-     if(e.cooldown)cooldowns.set(provider.host,Date.now()+e.cooldown*1000);
+     if(e.cooldown){const quota=e.status===429||e.status===402;cooldowns.set(provider.host,{until:Date.now()+e.cooldown*1000,quota});if(quota)quotaHosts.add(provider.host);}
+     else quotaHosts.delete(provider.host);
      attempted.push(provider.id+':'+(e.status||e.name||'error'));
     }
    }
    // Never store reasoning text, fabricate a reply or pass upstream error bodies to the browser.
-   if(!attempted.length&&[...cooldowns.values()].some(x=>x>Date.now())){
-    const remaining=Math.min(...[...cooldowns.values()].filter(x=>x>Date.now()));
+   if(eligibleHosts.size&&[...eligibleHosts].every(host=>quotaHosts.has(host))){
+    const remaining=Math.min(...[...eligibleHosts].map(host=>cooldowns.get(host)?.until||Date.now()+1000));
     return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(Math.max(1,Math.ceil((remaining-Date.now())/1000)))});
    }
    return out(503,{ok:false,error:'model_unavailable'});

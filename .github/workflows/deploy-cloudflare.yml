@@ -31,6 +31,9 @@ jobs:
           node-version: '24'
           cache: npm
 
+      - name: Verify real production chat completion
+        run: node scripts/check-live-chat.mjs
+
       - name: Install pinned dependencies
         run: npm install --no-audit --no-fund --package-lock=false
 
