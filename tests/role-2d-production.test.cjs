@@ -29,7 +29,8 @@ test('16 distinct self-hosted 720px fashion portraits for adult fictional charac
  }
  assert.equal(digest.size,16,'do not reuse any face photo');
  assert.match(html,/data-role-filter="photo"/);
- assert.match(engine,/seed\.avatar\|\|coverFor\(seed\)/);\n assert.doesNotMatch(engine,/function poster\(/);
+ assert.match(engine,/seed\.avatar\|\|coverFor\(seed\)/);
+ assert.doesNotMatch(engine,/function poster\(/);
  assert.match(html,/124 位角色/);
  assert.match(html,/照片中的人物本人参与聊天/);
 });
