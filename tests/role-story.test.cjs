@@ -74,25 +74,33 @@ test('no new server polling, database jobs or fake AI bot responses for story pr
  assert.match(index,/data-role-filter="动漫"/);
 });
 
-test('no procedural SVG people, 88 distinct photo sources for all generated stories',()=>{
- const engine=read('role-story-engine.js'),catalog=read('role-story-cover-catalog.js');
- const ids=[...catalog.matchAll(/"([a-z][a-z0-9]+)": "https:\/\/images\.pexels\.com\/photos\/(\d+)\//g)];
- assert.equal(ids.length,88);
- assert.equal(new Set(ids.map(x=>x[1])).size,88);
- assert.equal(new Set(ids.map(x=>x[2])).size,88);
+test('no procedural SVG people and all 88 original story personas have independently hosted pictures',()=>{
+ const engine=read('role-story-engine.js'),cover=read('role-story-cover-catalog.js');
+ const ctx={window:{}};
+ vm.runInNewContext(cover,ctx);
+ const assets=ctx.window.LIAOTIAN_STORY_COVERS;
+ assert.equal(Object.keys(assets).length,88);
+ assert.equal(new Set(Object.values(assets)).size,88);
+ assert.ok(Object.entries(assets).every(([id,local])=>local==='assets/role-portraits/stories/'+id+'.webp'));
  assert.doesNotMatch(engine,/function poster\(|data:image\/svg\+xml/);
  assert.match(engine,/seed\.avatar\|\|coverFor\(seed\)/);
+ assert.doesNotMatch(cover,/https:\/\/images\.pexels\.com/);
 });
-
-test('miscast role covers use distinct validated story-appropriate photo sources',()=>{
- const source=read('role-story-cover-catalog.js');
- const entries={"miya":"14249578","ayana":"4212980","yinxuan":"31071841","huajin":"15496342","muyao":"3902726","qingshu":"34521643","weiguang":"36729239","qiyun":"16451873","fusu":"37670353","yinling":"38950571"};
- for(const [id,photo] of Object.entries(entries)){
-   assert.ok(source.includes('"'+id+'": "https://images.pexels.com/photos/'+photo+'/pexels-photo-'+photo+'.jpeg'),id+' must use updated visual');
+test('source provenance is complete, image identities unique and matches locally served roles',()=>{
+ const audit=JSON.parse(read('assets/role-portraits/story-source-audit.json'));
+ const ctx={window:{}};vm.runInNewContext(read('role-story-cover-catalog.js'),ctx);
+ const pictures=ctx.window.LIAOTIAN_STORY_COVERS;
+ assert.equal(Object.keys(audit.roles).length,88);
+ const sourceIds=[];
+ for(const [id,record] of Object.entries(audit.roles)){
+   assert.ok(pictures[id],id+' must have a real cover');
+   assert.equal(record.localFile,pictures[id]);
+   assert.match(record.source,/^https:\/\/www\.pexels\.com\/photo\/\d+\/$/);
+   assert.match(record.imageId,/^\d+$/);
+   sourceIds.push(record.imageId);
  }
- const pictures=[...source.matchAll(/"([a-z][a-z0-9]+)": "https:\/\/images\.pexels\.com\/photos\/(\d+)\//g)];
- assert.equal(pictures.length,88);
- assert.equal(new Set(pictures.map(x=>x[2])).size,88);
+ assert.equal(new Set(sourceIds).size,88);
+ for(const id of ['miya','ayana','yinxuan','huajin','muyao','qingshu','weiguang','qiyun','fusu','yinling'])assert.ok(audit.roles[id]?.localFile===pictures[id]);
 });
 
 test('all 88 story covers exist as independent real local WebP images',()=>{
