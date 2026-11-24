@@ -356,6 +356,7 @@
     const favorite = $('rdFavorite');
     const empty = $('rdHeroEmpty');
     card.hidden = !char;
+    $('rdHeroInfo').hidden = !char;
     empty.hidden = Boolean(char);
     $('rdHeroControls').hidden = !char;
     $('rdStartChat').disabled = !char;
@@ -424,11 +425,12 @@
       open.type='button';open.className='rd-mini-open';
       open.setAttribute('aria-label','预览'+char.name+'：'+(char.headline||char.tag||'角色'));
       open.setAttribute('aria-expanded','false');
-      open.appendChild(image(char,'rd-mini-image',renderOrder++<4));
-      const shade=document.createElement('span');shade.className='rd-mini-shade';open.append(shade);
+      const media=document.createElement('span');media.className='rd-mini-media';
+      media.appendChild(image(char,'rd-mini-image',renderOrder++<4));
+      const shade=document.createElement('span');shade.className='rd-mini-shade';media.append(shade);open.append(media);
       if(story){
         const category=document.createElement('span');category.className='rd-mini-category';
-        category.textContent=story.genre+' · '+storyProgress(story);open.append(category);
+        category.textContent=story.genre+' · '+storyProgress(story);media.append(category);
       }
       const info=document.createElement('span');info.className='rd-mini-details';
       const title=document.createElement('span');title.className='rd-mini-title';

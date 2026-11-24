@@ -8,8 +8,8 @@ body.role-chat-immersive .chat-main>.rd-chat-scene{
   display:block;position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#100d1b;
 }
 body.role-chat-immersive .rd-chat-scene img{
-  width:100%;height:100%;object-fit:cover;object-position:center 21%;
-  filter:saturate(1.02) brightness(.88);transform:none!important;
+  position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;
+  filter:saturate(1.02) brightness(.96);transform:none!important;
   animation:none!important;
 }
 body.role-chat-immersive .rd-chat-scene:after{
@@ -124,7 +124,7 @@ body.role-chat-immersive .chat-main>.input-container .btn-send{background:#aa73f
 body.role-chat-immersive .chat-main>.input-container .avatar{border-color:rgba(255,255,255,.25)!important}
 body.role-chat-immersive #replyStatus,
 body.role-chat-immersive #avatarUploadStatus{color:#e7c8ef}
-#roleDiscovery .rd-character-video{position:absolute;inset:0;width:100%;height:100%;z-index:1;object-fit:cover;object-position:center 25%}
+#roleDiscovery .rd-character-video{position:absolute;inset:0;width:100%;height:100%;z-index:1;object-fit:contain;object-position:center}
 #roleDiscovery .rd-character-video[hidden]{display:none!important}
 @media(min-width:800px){
  body.role-chat-immersive .app-container{max-width:none!important}
@@ -158,7 +158,7 @@ body.role-chat-immersive .rd-reply-retry{margin-top:10px;padding:5px 14px;border
  body.role-chat-immersive .rd-speaking-indicator,body.role-chat-immersive .rd-reply-typing i{animation:none!important;transition:none!important}
 }
 /* Real MP4 video backgrounds: only the current role's video is attached. */
-body.role-chat-immersive .rd-chat-scene>.rd-chat-video{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;object-position:center 22%;filter:saturate(1.07) brightness(.81);pointer-events:none}
+body.role-chat-immersive .rd-chat-scene>.rd-chat-video{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;object-position:center;filter:saturate(1.07) brightness(.81);pointer-events:none}
 body.role-chat-immersive .rd-chat-scene>.rd-chat-video[hidden]{display:none!important}
 /* Keep the selected portrait under the real video during its entrance fade. */
 body.role-chat-immersive .rd-chat-scene:has(.rd-chat-video:not([hidden]))>img{visibility:visible}
@@ -180,6 +180,9 @@ body.role-chat-immersive[data-role-scene="cafe"] .rd-chat-scene img,body.role-ch
 body.role-chat-immersive.rd-scene-only .rd-chat-scene img{filter:saturate(1.05) brightness(.96)}
 body.role-chat-immersive .rd-chat-scene>img[hidden]{display:none}
 
+/* Full source composition, including corners, for character avatars. */
+body.role-chat-immersive #headerAvatar,
+body.role-chat-immersive .message-row.bot .message-avatar{object-fit:contain;object-position:center;border-radius:9px;background:#221b30}
 /* Compact conversation header and composer */
 body.role-chat-immersive .rd-chat-menu{position:relative;flex-shrink:0}
 body.role-chat-immersive .rd-chat-menu summary{list-style:none;display:grid;place-items:center;width:44px;height:44px;color:white;font-size:28px;cursor:pointer;border-radius:50%}

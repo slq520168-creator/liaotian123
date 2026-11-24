@@ -124,7 +124,7 @@ test('role gallery displays exactly two cards per row at all widths with legible
  assert.equal(cols.length,1,'prevent conflicting responsive column overrides');
  assert.match(cols[0],/display:grid/,'gallery must be grid even after old styles are consolidated');
  assert.match(cols[0],/repeat\(2,minmax\(0,1fr\)\)/);
- assert.match(css,/\.rd-mini-image\{[^}]*object-fit:cover/s);
+ assert.match(css,/\.rd-mini-image\{[^}]*object-fit:contain/s);
  assert.match(css,/\.rd-mini-hook\{[^}]*-webkit-line-clamp:2/s);
  assert.match(js,/open\.addEventListener\('click',\(\)=>toggleCardPreview\(card\)\)/);
  assert.match(js,/chat\.addEventListener\('click',\(\)=>startChat\(char,Boolean\(story\)\)\)/);
@@ -242,4 +242,15 @@ test('homepage uses existing IM logo and real neighbor fan with wrapped indices'
  assert.match(ctx.fanPose(-1,0),/rotate\(-12deg\)/);assert.match(ctx.fanPose(1,0),/rotate\(12deg\)/);
  assert.match(ctx.fanPose(1,1),/rotate\(0deg\)/);
  assert.match(js,/drag\.axis!=='x'/);assert.match(js,/lostpointercapture/);
+});
+
+
+test('portrait captions are separate from images; chat displays uncropped original media',()=>{
+ const html=read('index.html'),css=read('role-discovery.css'),js=read('role-discovery.js'),chat=read('role-chat-immersive.css');
+ assert.match(html,/id="rdHeroPhoto"[^>]*>[^<]*<\/button>\s*<\/div>\s*<\/div>\s*<div class="rd-card-info" id="rdHeroInfo"/);
+ assert.match(css,/\.rd-mini-open\{display:grid;grid-template-rows:minmax\(0,1fr\) auto/);
+ assert.match(js,/media\.appendChild\(image\(char,'rd-mini-image'/);
+ assert.match(chat,/\.rd-chat-scene img\{[^}]*object-fit:contain/s);
+ assert.match(chat,/\.rd-chat-video\{[^}]*object-fit:contain/s);
+ assert.match(chat,/\.message-row\.bot \.message-avatar\{object-fit:contain/);
 });
