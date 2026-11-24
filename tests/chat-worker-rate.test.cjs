@@ -88,3 +88,20 @@ test('Cloudflare-compatible manual redirect mode reaches the real transport and 
 });
 
 test('dedicated OpenRouter route requests only zero-price models; a rate-limited route falls through to independent OVH',async()=>{const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// free-router-contract'))).default;const original=globalThis.fetch,seen=[];globalThis.fetch=async(url,init)=>{seen.push({url,body:JSON.parse(init.body),auth:init.headers.authorization});return seen.length===1?new Response('{}',{status:429,headers:{'retry-after':'60'}}):Response.json({choices:[{message:{content:'测试真实回复链路'}}]});};try{const res=await worker.fetch(new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.52'},body:JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]})}),{ROLE_OPENROUTER_FREE_TOKEN:'fixture-only'});assert.equal(res.status,200);assert.equal(seen.length,2);assert.equal(seen[0].body.model,'openrouter/free');assert.equal(seen[0].body.provider.max_price.prompt,0);assert.equal(seen[0].body.provider.max_price.completion,0);assert.equal(seen[0].auth,'Bearer fixture-only');assert.match(seen[1].url,/ovh\.net/);assert.equal(seen[1].auth,undefined);}finally{globalThis.fetch=original;}});
+
+
+test('HTTP 200 quota envelope triggers independent Groq fallback and respects provider cooldown',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// envelope-cooldown'))).default;
+ const original=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,init)=>{seen.push({url:String(url),auth:init.headers.authorization});return String(url).includes('openrouter.ai')?Response.json({error:{code:429,message:'rate limited'}},{headers:{'retry-after':'60'}}):Response.json({choices:[{message:{content:'备用模型测试回复'}}]});};
+ const request=()=>new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.53'},body:JSON.stringify({messages:[{role:'system',content:'成年角色'},{role:'user',content:'你好'}]})});
+ try{
+  const env={ROLE_OPENROUTER_FREE_TOKEN:'fixture-router',ROLE_GROQ_FREE_TOKEN:'fixture-groq'};
+  assert.equal((await worker.fetch(request(),env)).status,200);
+  assert.equal((await worker.fetch(request(),env)).status,200);
+  assert.equal(seen.filter(x=>x.url.includes('openrouter.ai')).length,1);
+  assert.equal(seen.filter(x=>x.url.includes('api.groq.com')).length,2);
+  assert.equal(seen[1].auth,'Bearer fixture-groq');
+ }finally{globalThis.fetch=original;}
+});

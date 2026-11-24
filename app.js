@@ -883,8 +883,9 @@ async function requestCharacterReply(char) {
         if (!response.ok) {
           const serverRetryAfter=Number(response.headers.get('retry-after')); const retryAfter=Number.isFinite(serverRetryAfter)&&serverRetryAfter>0?Math.ceil(Math.min(600,serverRetryAfter)):null;
           const error = new Error(response.status === 429 ? (retryAfter ? '请求较多，请 ' + retryAfter + ' 秒后重试。' : '请求较多，请稍后重试。') : response.status === 402 ? '免费服务额度暂不可用，请稍后重试；不会调用收费接口。' : response.status === 401 ? '服务鉴权失败，请刷新页面后重试。' : response.status === 403 ? '免费服务暂时拒绝请求，请稍后重试。' : response.status === 400 ? '消息格式异常，请重新发送。' : response.status === 413 ? '消息较长，请分段发送。' : response.status === 422 ? '这条消息暂时无法继续，请调整表达。' : response.status === 503 ? '模型暂时没连上，消息已保留。' : '连接失败，请重试。');
-          if(response.status===429&&retryAfter)error.retryAt=Date.now()+retryAfter*1000;
-          error.retryable = [408, 500, 502, 503, 504].includes(response.status);
+          if([429,503].includes(response.status)&&retryAfter)error.retryAt=Date.now()+retryAfter*1000;
+          // The same-origin Worker already tried its eligible providers. Never immediately replay that entire chain.
+          error.retryable = !retryAfter && [408, 500, 502, 503, 504].includes(response.status);
           throw error;
         }
         text = await readModelReply(response, delta => {

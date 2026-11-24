@@ -22,15 +22,23 @@ function valid(payload){
  for(const item of payload.messages){if(!item||!['system','user','assistant'].includes(item.role)||typeof item.content!=='string'||!item.content.trim()||item.content.length>30000)return null;size+=item.content.length;messages.push({role:item.role,content:item.content});}
  return size<=66000&&messages[0].role==='system'&&messages.at(-1).role==='user'?messages:null;
 }
-// Use only documented anonymous access or a dedicated, explicitly provisioned free LLM7 token. No cross-project keys.
+// Dedicated free-plan credentials only; no cross-project keys. Groq must be provisioned from an organization on its Free plan, not a paid account.
 const CHAT_ROUTES=[
  {id:'openrouter-free',host:'openrouter',secret:'ROLE_OPENROUTER_FREE_TOKEN',url:'https://openrouter.ai/api/v1/chat/completions',model:'openrouter/free',timeout:18000},
+ {id:'groq-free',host:'groq',secret:'ROLE_GROQ_FREE_TOKEN',url:'https://api.groq.com/openai/v1/chat/completions',model:'llama-3.3-70b-versatile',timeout:12000},
  {id:'llm7-mistral',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'mistral-Nemo-Instruct-2407',timeout:13000},
  {id:'ovh-mistral',host:'ovh',url:'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',model:'Mistral-Small-3.2-24B-Instruct-2506',timeout:13000},
  {id:'llm7-gpt',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b',reasoning:true,timeout:14000}
 ];
 const cooldowns=new Map();
 function retrySeconds(raw){if(!raw)return 30;const n=Number(raw);return Math.max(1,Math.min(600,Number.isFinite(n)?n:Math.ceil((Date.parse(raw)-Date.now())/1000)||30));}
+function providerError(status,retryAfter){
+ const error=Object.assign(Error('upstream_http_'+status),{status});
+ if(status===429||status===402)error.cooldown=retrySeconds(retryAfter);
+ else if(status===401||status===403)error.cooldown=60;
+ else if(status>=500&&status<=599)error.cooldown=10;
+ return error;
+}
 async function model(messages,requested,provider,deadline,signal,token){
  const abort=new AbortController();
  const cancel=()=>abort.abort();
@@ -42,12 +50,12 @@ async function model(messages,requested,provider,deadline,signal,token){
   // Workers rejects redirect:'error' before sending a request. Use manual mode and reject redirects explicitly; never forward credentials to a redirected host.
   if(response.status>=300&&response.status<400)throw Object.assign(Error('upstream_redirect_rejected'),{status:response.status});
   if(!response.ok){
-   const e=Object.assign(Error('upstream_http_'+response.status),{status:response.status});
-   if(response.status===429||response.status===402)e.cooldown=retrySeconds(response.headers.get('retry-after'));
-   if(response.status===401||response.status===403)e.cooldown=60;
-   throw e;
+   throw providerError(response.status,response.headers.get('retry-after'));
   }
   const data=await response.json(),choice=data?.choices?.[0];
+  // Some OpenAI-compatible providers return an error envelope with HTTP 200.
+  const envelope=data?.error||choice?.error;
+  if(envelope){const status=Number(envelope.code??envelope.status);throw providerError(Number.isInteger(status)&&status>=400&&status<=599?status:502,response.headers.get('retry-after'));}
   const content=choice?.message?.content;
   const text=typeof content==='string'?content:Array.isArray(content)?content.filter(x=>x?.type==='text'&&typeof x.text==='string').map(x=>x.text).join('\n'):'';
   if(text.trim()&&text.length<=30000)return text.trim();
@@ -83,6 +91,7 @@ export default{async fetch(req,env){
     try{return out(200,{ok:true,text:await model(messages,requested,provider,deadline,req.signal,token)});}
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
+     if(!e.cooldown&&(e.name==='AbortError'||e.name==='TypeError'))e.cooldown=8;
      if(e.cooldown){const quota=e.status===429||e.status===402;cooldowns.set(provider.host,{until:Date.now()+e.cooldown*1000,quota});if(quota)quotaHosts.add(provider.host);}
      else quotaHosts.delete(provider.host);
      attempted.push(provider.id+':'+(Number.isInteger(e.status)?'http_'+e.status:e.name==='AbortError'?'timeout':e.message==='empty_visible_reply'?'empty_reply':e.name==='TypeError'?'transport_error':'internal_error'));
@@ -93,7 +102,7 @@ export default{async fetch(req,env){
     const remaining=Math.min(...[...eligibleHosts].map(host=>cooldowns.get(host)?.until||Date.now()+1000));
     return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(Math.max(1,Math.ceil((remaining-Date.now())/1000)))});
    }
-   return out(503,{ok:false,error:'model_unavailable'},{'x-role-chat-diagnostic':attempted.join(',')||'no_available_route'});
+   return out(503,{ok:false,error:'model_unavailable'},{'retry-after':'5','x-role-chat-diagnostic':attempted.join(',')||'no_available_route'});
   }finally{inFlight--;}
  }
  if(url.pathname.startsWith('/api/'))return out(404,{ok:false,error:'not_found'});
