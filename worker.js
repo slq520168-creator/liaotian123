@@ -81,7 +81,7 @@ export default{async fetch(req,env){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
      if(e.cooldown){const quota=e.status===429||e.status===402;cooldowns.set(provider.host,{until:Date.now()+e.cooldown*1000,quota});if(quota)quotaHosts.add(provider.host);}
      else quotaHosts.delete(provider.host);
-     attempted.push(provider.id+':'+(e.status||e.name||'error'));
+     attempted.push(provider.id+':'+(Number.isInteger(e.status)?'http_'+e.status:e.name==='AbortError'?'timeout':e.message==='empty_visible_reply'?'empty_reply':e.name==='TypeError'?'transport_error':'internal_error'));
     }
    }
    // Never store reasoning text, fabricate a reply or pass upstream error bodies to the browser.
@@ -89,7 +89,7 @@ export default{async fetch(req,env){
     const remaining=Math.min(...[...eligibleHosts].map(host=>cooldowns.get(host)?.until||Date.now()+1000));
     return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(Math.max(1,Math.ceil((remaining-Date.now())/1000)))});
    }
-   return out(503,{ok:false,error:'model_unavailable'});
+   return out(503,{ok:false,error:'model_unavailable'},{'x-role-chat-diagnostic':attempted.join(',')||'no_available_route'});
   }finally{inFlight--;}
  }
  if(url.pathname.startsWith('/api/'))return out(404,{ok:false,error:'not_found'});
