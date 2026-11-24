@@ -25,3 +25,31 @@ test('rate-limit UI displays the actual Retry-After rather than inventing 45 sec
  assert.doesNotMatch(app,/Math\.max\(45,\s*Math\.min/);
  assert.match(app,/请求较多，请/);
 });
+
+test('non-reasoning route precedes reasoning and empty upstream output falls through without fake replies',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\\n// fallback-test'))).default;
+ const original=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,init)=>{const body=JSON.parse(init.body);seen.push(body);
+  if(seen.length===1)return Response.json({choices:[{message:{content:'',reasoning_content:'private reasoning'}}]});
+  if(seen.length===2)return Response.json({choices:[{message:{content:''}}]});
+  return Response.json({choices:[{message:{content:'真实角色回复'}}]});
+ };
+ try{
+  const payload={messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}],max_tokens:180};
+  const response=await worker.fetch(new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.48'},body:JSON.stringify(payload)}),{});
+  assert.equal(response.status,200);assert.equal((await response.json()).text,'真实角色回复');
+  assert.equal(seen.length,3);assert.equal(seen[0].model,'mistral-Nemo-Instruct-2407');assert.ok(seen[2].max_tokens>=1500);
+ }finally{globalThis.fetch=original;}
+});
+test('a quota-limited gateway is not retried through another model at that gateway',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\\n// quota-test'))).default;
+ const original=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url)=>{seen.push(String(url));return new Response('{}',{status:429,headers:{'retry-after':'60'}});};
+ try{
+  const body=JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]});
+  const response=await worker.fetch(new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.49'},body}),{});
+  assert.equal(response.status,503);assert.equal(seen.length,2);
+ }finally{globalThis.fetch=original;}
+});
