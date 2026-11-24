@@ -127,7 +127,7 @@
   <section id="roleDiscovery" aria-label="角色发现大厅">
     <div class="rd-container">
       <nav class="rd-nav" aria-label="角色大厅导航">
-        <div class="rd-brand"><span class="rd-brand-mark" aria-hidden="true">♡</span><span class="rd-brand-text">Liaotian123</span></div>
+        <div class="rd-brand"><img class="rd-brand-mark" src="assets/brand/logo-96.png" width="35" height="35" alt=""><span class="rd-brand-text">IM角色</span></div>
         <div class="rd-nav-actions"><button type="button" class="rd-header-button rd-primary" id="rdCreateRole">＋ 创建角色</button></div>
       </nav>
       <div class="rd-intro">
@@ -136,11 +136,15 @@
       <div class="rd-stage">
         <div class="rd-deck">
           <span class="rd-deck-counter" id="rdDeckCounter" aria-label="当前角色序号">01 / 124</span>
-          <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
+          <div class="rd-fan" id="rdFan">
+            <div class="rd-fan-side rd-fan-left" id="rdFanPrevious" aria-hidden="true" hidden><img alt="" draggable="false" decoding="async"></div>
+            <div class="rd-fan-side rd-fan-right" id="rdFanNext" aria-hidden="true" hidden><img alt="" draggable="false" decoding="async"></div>
+            <div class="rd-card" id="rdHeroCard" role="button" tabindex="0" aria-label="选择角色，左右滑动切换">
             <img id="rdHeroPortrait" src="assets/role-portraits/luoyan.webp" alt="当前角色形象" fetchpriority="high" decoding="async">
             <video id="rdHeroVideo" class="rd-character-video" aria-label="角色视频预览" loop muted playsinline preload="none" hidden></video>
             <button class="rd-photo-button rd-hero-photo" id="rdHeroPhoto" type="button" aria-label="查看完整人物图片">⤢</button><span class="rd-character-tag" id="rdHeroTag">爵士歌手</span>
             <div class="rd-card-info"><span class="rd-hero-scene" id="rdHeroScene"></span><div class="rd-card-title"><strong id="rdHeroName">罗烟</strong><span class="rd-age" id="rdHeroAge">29</span></div><div class="rd-hero-traits" id="rdHeroTraits"></div><p class="rd-card-bio" id="rdHeroBio"></p></div>
+          </div>
           </div>
           <div id="rdHeroEmpty" class="rd-card-empty" hidden>没有找到对应角色，试试其他筛选条件。</div>
           <div class="rd-control-row" id="rdHeroControls" aria-label="切换与收藏角色">

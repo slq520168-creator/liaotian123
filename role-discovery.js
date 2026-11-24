@@ -263,17 +263,61 @@
     // Keep the discovery page in place under the 2D editor. Cancel returns to the same card.
     if(window.Role2DCreator?.open?.()!==true)$('openCreateModalBtn')?.click();
   }
-  function selectIndex(next, animate = true) {
+  function fanIndex(index,count){return count ? (index%count+count)%count : 0;}
+  function fanPose(slot, progress=0){
+    const p=Math.max(-1,Math.min(1,progress));
+    if(slot===0)return 'translateX('+(-p*38)+'%) translateY('+Math.abs(p)*3+'%) rotate('+(-p*22)+'deg) scale('+(1-Math.abs(p)*.07)+')';
+    const toward=Math.max(0,p*slot),away=Math.max(0,-p*slot);
+    return 'translateX('+(slot*(15*(1-toward)+away*9))+'%) translateY('+(4*(1-toward))+'%) rotate('+(slot*(12*(1-toward)+away*5))+'deg) scale('+(.91+.09*toward-.04*away)+')';
+  }
+  function fanElements(){return [$('rdFanPrevious'),$('rdHeroCard'),$('rdFanNext')];}
+  function cancelFanAnimations(){for(const el of fanElements())el?._fanAnimation?.cancel();}
+  function setFanDrag(progress){
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const p=reduced?0:progress;
+    fanElements().forEach((el,index)=>{if(el)el.style.transform=fanPose(index-1,p);});
+  }
+  function resetFanDrag(){
+    $('rdFan')?.classList.remove('is-dragging');
+    fanElements().forEach(el=>{if(el)el.style.transform='';});
+  }
+  function renderFan(list){
+    const fan=$('rdFan');if(!fan)return;
+    fan.hidden=!list.length;
+    for(const [slot,id] of [[-1,'rdFanPrevious'],[1,'rdFanNext']]){
+      const side=$(id);if(!side)continue;
+      // Two-role lists need only one neighbor; never duplicate a single selected role.
+      const char=list.length>1&&!(list.length===2&&slot===-1)?list[fanIndex(state.index+slot,list.length)]:null;
+      side.hidden=!char;
+      if(!char)continue;
+      const img=side.querySelector('img');
+      if(img.dataset.roleId!==String(char.id)||img.dataset.fanSource!==String(char.avatar||'')){
+        img.hidden=false;delete img.dataset.imageRetried;
+        img.dataset.fanSource=String(char.avatar||'');
+        setRolePortrait(img,char);
+      }
+    }
+  }
+  function animateFanSwitch(direction,progress){
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const p=progress||0;
+    const elements=fanElements();
+    elements.forEach((el,i)=>{
+      if(!el||el.hidden||typeof el.animate!=='function')return;
+      const slot=i-1;
+      const from=slot===0?fanPose(direction,p):slot===-direction?fanPose(0,p||direction*.55):fanPose(slot, -direction*.6);
+      el._fanAnimation=el.animate([{transform:from,opacity:slot===direction?.45:1},{transform:fanPose(slot),opacity:1}],{duration:420,easing:'cubic-bezier(.18,.78,.2,1)'});
+    });
+  }
+  function selectIndex(next, animate = true, progress=0) {
     const list = available();
     if (!list.length) return;
-    state.index = (next % list.length + list.length) % list.length;
-    if (animate) {
-      const card = $('rdHeroCard');
-      card.classList.remove('rd-enter');
-      void card.offsetWidth;
-      card.classList.add('rd-enter');
-    }
+    const old=state.index,direction=next>=old?1:-1;
+    const target=fanIndex(next,list.length);
+    cancelFanAnimations();resetFanDrag();
+    state.index=target;
     renderHero();
+    if(animate&&old!==target)animateFanSwitch(direction,progress);
     const id=current()?.id;
     $('rdCharacterGrid').querySelectorAll('[data-character-id]').forEach(card=>card.classList.toggle('is-current',card.dataset.characterId===id));
   }
@@ -316,6 +360,7 @@
     $('rdHeroControls').hidden = !char;
     $('rdStartChat').disabled = !char;
     $('rdDeckCounter').textContent = char ? String(state.index + 1).padStart(2, '0') + ' / ' + String(available().length).padStart(2, '0') : '00 / 00';
+    renderFan(available());
     if (!char) return;
     if (illustration.dataset.charId !== String(char.id)) {
       illustration.dataset.charId = String(char.id);
@@ -427,17 +472,21 @@
     const card = $('rdHeroCard');
     card.addEventListener('pointerdown', event => {
       if (event.button !== 0 || event.target.closest('button')) return;
-      state.drag = {id: event.pointerId, x: event.clientX, y: event.clientY, moved: false};
+      if(available().length<2)return;
+      cancelFanAnimations();resetFanDrag();
+      state.drag = {id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, progress:0, axis:null};
     });
     card.addEventListener('pointermove', event => {
       const drag = state.drag;
       if (!drag || event.pointerId !== drag.id) return;
       const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-      if (Math.abs(dx) <= 7 || Math.abs(dx) < Math.abs(dy)) return;
+      if(!drag.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<10)return;drag.axis=Math.abs(dx)>Math.abs(dy)*1.25?'x':'y';}
+      if(drag.axis!=='x')return;
       drag.moved = true;
       if(card.hasPointerCapture&&card.setPointerCapture&&!card.hasPointerCapture(event.pointerId))card.setPointerCapture(event.pointerId);
-      card.style.transition = 'none';
-      card.style.transform = 'translateX(' + Math.max(-90, Math.min(90, dx * 0.45)) + 'px) rotate(' + Math.max(-7, Math.min(7, dx * 0.045)) + 'deg)';
+      $('rdFan')?.classList.add('is-dragging');
+      drag.progress=Math.max(-1,Math.min(1,-dx/Math.max(100,card.clientWidth*.72)));
+      setFanDrag(drag.progress);
     });
     const finish = event => {
       const drag = state.drag;
@@ -445,13 +494,13 @@
       state.drag = null;
       if(card.hasPointerCapture?.(event.pointerId))card.releasePointerCapture?.(event.pointerId);
       if (drag.moved) state.suppressClickUntil = Date.now() + 360;
-      card.style.transition = '';
-      card.style.transform = '';
       const dx = event.clientX - drag.x;
-      if (event.type==='pointerup' && drag.moved && Math.abs(dx) > 58) selectIndex(state.index + (dx < 0 ? 1 : -1));
+      if(event.type==='pointerup'&&drag.moved&&Math.abs(dx)>58)selectIndex(state.index+(dx<0?1:-1),true,drag.progress);
+      else resetFanDrag();
     };
     card.addEventListener('pointerup', finish);
     card.addEventListener('pointercancel', finish);
+    card.addEventListener('lostpointercapture',finish);
     card.addEventListener('keydown', event => {
       if (event.key === 'ArrowRight') { event.preventDefault(); selectIndex(state.index + 1); }
       if (event.key === 'ArrowLeft') { event.preventDefault(); selectIndex(state.index - 1); }

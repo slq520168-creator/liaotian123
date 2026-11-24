@@ -20,10 +20,8 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
   padding-top:max(18px,env(safe-area-inset-top));padding-bottom:17px;
 }
 .rd-brand{display:flex;align-items:center;gap:11px;min-width:0}
-.rd-brand-mark{display:grid;place-items:center;width:35px;height:35px;border-radius:12px;
- background:linear-gradient(145deg,#d49aff,#8b59f0);color:#1d112d;font-size:23px;font-weight:900;
- box-shadow:0 8px 22px rgba(147,89,239,.18)}
-.rd-brand-text{font-size:20px;font-weight:850;letter-spacing:-.06em}
+.rd-brand-mark{display:block;flex:0 0 35px;width:35px;height:35px;object-fit:contain;border-radius:9px}
+.rd-brand-text{font-size:20px;font-weight:850;letter-spacing:0;white-space:nowrap}
 .rd-nav-actions{display:flex;align-items:center;gap:9px}
 .rd-header-button{
  min-height:38px;border:1px solid rgba(193,167,247,.19);color:#e9dfff;
@@ -54,7 +52,20 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
  cursor:pointer
 }
 .rd-card:hover{box-shadow:0 18px 50px rgba(0,0,0,.43),0 0 0 1px rgba(190,142,250,.26)}
-.rd-card.rd-enter{animation:rdArrival .38s cubic-bezier(.16,.83,.25,1) both}
+.rd-fan{position:relative;isolation:isolate;width:84%;margin-inline:auto;touch-action:pan-y}
+.rd-fan[hidden]{display:none}
+.rd-fan .rd-card{z-index:3;transform-origin:50% 88%;user-select:none;-webkit-user-select:none}
+.rd-fan .rd-card>img{pointer-events:none;-webkit-user-drag:none}
+.rd-fan-side{position:absolute;inset:0;z-index:1;overflow:hidden;border-radius:22px;border:1px solid #9d83bd69;background:#211a32;box-shadow:0 8px 22px #0006;transform-origin:50% 88%;pointer-events:none;transition:transform .38s cubic-bezier(.2,.8,.2,1),opacity .38s}
+.rd-fan-side[hidden]{display:none}
+.rd-fan-side img{width:100%;height:100%;object-fit:cover;object-position:center 19%;filter:brightness(.72)}
+.rd-fan-side img.rd-full-body-art{object-fit:contain;background:#211a32}
+.rd-fan-left{transform:translateX(-15%) translateY(4%) rotate(-12deg) scale(.91)}
+.rd-fan-right{transform:translateX(15%) translateY(4%) rotate(12deg) scale(.91)}
+.rd-fan.is-dragging .rd-card,.rd-fan.is-dragging .rd-fan-side{transition:none}
+@media(max-width:670px){.rd-fan{width:83%}.rd-fan-side{border-radius:19px}}
+@media(max-height:520px) and (orientation:landscape){.rd-fan{width:80%}}
+@media(prefers-reduced-motion:reduce){.rd-fan .rd-card,.rd-fan-side{transition:none}}
 .rd-card > img{
  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 19%;image-rendering:auto;
  /* static portraits remain still; changing the card is the interaction */
@@ -157,7 +168,6 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
  .rd-intro{display:none}
  .rd-card{min-height:0;max-height:none;height:clamp(230px,calc(100dvh - 174px),390px);aspect-ratio:auto}
 }
-@keyframes rdArrival{0%{opacity:.7;transform:translateX(18px) scale(.97)}100%{opacity:1;transform:translateX(0) scale(1)}}
 @keyframes rdHeart{0%,100%{transform:scale(1)}35%{transform:scale(1.24)}75%{transform:scale(.94)}}
 @media(prefers-reduced-motion:reduce){
  #roleDiscovery *,#roleDiscovery *::before,#roleDiscovery *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}

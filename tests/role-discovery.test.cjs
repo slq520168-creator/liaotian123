@@ -225,3 +225,21 @@ test('card preview, true video playback and saved story progress use existing ch
 });
 
 test('unapproved game-sprite artwork is withheld from public discovery without deleting story data',()=>{const js=read('role-discovery.js'),config=read('config/app.js'),seed=read('role-story-volume-b.js');assert.match(js,/char\.portraitDraft===true/);assert.match(config,/char\?\.portraitDraft===true/);assert.equal((seed.match(/"portraitDraft": true/g)||[]).length,5);});
+
+
+test('homepage uses existing IM logo and real neighbor fan with wrapped indices',()=>{
+ const html=read('index.html'),js=read('role-discovery.js'),css=read('role-discovery.css');
+ assert.match(html,/<img class="rd-brand-mark" src="assets\/brand\/logo-96\.png"/);
+ assert.match(html,/<span class="rd-brand-text">IM角色<\/span>/);
+ assert.doesNotMatch(html,/<span class="rd-brand-text">Liaotian123/);
+ assert.match(html,/id="rdFanPrevious"/);assert.match(html,/id="rdFanNext"/);
+ assert.match(css,/\.rd-fan-left\{transform:translateX\(-15%\)/);
+ assert.match(css,/\.rd-fan-right\{transform:translateX\(15%\)/);
+ assert.match(js,/setRolePortrait\(img,char\)/);
+ const vm=require('node:vm'),ctx={};
+ vm.runInNewContext(js.slice(js.indexOf('  function fanIndex('),js.indexOf('  function fanElements(')),ctx);
+ assert.equal(ctx.fanIndex(-1,4),3);assert.equal(ctx.fanIndex(4,4),0);assert.equal(ctx.fanIndex(1,0),0);
+ assert.match(ctx.fanPose(-1,0),/rotate\(-12deg\)/);assert.match(ctx.fanPose(1,0),/rotate\(12deg\)/);
+ assert.match(ctx.fanPose(1,1),/rotate\(0deg\)/);
+ assert.match(js,/drag\.axis!=='x'/);assert.match(js,/lostpointercapture/);
+});
