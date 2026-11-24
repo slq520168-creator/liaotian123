@@ -682,7 +682,7 @@ function renderMessages() {
     errorRow.className = 'reply-error';
     errorRow.setAttribute('role', 'alert');
     const text = document.createElement('span');
-    text.textContent = failure.message;
+    text.textContent = (failure.retryAt||0)>Date.now() ? failure.message : failure.message.replace(/请\s*\d+\s*秒后重试。/,'可以重试。');
     const retry = document.createElement('button');
     retry.type = 'button';
     retry.className = 'btn btn-outline btn-sm';
@@ -886,6 +886,8 @@ async function requestCharacterReply(char) {
           if([429,503].includes(response.status)&&retryAfter)error.retryAt=Date.now()+retryAfter*1000;
           // The same-origin Worker already tried its eligible providers. Never immediately replay that entire chain.
           error.retryable = !retryAfter && [408, 500, 502, 503, 504].includes(response.status);
+          // One bounded recovery for a transient Worker outage only, never for quota/auth errors.
+          if(response.status===503&&retryAfter&&retryAfter<=8)error.recoveryDelay=retryAfter*1000;
           throw error;
         }
         text = await readModelReply(response, delta => {
@@ -898,8 +900,11 @@ async function requestCharacterReply(char) {
         });
         break;
       } catch (error) {
-        if (attempt || job.text || controller.signal.aborted || navigator.onLine === false || Date.now()-startedAt>8000 || !(error.retryable || error instanceof TypeError)) throw error;
-        await new Promise(resolve => setTimeout(resolve, 250));
+        const elapsed=Date.now()-startedAt;
+        const recoveryDelay=Number(error.recoveryDelay)||0;
+        if (attempt || job.text || controller.signal.aborted || navigator.onLine === false || elapsed>8000 || !(recoveryDelay || error.retryable || error instanceof TypeError)) throw error;
+        await new Promise(resolve => setTimeout(resolve, recoveryDelay||250));
+        if(controller.signal.aborted||pendingReplies.get(char.id)!==job)throw error;
       }
     }
     if (!text.trim()) throw new Error('没有收到回复，请重试。');

@@ -140,12 +140,19 @@ assert.equal(calls.length, 0, '免费服务不使用不支持的 GET 预热');
 assert.ok(context.replyErrors.get(char.id).retryAt > Date.now(), '429 retry window is retained');
 context.replyErrors.delete(char.id); // isolate the following independent 503 scenario
 let unavailableCalls=0;
-context.fetch = async () => {unavailableCalls++;return Response.json({error:'model_unavailable'},{status:503,headers:{'retry-after':'5'}});};
+context.fetch = async () => {unavailableCalls++;return Response.json({error:'model_unavailable'},{status:503,headers:{'retry-after':'9'}});};
 await context.requestCharacterReply(char);
-assert.equal(unavailableCalls,1,'server cooldown prevents an immediate whole-chain replay');
+assert.equal(unavailableCalls,1,'long server cooldown prevents whole-chain replay');
 assert.equal(context.chatHistories[char.id].length,1,'模型不可用时不保存虚假回复');
 assert.match(context.replyErrors.get(char.id).message,/暂时没连上/);
 await assert.rejects(context.readModelReply(Response.json({choices: []}), () => {}), /没有收到回复/);
+context.replyErrors.delete(char.id);
+context.chatHistories[char.id]=[{sender:'user',text:'你好'}];
+let recoveredCalls=0;const recoveredStart=Date.now();
+context.fetch=async()=>{recoveredCalls++;return recoveredCalls===1?Response.json({error:'model_unavailable'},{status:503,headers:{'retry-after':'1'}}):Response.json({ok:true,text:'真实恢复回复'});};
+await context.requestCharacterReply(char);
+assert.equal(recoveredCalls,2);assert.ok(Date.now()-recoveredStart>=900,'respect server Retry-After');
+assert.equal(context.chatHistories[char.id].length,2);assert.equal(context.chatHistories[char.id].at(-1).text,'真实恢复回复');
 // Exercise real presentation logic without network or a browser DOM.
 const full = '你好吗？👩‍👩‍👧‍👦 好呀。';
 assert.equal(context.replyGraphemes(full).join(''), full);
