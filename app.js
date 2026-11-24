@@ -179,6 +179,8 @@ function loadDataFromStorage() {
         timestamp: typeof msg.timestamp === 'string' ? msg.timestamp.slice(0, 20) : ''
       }));
       if (chatHistories[char.id].filter(m=>!validPortraitMessage(m,char)).at(-1)?.sender === 'user') {
+        const unanswered=chatHistories[char.id].filter(m=>!validPortraitMessage(m,char)).at(-1);
+        window.RoleStory?.recoverUnanswered?.(char.id,unanswered.text);
         replyErrors.set(char.id, {message: '回复未完成，请重试。'});
       }
     });
@@ -741,6 +743,7 @@ function handleSendMessage() {
   const text = userInput.value.trim();
   const char = characters.find(item => item.id === activeCharacterId);
   if (!text || !char || pendingReplies.has(char.id)) return;
+  if((replyErrors.get(char.id)?.retryAt||0)>Date.now()){renderMessages();return;}
   if (text.length > CHAT_LIMITS.message) {
     replyStatus.textContent = '每条消息最多30000字，请分段发送。';
     return;
@@ -760,7 +763,6 @@ function handleSendMessage() {
   userInput.value = '';
   userInput.style.height = 'auto';
   replyErrors.delete(char.id);
-  window.RoleStory?.commitPending?.(char.id,text);
   saveDataToStorage();
   requestCharacterReply(char);
 }
@@ -807,6 +809,8 @@ function buildRequestMessages(char) {
 
 async function requestCharacterReply(char) {
   if (pendingReplies.has(char.id) || !characters.some(item => item.id === char.id)) return;
+  const cooldown=replyErrors.get(char.id)?.retryAt||0;
+  if(cooldown>Date.now()){if(activeCharacterId===char.id)renderMessages();return;}
   const controller = new AbortController();
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const longRequest = replyLength === 'long' || /长文|长一点|多写|详细|完整|故事|展开/.test(latest);
@@ -858,6 +862,7 @@ async function requestCharacterReply(char) {
     chatHistories[char.id].push({id: makeId(), sender: 'bot', text: formatCharacterReply(text).slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()});
     const gallery=portraitSources(char);
     if(/·\s*第1章选择】/.test(latest)&&gallery.length>1&&!(chatHistories[char.id]||[]).some(m=>validPortraitMessage(m,char)&&m.imagePath===gallery[1]))addPortraitMessage(char,gallery[1]);
+    window.RoleStory?.commitPending?.(char.id,latest,text);
     previousVisits[char.id] = '';
     saveDataToStorage();
   } catch (error) {

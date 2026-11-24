@@ -54,7 +54,7 @@ function load(){
   return data&&typeof data==='object'&&!Array.isArray(data)?data:{};
  }catch{return {};}
 }
-let all=load(),pending=null;
+let all=load();
 function current(id){
  const val=all[id];
  if(!val||typeof val!=='object')return {chapter:0,trust:0,evidence:0,route:[],ending:''};
@@ -106,20 +106,35 @@ function contextFor(id){
  ];
  return intro.join('\n');
 }
-function commitPending(id,text){
- if(!pending||pending.id!==id||pending.text!==text)return false;
- const seed=byId.get(id);if(!seed){pending=null;return false;}
- const progress=current(id);
- if(progress.chapter>=6||progress.chapter!==pending.chapter){pending=null;return false;}
- const selected=pending.choice;pending=null;
+function choiceMessage(seed,chapter,index){
+ const choice=stages[chapter].options(seed)[index];
+ return '【'+seed.title+' · 第'+(chapter+1)+'章选择】'+choice+'。请按这个决定继续故事。';
+}
+function choiceIndex(seed,chapter,text){
+ if(!seed||chapter<0||chapter>=6||typeof text!=='string')return -1;
+ return [0,1].find(index=>choiceMessage(seed,chapter,index)===text)??-1;
+}
+function commitPending(id,text,reply){
+ if(typeof reply!=='string'||!reply.trim())return false;
+ const seed=byId.get(id),progress=current(id);
+ const selected=choiceIndex(seed,progress.chapter,text);
+ if(selected<0)return false;
  const choice=stages[progress.chapter].options(seed)[selected];
  const trust=progress.trust+(selected===1?1:0);
  const evidence=progress.evidence+(selected===0?1:0);
  const next={chapter:progress.chapter+1,trust,evidence,route:[...progress.route,{chapter:progress.chapter,choice}].slice(-6),ending:''};
  if(next.chapter===6)next.ending=next.evidence>=4?'truth':next.trust>=4?'bond':'open';
- write(id,next);
- render();
- return true;
+ write(id,next);render();return true;
+}
+// Reconcile the last unanswered choice from releases that advanced before reply.
+// Only exact matching route and latest unanswered user text qualify; preserve earlier progress.
+function recoverUnanswered(id,text){
+ const seed=byId.get(id),progress=current(id),chapter=progress.chapter-1;
+ const selected=choiceIndex(seed,chapter,text),last=progress.route.at(-1);
+ if(selected<0||!last||last.chapter!==chapter||last.choice!==stages[chapter].options(seed)[selected])return false;
+ const route=progress.route.slice(0,-1);
+ write(id,{chapter,route,evidence:Math.max(0,progress.evidence-(selected===0?1:0)),trust:Math.max(0,progress.trust-(selected===1?1:0)),ending:''});
+ render();return true;
 }
 function sendChoice(id,index){
  const seed=byId.get(id),progress=current(id);
@@ -127,13 +142,10 @@ function sendChoice(id,index){
  if(typeof activeCharacterId==='undefined'||activeCharacterId!==id)return false;
  const input=document.getElementById('userInput'),send=document.getElementById('sendBtn');
  if(!input||!send)return false;
- const choice=stages[progress.chapter].options(seed)[index],msg='【'+seed.title+' · 第'+(progress.chapter+1)+'章选择】'+choice+'。请按这个决定继续故事。';
- pending={id,chapter:progress.chapter,choice:index,text:msg};
- input.value=msg;
+ const original=input.value;input.value=choiceMessage(seed,progress.chapter,index);
  input.dispatchEvent(new Event('input',{bubbles:true}));
- if(send.disabled){pending=null;return false;}
- send.click();
- return true;
+ if(send.disabled){input.value=original;input.dispatchEvent(new Event('input',{bubbles:true}));return false;}
+ send.click();return true;
 }
 function activeId(){return typeof activeCharacterId==='string'?activeCharacterId:'';}
 function render(){
@@ -194,5 +206,5 @@ function installUI(){
  render();
 }
 document.addEventListener('DOMContentLoaded',installUI,{once:true});
-window.RoleStory=Object.freeze({list:()=>seeds.length,has:id=>byId.has(id),description,contextFor,commitPending,choose:sendChoice,render,openPanel,readState:current});
+window.RoleStory=Object.freeze({list:()=>seeds.length,has:id=>byId.has(id),description,contextFor,commitPending,recoverUnanswered,choose:sendChoice,render,openPanel,readState:current});
 })();

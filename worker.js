@@ -24,6 +24,7 @@ function valid(payload){
 }
 // Use only documented anonymous access or a dedicated, explicitly provisioned free LLM7 token. No cross-project keys.
 const CHAT_ROUTES=[
+ {id:'openrouter-free',host:'openrouter',secret:'ROLE_OPENROUTER_FREE_TOKEN',url:'https://openrouter.ai/api/v1/chat/completions',model:'openrouter/free',timeout:18000},
  {id:'llm7-mistral',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'mistral-Nemo-Instruct-2407',timeout:13000},
  {id:'ovh-mistral',host:'ovh',url:'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',model:'Mistral-Small-3.2-24B-Instruct-2506',timeout:13000},
  {id:'llm7-gpt',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b',reasoning:true,timeout:14000}
@@ -37,7 +38,7 @@ async function model(messages,requested,provider,deadline,signal,token){
  const timeout=setTimeout(cancel,Math.min(provider.timeout,Math.max(1,deadline-Date.now())));
  try{
   const max_tokens=Math.max(provider.reasoning?1500:256,requested);
-  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8}),signal:abort.signal,redirect:'manual'});
+  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8,...(provider.host==='openrouter'?{provider:{max_price:{prompt:0,completion:0}}}:{})}),signal:abort.signal,redirect:'manual'});
   // Workers rejects redirect:'error' before sending a request. Use manual mode and reject redirects explicitly; never forward credentials to a redirected host.
   if(response.status>=300&&response.status<400)throw Object.assign(Error('upstream_redirect_rejected'),{status:response.status});
   if(!response.ok){
@@ -70,8 +71,9 @@ export default{async fetch(req,env){
    const requested=Math.max(180,Math.min(4096,Math.floor(Number(payload.max_tokens)||400)));
    const deadline=Date.now()+42000,attempted=[],eligibleHosts=new Set(),quotaHosts=new Set();
    for(const provider of CHAT_ROUTES){
-    const token=provider.host==='llm7'?String(env.ROLE_LLM7_FREE_TOKEN||'').trim():'';
-    if(provider.host==='llm7'&&!token)continue;
+    const secret=provider.secret||(provider.host==='llm7'?'ROLE_LLM7_FREE_TOKEN':'');
+    const token=secret?String(env[secret]||'').trim():'';
+    if(secret&&!token)continue;
     if(req.signal?.aborted||Date.now()>deadline-1000)break;
     eligibleHosts.add(provider.host);
     if((cooldowns.get(provider.host)?.until||0)>Date.now()){
