@@ -130,6 +130,7 @@ function normalizeCustomCharacter(value) {
   return {
     id: value.id, isPreset: false,
     ...(value.roleKind==='2d'?{roleKind:'2d'}:{}),
+    ...(value.animeOriginal===true?{animeOriginal:true,category:'动漫'}:{}),
     ...(value.roleSource==='code'?{roleSource:'code'}:{}),
     ...(typeof value.templateOrigin==='string'&&/^[a-z0-9_-]{1,80}$/i.test(value.templateOrigin)?{templateOrigin:value.templateOrigin}:{}),
     ...(visualRecipe?{visualRecipe}:{}),

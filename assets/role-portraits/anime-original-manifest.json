@@ -1,0 +1,50 @@
+{
+  "generator": "FLUX.1-schnell",
+  "source": "original AI-generated adult fictional character illustrations",
+  "width": 768,
+  "height": 1024,
+  "assets": [
+    {
+      "path": "assets/role-portraits/anime-velvet.webp",
+      "gitBlob": "035b966df09dc0e60dada2ef19c91b77ef5b2b13",
+      "character": "anime_velvet",
+      "age": 28
+    },
+    {
+      "path": "assets/role-portraits/anime-luna.webp",
+      "gitBlob": "57a56ec5ecb8bd725d478d180f719aac82f371e6",
+      "character": "anime_luna",
+      "age": 26
+    },
+    {
+      "path": "assets/role-portraits/anime-sable.webp",
+      "gitBlob": "47c1274e16e93789e40f2ee051695c657accdd2d",
+      "character": "anime_sable",
+      "age": 29
+    },
+    {
+      "path": "assets/role-portraits/anime-iris.webp",
+      "gitBlob": "a7e11275441f909d74b10eddb53a716702f3e514",
+      "character": "anime_iris",
+      "age": 27
+    },
+    {
+      "path": "assets/role-portraits/anime-meilin.webp",
+      "gitBlob": "683292c7573e20cd9cbfef286c4c6d7f3a5bcbc5",
+      "character": "anime_meilin",
+      "age": 29
+    },
+    {
+      "path": "assets/role-portraits/anime-ren.webp",
+      "gitBlob": "70942edbc82ba01d00faa07097156423807af8f5",
+      "character": "anime_ren",
+      "age": 30
+    },
+    {
+      "path": "assets/role-portraits/anime-noelle.webp",
+      "gitBlob": "e7ee6b920f150803637f76a908ddd725079a3441",
+      "character": "anime_noelle",
+      "age": 27
+    }
+  ]
+}

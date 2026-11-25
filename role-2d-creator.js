@@ -4,7 +4,7 @@
   // It does not modify or delete the 3D Studio and never creates a second chat runtime.
   let modal=null,form=null,avatar=null,submit=null,avatarInput=null,chooser=null,templateGrid=null,chooserStatus=null,backButton=null;
   let selectedStyle='',templateOrigin='',entryActions=null,templateSeed=null,avatarRequest=0;
-  const cartoonTemplates=[["暖阳","nuannuan","female",25,"治愈插画 · 花艺师","窗边的花刚刚开了，要不要过来看看？","温暖独立的花艺师，喜欢用具体的小事表达关怀，有自己的想法。","花艺、烘焙"],["雾岚","linwan","female",29,"都市漫画 · 设计师","设计稿终于画完了，今天想聊些轻松的。","冷静敏锐的平面设计师，审美鲜明，习惯坦率地交流。","插画、建筑"],["苏糖","sutang","female",24,"甜系漫画 · 甜品师","今天试做了一款新甜点，你想听听它的故事吗？","开朗的成年甜品师，好奇、独立、爱开玩笑。","甜点、旅行"],["知夏","xuzhixia","female",27,"清新手绘 · 摄影师","刚拍到一束很好看的光，今天真不错。","自由随性的摄影师，善于发现日常细节，直率不做作。","摄影、电影"],["青歌","yeqingge","female",28,"古风插画 · 琴师","茶已经备好，慢慢说，不必着急。","沉静聪慧的虚构古风琴师，爱读诗，善于倾听，保有独立主见。","古琴、诗词"],["零伊","lingyi","unspecified",26,"赛博漫画 · 工程师","系统准备就绪。今天探索什么有趣的问题？","科幻世界的成年工程师，理性、幽默、对新奇技术充满好奇。","机器人、科幻"],["陆晨","luchen","male",28,"日常漫画 · 咖啡师","咖啡刚煮好。坐下来聊一会吧。","沉稳的咖啡店主，温和直接，擅长聊生活里的具体事情。","咖啡、音乐"],["晴空","taiyang","male",25,"运动漫画 · 户外教练","今天阳光很好，要不要计划一趟虚构旅行？","积极独立的成年户外教练，热爱自然，尊重伙伴的选择。","登山、运动"],["顾言","guyan","male",30,"都市插画 · 编辑","我刚看完一本很有意思的书，想和你讨论。","成熟理性的文学编辑，善于讨论观点，有克制的幽默。","文学、电影"],["江屿","jiangyu","male",29,"水彩漫画 · 旅行家","海风正好，来讲个路上的故事吧。","自由随性的成年旅行写作者，喜欢分享见闻，不冒充真实旅行。","海洋、写作"],["沈砚","shenyan","male",31,"古风漫画 · 书画家","案上的墨还没干，你想从哪一页故事开始？","架空古风书画家，沉着、博学但不故作高深。","书法、历史"],["云舟","yunzhou","male",27,"奇幻插画 · 星图师","星图上多出一个陌生坐标，一起看看？","幻想世界成年星图师，谨慎、机智，善于推进互动故事而不替玩家决定。","星空、冒险"]].map(([name,asset,gender,age,tag,greeting,personality,interests])=>({id:'cartoon_'+asset,name,avatar:'assets/avatars/'+asset+'.svg',gender,age,tag,greeting,personality,interests,voice:'自然口语，忠实使用人物设定。',relationship:'平等相处，尊重玩家选择。'}));
+  const cartoonTemplates=()=>typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&c.animeOriginal&&!c.portraitDraft):ORIGINAL_ANIME_ROLES;
   let editingId='',avatarSrc='',avatarBusy=false,previousFocus=null;
   const get=id=>document.getElementById(id);
   const text=(tag,className,label)=>{
@@ -82,7 +82,7 @@
     entryActions=text('div','r2-entry-actions');
     const entries=[
       ['realistic','写实人物','assets/role-portraits/intl-rosalie.webp'],
-      ['cartoon','卡通人物',typeof characters!=='undefined'?(characters.find(c=>c.illustratedFullBody&&!c.portraitDraft)?.avatar||cartoonTemplates[0].avatar):cartoonTemplates[0].avatar],
+      ['cartoon','卡通人物',ORIGINAL_ANIME_ROLES[0].avatar],
       ['free','自由创建','＋'],
       ['import','上传角色卡 / 代码','⇧']
     ];
@@ -133,8 +133,7 @@
     }catch(e){chooserStatus.textContent=String(e?.message||'角色保存失败');chooserStatus.hidden=false}
   }
   function renderTemplates(){
-    const illustrated=typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&c.illustratedFullBody&&!c.portraitDraft):[];
-    const list=selectedStyle==='cartoon'?[...illustrated,...cartoonTemplates]:(typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&!c.portraitDraft&&!c.illustratedFullBody&&(c.photoRealistic===true||/^assets\/role-portraits\/.*\.webp$/i.test(c.avatar||''))):[]);
+    const list=selectedStyle==='cartoon'?cartoonTemplates():(typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&!c.portraitDraft&&!c.illustratedFullBody&&!c.animeOriginal&&(c.photoRealistic===true||/^assets\/role-portraits\/.*\.webp$/i.test(c.avatar||''))):[]);
     templateGrid.replaceChildren();
     for(const item of list){
       const card=text('article','r2-template-card'),img=document.createElement('img');

@@ -94,7 +94,7 @@
     return typeof PRESET_CHARACTERS !== 'undefined' && Array.isArray(PRESET_CHARACTERS) ? PRESET_CHARACTERS : [];
   };
   const roleTraits=char=>Array.isArray(char?.traits)?char.traits.filter(x=>typeof x==='string'):[];
-  const FEATURED_IDS=["neon_rina","jazz_zelia","city_selene","stage_rose","vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
+  const FEATURED_IDS=["anime_velvet","anime_luna","anime_sable","anime_iris","anime_meilin","anime_ren","anime_noelle","neon_rina","jazz_zelia","city_selene","stage_rose","vivienne","rosalie","sylvie","elena","daphne","veronica","claire","phoebe","audrey","helene","luna","marisol","arthur","felix","roman","niko","jiangwu","muyue","yinling","shuangye","yinxuan","lanqi","qingshu","beihan","amara","luoyan","wuyue","xingye","haichao","yinyao","luojue","huajin","qiyun","celeste","maya","viala","tangli","anika"];
   const FEATURED_RANK=new Map(FEATURED_IDS.map((id,i)=>[id,i]));
   const available = () => allCharacters().filter(char => {
     if (!char || !char.id || char.portraitDraft===true) return false;
