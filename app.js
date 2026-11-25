@@ -115,9 +115,11 @@ function normalizeCustomCharacter(value) {
   } catch {}
   return {
     id: value.id, isPreset: false,
+    ...(value.roleKind==='2d'?{roleKind:'2d'}:{}),
+    ...(value.roleSource==='code'?{roleSource:'code'}:{}),
     ...(visualRecipe?{visualRecipe}:{}),
-    name: value.name.trim().slice(0, 12), tag: value.tag.trim().slice(0, 20),
-    greeting: value.greeting.trim().slice(0, 300),
+    name: value.name.trim().slice(0, value.roleSource==='code'?64:12), tag: value.tag.trim().slice(0, 20),
+    greeting: value.greeting.trim().slice(0, value.roleSource==='code'?4000:300),
     personality: value.personality.trim().slice(0, CHAT_LIMITS.personality),
     avatar: safeAvatar(value.avatar),
     video: typeof value.video === 'string' && /^https:\/\/[^\s]{1,900}$/i.test(value.video.trim()) ? value.video.trim() : '',
@@ -149,7 +151,7 @@ function loadDataFromStorage() {
   const storedCustoms=readStoredJSON('liaotian_custom_chars',[]);
   const previousCustoms=Array.isArray(storedCustoms)?storedCustoms:[];
   const isRetired3D=char=>Boolean(char&&typeof char==='object'&&
-    (char.roleKind==='3d'||typeof char.personality==='string'&&char.personality.includes('【角色自定义设定】')));
+    (char.roleKind==='3d'||char.roleKind!=='2d'&&char.roleSource!=='code'&&typeof char.personality==='string'&&char.personality.includes('【角色自定义设定】')));
   const retiredCustoms=previousCustoms.filter(isRetired3D);
   if(retiredCustoms.length)try{
     const saved=readStoredJSON('liaotian_archived_3d_custom_v1',[]);
@@ -577,7 +579,7 @@ function switchCharacter(charId, save = true) {
   headerAvatar.src = safeAvatar(char.avatar);
   headerAvatar.alt = char.name + '的头像';
   if (!chatHistories[charId] || chatHistories[charId].length === 0) {
-    chatHistories[charId] = [{id: makeId(), sender: 'bot', text: char.greeting, timestamp: getCurrentTime(), createdAt: new Date().toISOString()}];
+    chatHistories[charId] = [{id: makeId(), sender: 'bot', text: expandRoleCardText(char.greeting,char), timestamp: getCurrentTime(), createdAt: new Date().toISOString()}];
   }
   if (!roleMemories[charId]) roleMemories[charId] = ROLE_MEMORY.normalize(null);
   renderMessages();
@@ -773,12 +775,16 @@ function replyProfile(latest, preference, storyActive = false) {
   const extended = requested || (!simple && (preference === 'long' || storyActive));
   return {extended,maxTokens:extended?4096:180};
 }
+function expandRoleCardText(text,char){
+  if(char.roleSource!=='code')return text;
+  return String(text).replace(/\{\{\s*char\s*\}\}/gi,()=>char.name).replace(/\{\{\s*user\s*\}\}/gi,()=>playerProfile.name||'你');
+}
 function buildSystemPrompt(char) {
   const gender = char.gender === 'male' ? '成年男性' : char.gender === 'female' ? '成年女性' : '成年角色';
   const scenes = char.conversation && typeof char.conversation === 'object' ?
     Object.entries(char.conversation).filter(([, value]) => typeof value === 'string').map(([key, value]) => key + '：' + value).join('\n') : ROLE_REPLY_SCENES.join('\n');
   const base = ROLE_CHAT_RULES.join('\n') + '\n当前角色：' + char.name + '，' + char.age + '岁，' + gender +
-    '。\n性格：' + char.personality + '\n说话风格：' + char.voice +
+    '。\n性格：' + expandRoleCardText(char.personality,char) + '\n说话风格：' + char.voice +
     (char.interests ? '\n兴趣：' + char.interests : '') +
     (char.background ? '\n角色背景（虚构设定）：' + char.background : '') +
     (char.relationship ? '\n相处方式：' + char.relationship : '') +
@@ -1376,7 +1382,7 @@ function clearCurrentChat() {
   const char = characters.find(item => item.id === activeCharacterId);
   if (!char || !confirm('确定要清空与“' + char.name + '”的聊天记录吗？')) return;
   cancelReply(char.id);
-  chatHistories[char.id] = [{id: makeId(), sender: 'bot', text: char.greeting, timestamp: getCurrentTime()}];
+  chatHistories[char.id] = [{id: makeId(), sender: 'bot', text: expandRoleCardText(char.greeting,char), timestamp: getCurrentTime()}];
   saveDataToStorage();
   renderMessages();
   updateComposer();

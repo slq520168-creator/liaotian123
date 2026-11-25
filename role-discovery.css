@@ -22,7 +22,7 @@ body.role-discovery-open .app-container{visibility:hidden;pointer-events:none}
 .rd-brand{display:flex;align-items:center;gap:11px;min-width:0}
 .rd-brand-mark{display:block;flex:0 0 35px;width:35px;height:35px;object-fit:contain;border-radius:9px}
 .rd-brand-text{font-size:20px;font-weight:850;letter-spacing:0;white-space:nowrap}
-.rd-nav-actions{display:flex;align-items:center;gap:9px}
+.rd-nav-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;min-width:0}.rd-nav-actions .rd-header-button{white-space:nowrap}
 .rd-header-button{
  min-height:38px;border:1px solid rgba(193,167,247,.19);color:#e9dfff;
  background:rgba(255,255,255,.05);border-radius:12px;padding:8px 15px;font-size:13px;font-weight:650;

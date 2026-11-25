@@ -194,6 +194,23 @@ function canonicalRoleData(value) {
   if (['女', '女性', '成年女性', 'female'].includes(gender)) role.gender = 'female';
   else if (['男', '男性', '成年男性', 'male'].includes(gender)) role.gender = 'male';
   if (typeof role.age === 'string' && /^\d+\s*岁$/.test(role.age.trim())) role.age = Number(role.age.trim().replace(/\s*岁$/, ''));
+  // Preserve standard character-card fields instead of dropping description and dialogue examples.
+  const str = value => typeof value === 'string' ? value.trim() : '';
+  const fields = [];
+  const description = str(data.description) || str(data.desc), personality = str(data.personality) || str(role.personality);
+  if (description && description !== personality) fields.push('角色描述：' + description);
+  if (personality) fields.push(personality);
+  const scenario = str(data.scenario);
+  if (scenario) fields.push('场景及背景：' + scenario);
+  const example = str(data.mes_example) || str(data.example_dialogue) || str(data.exampleMessage);
+  if (example) fields.push('示例对话（参考人物语气）：' + example);
+  if (str(data.system_prompt)) fields.push('角色专属设定：' + str(data.system_prompt));
+  if (str(data.post_history_instructions)) fields.push('剧情连续性设定：' + str(data.post_history_instructions));
+  role.personality = fields.join('\n\n');
+  if (!str(role.greeting)) role.greeting = str(data.firstMessage);
+  if (!str(role.greeting) && Array.isArray(data.alternate_greetings)) role.greeting = data.alternate_greetings.find(x => typeof x === 'string' && x.trim()) || '';
+  if (!str(role.tag) && Array.isArray(data.tags)) role.tag = data.tags.filter(x => typeof x === 'string').join(' · ').slice(0,20);
+  if (!str(role.avatar)) role.avatar = str(data.image) || str(data.image_url) || str(data.avatar_url) || str(value.avatar);
   return role;
 }
 
@@ -210,11 +227,12 @@ function parseRoleCode(source, targetId = '') {
     if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(label + '请用 { ... } 填写角色配置。');
     if (typeof item.name !== 'string' || !item.name.trim()) throw new Error(label + '缺少角色姓名，请填写 name: "角色姓名"。');
     if (typeof item.personality !== 'string' || !item.personality.trim()) throw new Error(label + '缺少角色性格，请填写 personality: "性格与人设"。');
-    if (item.personality.trim().length > CHAT_LIMITS.personality) throw new Error('角色性格最多12000字，请精简后生成。');
+    if (item.personality.trim().length > CHAT_LIMITS.personality) throw new Error(label + '合并后的人设超过12000字，请精简，避免丢失角色设定。');
+    if (typeof item.greeting === 'string' && item.greeting.length > 4000) throw new Error(label + '开场白最多4000字，请精简后导入。');
     if (item.age !== undefined && (!Number.isFinite(Number(item.age)) || Number(item.age) < 18 || Number(item.age) > 100)) throw new Error('角色年龄请填写18到100岁。');
     const id = typeof item.id === 'string' && /^[a-z0-9_-]{1,70}$/i.test(item.id) ? item.id : makeId();
     return normalizeCustomCharacter({
-      ...existing, ...item, id: existing?.id || (id.startsWith('custom_') ? id : 'custom_' + id),
+      ...existing, ...item, roleKind: '2d', roleSource: 'code', id: existing?.id || (id.startsWith('custom_') ? id : 'custom_' + id),
       tag: item.tag || existing?.tag || '新朋友', greeting: item.greeting || existing?.greeting || '你来了。今天想聊什么？',
       gender: item.gender || existing?.gender || 'unspecified', age: item.age || existing?.age || 24
     });
@@ -322,6 +340,7 @@ function addRolesFromCode(source) {
   try { sessionStorage.removeItem(ROLE_CODE_DRAFT_KEY); sessionStorage.removeItem(ROLE_CODE_TARGET_KEY); } catch (error) {}
   byId('roleCodeEditorStatus').textContent = '';
   byId('roleCodeStatus').textContent = '';
+  window.RoleDiscovery?.openChat?.(added[0].id);
 }
 
 function handleRoleCodeSubmit(event) {
