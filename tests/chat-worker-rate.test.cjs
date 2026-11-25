@@ -152,3 +152,24 @@ test('empty completion switches to a different zero-price model and preserves th
   assert.deepEqual(seen.map(x=>x.model),['inclusionai/ling-3.2-flash:free','google/gemma-4-26b-a4b-it:free','google/gemma-4-26b-a4b-it:free']);
  }finally{globalThis.fetch=original;}
 });
+
+test('a failed provider cannot disable other free models, and consecutive player turns remain valid',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// multi-turn recovery'))).default;
+ const original=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,init)=>{
+  const body=JSON.parse(init.body);seen.push(body);
+  if(seen.length===1)return Response.json({error:{code:429,metadata:{limit_source:'upstream_provider_shared_pool'}}},{status:429,headers:{'retry-after':'60'}});
+  if(seen.length===2)return Response.json({choices:[{finish_reason:'length',message:{content:'未完成的半句'}}]});
+  assert.deepEqual(body.messages.map(m=>m.role),['system','user','assistant','user']);
+  assert.match(body.messages[0].content,/开场白/);
+  assert.equal(body.messages[1].content,'继续\n\n继续聊');
+  return Response.json({choices:[{finish_reason:'stop',message:{content:'完整模型回复'}}]});
+ };
+ const request=()=>new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.68'},body:JSON.stringify({max_tokens:180,messages:[{role:'system',content:'虚构成年歌手'},{role:'assistant',content:'开场白'},{role:'user',content:'继续'},{role:'user',content:'继续聊'},{role:'assistant',content:'聊聊音乐吧'},{role:'user',content:'你在说什么'}]})});
+ try{
+  const env={ROLE_OPENROUTER_FREE_TOKEN:'fixture-only'};
+  for(let i=0;i<3;i++){const res=await worker.fetch(request(),env);assert.equal(res.status,200);assert.equal((await res.json()).text,'完整模型回复');}
+  assert.equal(seen.length,5);assert.equal(seen[2].model,'openrouter/free');assert.equal(seen[3].model,'openrouter/free');assert.equal(seen[4].model,'openrouter/free');
+ }finally{globalThis.fetch=original;}
+});

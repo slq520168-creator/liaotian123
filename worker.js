@@ -33,10 +33,24 @@ const CHAT_ROUTES=[
  {id:'ovh-mistral',host:'ovh',url:'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',model:'Mistral-Small-3.2-24B-Instruct-2506',timeout:13000},
  {id:'llm7-gpt',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b',reasoning:true,timeout:14000}
 ];
-const cooldowns=new Map(),modelCooldowns=new Map();
+const cooldowns=new Map(),modelCooldowns=new Map();let lastWorkingRouter='';
+function normalizeTurns(messages){
+ const result=[{...messages[0]}],opening=[];
+ for(const message of messages.slice(1)){
+  if(result.length===1&&message.role==='assistant'){opening.push(message.content);continue;}
+  const last=result.at(-1);
+  if(last.role===message.role&&message.role!=='system')last.content+='\n\n'+message.content;
+  else result.push({...message});
+ }
+ if(opening.length)result[0].content+='\n此前角色开场白（对话历史）：\n'+opening.join('\n');
+ return result;
+}
+function routerModelFailure(error){return error.message==='empty_visible_reply'||error.message==='incomplete_visible_reply'||[400,404].includes(error.status)||error.limitSource==='upstream_provider_shared_pool'||error.name==='AbortError'||error.name==='TypeError'||(error.status>=500&&error.status<=599);}
+function setModelCooldown(provider,error){modelCooldowns.set(provider.id,Date.now()+(error.cooldown|| (error.status===404?120:15))*1000);}
+
 function retrySeconds(raw){if(!raw)return 30;const n=Number(raw);const seconds=Number.isFinite(n)?n:(Date.parse(raw)-Date.now())/1000;return Number.isFinite(seconds)?Math.max(1,Math.ceil(seconds)):30;}
-function providerError(status,retryAfter){
- const error=Object.assign(Error('upstream_http_'+status),{status});
+function providerError(status,retryAfter,envelope){
+ const error=Object.assign(Error('upstream_http_'+status),{status,limitSource:typeof envelope?.metadata?.limit_source==='string'?envelope.metadata.limit_source:''});
  if(status===429||status===402)error.cooldown=retrySeconds(retryAfter);
  else if(status===401||status===403)error.cooldown=60;
  else if(status>=500&&status<=599)error.cooldown=10;
@@ -74,16 +88,17 @@ async function model(messages,requested,provider,deadline,signal,token){
   // Workers rejects redirect:'error' before sending a request. Use manual mode and reject redirects explicitly; never forward credentials to a redirected host.
   if(response.status>=300&&response.status<400)throw Object.assign(Error('upstream_redirect_rejected'),{status:response.status});
   if(!response.ok){
-   throw providerError(response.status,response.headers.get('retry-after'));
+   let envelope;try{envelope=(await response.json())?.error;}catch{}
+   throw providerError(response.status,response.headers.get('retry-after'),envelope);
   }
   const data=await response.json(),choice=data?.choices?.[0];
   // Some OpenAI-compatible providers return an error envelope with HTTP 200.
   const envelope=data?.error||choice?.error;
-  if(envelope){const status=Number(envelope.code??envelope.status);throw providerError(Number.isInteger(status)&&status>=400&&status<=599?status:502,response.headers.get('retry-after'));}
+  if(envelope){const status=Number(envelope.code??envelope.status);throw providerError(Number.isInteger(status)&&status>=400&&status<=599?status:502,response.headers.get('retry-after'),envelope);}
   const content=choice?.message?.content;
   const text=typeof content==='string'?content:Array.isArray(content)?content.filter(x=>x?.type==='text'&&typeof x.text==='string').map(x=>x.text).join('\n'):'';
-  if(text.trim()&&text.length<=30000)return text.trim();
   if(choice?.finish_reason==='content_filter'||choice?.message?.refusal)throw Object.assign(Error('content_filtered'),{filtered:true});
+  if(text.trim()&&text.length<=30000){if(choice?.finish_reason==='length'&&requested<=512)throw Error('incomplete_visible_reply');return text.trim();}
   throw Error('empty_visible_reply');
  }finally{clearTimeout(timeout);signal?.removeEventListener?.('abort',cancel);}
 }
@@ -95,7 +110,8 @@ export default{async fetch(req,env){
   const origin=req.headers.get('origin');if(origin&&origin!==url.origin)return out(403,{ok:false,error:'origin_mismatch'});
   if(Number(req.headers.get('content-length')||0)>440000)return out(413,{ok:false,error:'request_too_large'});
   let payload;try{const body=await req.text();if(body.length>70000)return out(413,{ok:false,error:'request_too_large'});payload=JSON.parse(body);}catch{return out(400,{ok:false,error:'invalid_json'});}
-  const messages=valid(payload);if(!messages)return out(400,{ok:false,error:'invalid_messages'});
+  const input=valid(payload);if(!input)return out(400,{ok:false,error:'invalid_messages'});
+  const messages=normalizeTurns(input);
   const retryAfter=shouldThrottle(req,Date.now());
   if(retryAfter)return out(429,{ok:false,error:'temporarily_busy'},{'retry-after':String(retryAfter),'x-role-chat-limiter':'site'});
   inFlight++;
@@ -103,6 +119,8 @@ export default{async fetch(req,env){
    const requested=Math.max(180,Math.min(4096,Math.floor(Number(payload.max_tokens)||400)));
    const deadline=Date.now()+42000,attempted=[],eligibleHosts=new Set(),quotaHosts=new Set();
    const routes=CHAT_ROUTES.map(provider=>{const secret=provider.secret||(provider.host==='llm7'?'ROLE_LLM7_FREE_TOKEN':'');return {provider,token:secret?String(env[secret]||'').trim():'',secret};}).filter(x=>(!x.secret||x.token)&&(!x.provider.binding||(env.ROLE_CF_AI_FREE==='1'&&typeof env.AI?.run==='function')));
+   // Prefer the last successful zero-price model, avoiding repeated failed probes every turn.
+   if(lastWorkingRouter){const i=routes.findIndex(x=>x.provider.id===lastWorkingRouter);const first=routes.findIndex(x=>x.provider.host==='openrouter');if(i>first&&first>=0)routes.splice(first,0,...routes.splice(i,1));}
    for(const {provider} of routes)eligibleHosts.add(provider.host);
    for(const {provider,token} of routes){
     if(req.signal?.aborted||Date.now()>deadline-1000)break;
@@ -113,12 +131,12 @@ export default{async fetch(req,env){
      attempted.push(provider.id+':cooldown_'+(state.status||'transport'));
      continue;
     }
-    try{return out(200,{ok:true,text:await (provider.binding?nativeModel(messages,requested,provider,deadline,req.signal,env):model(messages,requested,provider,deadline,req.signal,token))},{'x-role-chat-provider':provider.id});}
+    try{const text=await (provider.binding?nativeModel(messages,requested,provider,deadline,req.signal,env):model(messages,requested,provider,deadline,req.signal,token));if(provider.host==='openrouter')lastWorkingRouter=provider.id;return out(200,{ok:true,text},{'x-role-chat-provider':provider.id});}
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
      if(req.signal?.aborted)break;
      // Empty output or unavailable model is model-specific, not an account quota failure.
-     if(provider.host==='openrouter'&&(e.message==='empty_visible_reply'||[400,404].includes(e.status))){modelCooldowns.set(provider.id,Date.now()+60000);attempted.push(provider.id+':'+(e.status?'http_'+e.status:'empty_reply'));continue;}
+     if(provider.host==='openrouter'&&routerModelFailure(e)){setModelCooldown(provider,e);attempted.push(provider.id+':'+(e.status?'http_'+e.status:e.name==='AbortError'?'timeout':e.message==='empty_visible_reply'?'empty_reply':e.message==='incomplete_visible_reply'?'incomplete_reply':'transport_error'));continue;}
      if(!e.cooldown&&(e.name==='AbortError'||e.name==='TypeError'))e.cooldown=8;
      if(e.cooldown){const quota=e.status===429||e.status===402;cooldowns.set(provider.host,{until:Date.now()+e.cooldown*1000,quota,status:e.status||0});if(quota)quotaHosts.add(provider.host);}
      else quotaHosts.delete(provider.host);

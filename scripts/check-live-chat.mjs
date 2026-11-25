@@ -20,11 +20,11 @@ const source=await fs.readFile(new URL('../app.js',import.meta.url),'utf8');
 const roleSource=await fs.readFile(new URL('../roles.js',import.meta.url),'utf8');
 const memorySource=await fs.readFile(new URL('../memory.js',import.meta.url),'utf8');
 const section=(a,b)=>{const start=source.indexOf(a),end=source.indexOf(b,start);assert.ok(start>=0&&end>start);return source.slice(start,end);};
-const ctx=vm.createContext({window:{},document:{getElementById:()=>null},CHAT_LIMITS:{system:24000,message:30000,history:12000},replyLength:'auto',chatStyle:'daily',playerProfile:{name:'',about:''},roleMemories:{},previousVisits:{},chatHistories:{},ROLE_SCENES:{default:'延续当前剧情'},currentRoleScene:()=> 'default',validPortraitMessage:()=>false});
+const ctx=vm.createContext({window:{},document:{getElementById:()=>null},CHAT_LIMITS:{system:24000,message:30000,history:12000},replyLength:'auto',chatStyle:'mature',playerProfile:{name:'',about:''},roleMemories:{},previousVisits:{},chatHistories:{},ROLE_SCENES:{default:'延续当前剧情'},currentRoleScene:()=> 'default',validPortraitMessage:()=>false});
 vm.runInContext(roleSource+'\n'+memorySource+'\n'+section('function replyProfile(', '\n// Pace the presentation')+'\n'+
-  'globalThis.liveRole=ORIGINAL_ANIME_ROLES.find(c=>c.id==="anime_fashion_velvet");',ctx);
+  'globalThis.liveRole=ORIGINAL_ANIME_ROLES.find(c=>c.id==="anime_fashion_violet");',ctx);
 assert.ok(ctx.liveRole,'actual anime role not found');
-ctx.chatHistories[ctx.liveRole.id]=[{sender:'bot',text:ctx.liveRole.greeting},{sender:'user',text:'你好，今天有什么有趣的事？'}];
+ctx.chatHistories[ctx.liveRole.id]=[{sender:'bot',text:ctx.liveRole.greeting},{sender:'user',text:'继续'},{sender:'user',text:'继续聊'}];
 const payload={messages:ctx.buildRequestMessages(ctx.liveRole),max_tokens:180};
 assert.ok(payload.messages[0].content.includes(ctx.liveRole.name)&&payload.messages[0].content.includes(ctx.liveRole.personality),'real persona lost in request builder');
 const start=Date.now();
@@ -42,11 +42,17 @@ if(response.status!==200){
 }
 assert.equal(response.status,200,'production chat did not return HTTP 200');
 assert.ok(data.ok===true&&typeof data.text==='string'&&data.text.trim().length>0,'no real visible reply');
-ctx.chatHistories[ctx.liveRole.id].push({sender:'bot',text:data.text},{sender:'user',text:'你平时最喜欢做什么？'});
+ctx.chatHistories[ctx.liveRole.id].push({sender:'bot',text:data.text},{sender:'user',text:'你在说什么？'});
 const followStart=Date.now();
 const follow=await fetch(base+'/api/chat',{method:'POST',headers:{'content-type':'application/json','origin':base},body:JSON.stringify({messages:ctx.buildRequestMessages(ctx.liveRole),max_tokens:180}),signal:AbortSignal.timeout(50000)});
 const followData=await follow.json();
 assert.equal(follow.status,200,'second real role message failed');
 assert.ok(followData.ok===true&&typeof followData.text==='string'&&followData.text.trim(),'second reply empty');
 console.log(JSON.stringify({actualRole:ctx.liveRole.id,rounds:2,followHttp:follow.status,followElapsedMs:Date.now()-followStart,followReplyChars:followData.text.trim().length}));
+ctx.chatHistories[ctx.liveRole.id].push({sender:'bot',text:followData.text},{sender:'user',text:'那你今天准备唱什么歌？'});
+const thirdStart=Date.now(),third=await fetch(base+'/api/chat',{method:'POST',headers:{'content-type':'application/json','origin':base},body:JSON.stringify({messages:ctx.buildRequestMessages(ctx.liveRole),max_tokens:180}),signal:AbortSignal.timeout(50000)});
+const thirdData=await third.json();
+console.log(JSON.stringify({actualRole:ctx.liveRole.id,round:3,http:third.status,elapsedMs:Date.now()-thirdStart,replyChars:typeof thirdData.text==='string'?thirdData.text.trim().length:0,provider:third.headers.get('x-role-chat-provider'),diagnostic:third.headers.get('x-role-chat-diagnostic')}));
+assert.equal(third.status,200,'third actual role message failed');
+assert.ok(thirdData.ok===true&&typeof thirdData.text==='string'&&thirdData.text.trim(),'third reply empty');
 console.log('Production role-chat real completion: PASS');
