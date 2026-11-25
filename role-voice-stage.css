@@ -72,3 +72,5 @@
 @keyframes roleEmojiFloat{0%{opacity:0;transform:translateY(10px) scale(.58)}18%{opacity:1;transform:translateY(0) scale(1.08)}72%{opacity:1;transform:translateY(-12px) scale(1)}100%{opacity:0;transform:translateY(-26px) scale(.82)}}
 @keyframes roleVoiceBar{from{height:4px}to{height:16px}}
 @keyframes roleBgAngry{0%,100%{transform:scale(1.02) translateX(0)}25%{transform:scale(1.02) translateX(-3px)}75%{transform:scale(1.02) translateX(3px)}}
+
+.role-composer-mic,.role-composer-play{flex:0 0 auto;min-width:34px;min-height:34px;padding:4px 6px;border:1px solid #625077;border-radius:10px;color:#f4eaff;background:#30243f;font-size:12px;cursor:pointer}.role-composer-mic.active{background:#ab76fc;color:#1d102c}.role-reply-read{font-size:11px;color:#c6a9f5;background:transparent;border:0;padding:3px 7px;cursor:pointer}.role-voice-note{color:#ddc9f9}.role-voice-controls{grid-template-columns:auto minmax(0,1fr) auto}.role-voice-controls .role-voice-select{background:#30243f;color:#f4eaff}.role-voice-controls .role-voice-btn{background:#30243f;color:#f4eaff}.role-voice-controls .role-voice-btn.active{background:#ab76fc;color:#1d102c}

@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION = '20261026-voice4';
+  const VERSION = '20261125-voice01';
   const VOICE_PREFIX = 'liaotian_role_voice_';
   const AUTO_VOICE_KEY = 'liaotian_voice_auto';
   const by = id => document.getElementById(id);
@@ -9,7 +9,7 @@
 
   let voiceSelect = null, voiceButton = null, micButton = null, voiceNote = null;
   let voices = [], recognition = null, listening = false, voiceAuto = false;
-  let queuedVisemes = [], speechRun = 0;
+  let queuedVisemes = [], speechRun = 0, recognitionEpoch=0, listeningRole='', starting=false, speechTimer=null, currentUtterance=null;
   try { voiceAuto = localStorage.getItem(AUTO_VOICE_KEY) === '1'; } catch (error) {}
 
   function currentChar() {
@@ -71,7 +71,7 @@
   }
 
   function stopSpeaking() {
-    speechRun += 1;
+    speechRun += 1;clearTimeout(speechTimer);currentUtterance=null;
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     presence?.idle();
     queuedVisemes = [];
@@ -112,8 +112,9 @@
     return utterance;
   }
 
-  function speak(text, char, preview = false) {
-    if (!voiceAuto && !preview) return;
+  function speak(text, char, preview = false, manual = false) {
+    if (!voiceAuto && !preview && !manual) return;
+    if(!preview && char?.id!==activeCharacterId)return;
     if (!('speechSynthesis' in window)) {
       if (voiceNote) voiceNote.textContent = '当前浏览器没有语音播放功能。';
       return;
@@ -122,7 +123,8 @@
     if (!content) return;
 
     const run = ++speechRun;
-    speechSynthesis.cancel();
+    clearTimeout(speechTimer);currentUtterance=null;
+    speechSynthesis.cancel();speechSynthesis.resume?.();
     const visemes = takeVisemes();
     const chunks = speechChunks(content, visemes.length > 0);
     const voice = selectedVoice();
@@ -130,6 +132,7 @@
 
     const finish = () => {
       if (run !== speechRun) return;
+      clearTimeout(speechTimer);currentUtterance=null;
       presence?.idle();
       queuedVisemes = [];
       if (voiceNote) voiceNote.textContent = '';
@@ -137,7 +140,8 @@
 
     const play = index => {
       if (run !== speechRun || index >= chunks.length) return;
-      const utterance = buildUtterance(chunks[index], char, voice);
+      const utterance = buildUtterance(chunks[index], char, voice);currentUtterance=utterance;
+      clearTimeout(speechTimer);speechTimer=setTimeout(()=>{if(run!==speechRun)return;stopSpeaking();if(voiceNote)voiceNote.textContent='系统语音未响应，请点击朗读重试。';},Math.max(12000,chunks[index].length*350));
       utterance.onboundary = event => {
         if (run !== speechRun) return;
         if (char?.id !== activeCharacterId) return;
@@ -158,8 +162,8 @@
         if (index + 1 < chunks.length) setTimeout(() => play(index + 1), 0);
         else finish();
       };
-      utterance.onerror = () => finish();
-      speechSynthesis.speak(utterance);
+      utterance.onerror = () => {if(run!==speechRun)return;finish();if(voiceNote)voiceNote.textContent='语音播放失败，请点击朗读重试。';};
+      try{speechSynthesis.speak(utterance)}catch{finish();if(voiceNote)voiceNote.textContent='当前系统语音无法播放。';}
     };
 
     play(0);
@@ -187,16 +191,18 @@
       if (voiceAuto) speak('', currentChar(), true);
     });
     micButton = document.createElement('button');
-    micButton.type = 'button'; micButton.className = 'role-mic-btn'; micButton.textContent = '🎙 说话'; micButton.setAttribute('aria-label', '开始语音输入');
+    micButton.type = 'button'; micButton.className = 'role-mic-btn'; micButton.textContent = '🎙'; micButton.setAttribute('aria-label', '开始语音输入');
     micButton.addEventListener('click', toggleRecognition);
     wrap.append(label, voiceSelect, voiceButton, micButton);
     tools.appendChild(wrap);
+    const area=document.querySelector('.composer-row .input-area');
+    if(area){micButton.classList.add('role-composer-mic');area.insertBefore(micButton,by('userInput'));const play=document.createElement('button');play.type='button';play.className='role-composer-play';play.textContent='朗读';play.setAttribute('aria-label','朗读最近一条角色回复');play.addEventListener('click',()=>{const char=currentChar(),last=(chatHistories[char?.id]||[]).findLast(m=>m.sender==='bot'&&!m.kind);if(last)speak(last.text,char,false,true);});area.insertBefore(play,by('userInput'));}
     voiceNote = document.createElement('div');
     voiceNote.className = 'role-voice-note'; voiceNote.setAttribute('role', 'status');
-    tools.insertAdjacentElement('afterend', voiceNote);
+    document.querySelector('.input-container')?.appendChild(voiceNote);
     if (!('speechSynthesis' in window)) { voiceSelect.disabled = true; voiceButton.disabled = true; }
     loadVoices();
-    if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = loadVoices;
+    if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged',loadVoices);
     syncVoiceSelection();
   }
 
@@ -204,41 +210,45 @@
   function toggleRecognition() {
     const Ctor = recognitionCtor();
     if (!Ctor) { if (voiceNote) voiceNote.textContent = '当前浏览器不支持语音输入。'; return; }
-    if (listening && recognition) { recognition.stop(); return; }
+    if ((listening||starting) && recognition) { stopRecognition(); return; }
+    if(pendingReplies.has(activeCharacterId)){if(voiceNote)voiceNote.textContent='请等当前回复结束。';return;}
     stopSpeaking();
-    recognition = new Ctor();
+    const epoch=++recognitionEpoch;listeningRole=activeCharacterId;starting=true;
+    recognition = new Ctor();const instance=recognition;const valid=()=>epoch===recognitionEpoch&&instance===recognition&&listeningRole===activeCharacterId;
+    let finalText='',sent=false;
     const voice = selectedVoice();
-    recognition.lang = voice?.lang || navigator.language || 'zh-CN';
+    recognition.lang = navigator.language?.startsWith('zh')?navigator.language:'zh-CN';
     recognition.interimResults = true; recognition.continuous = false; recognition.maxAlternatives = 1;
     recognition.onstart = () => {
-      listening = true; presence?.listen(); micButton?.classList.add('active');
+      if(!valid())return;starting=false;listening = true; presence?.listen(); micButton?.classList.add('active');
       if (micButton) micButton.textContent = '■ 停止'; if (voiceNote) voiceNote.textContent = '正在听…';
     };
     recognition.onresult = event => {
+      if(!valid()||sent)return;
       let final = '', interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const text = event.results[i][0]?.transcript || '';
         if (event.results[i].isFinal) final += text; else interim += text;
       }
       if (interim && by('userInput')) { by('userInput').value = interim; by('userInput').dispatchEvent(new Event('input', {bubbles:true})); }
-      if (final && by('userInput')) {
-        by('userInput').value = final.trim(); by('userInput').dispatchEvent(new Event('input', {bubbles:true}));
-        setTimeout(() => { if (by('userInput').value.trim() && typeof handleSendMessage === 'function') handleSendMessage(); }, 120);
-      }
+      if(final)finalText+=final;
+      if(by('userInput')&&(finalText||interim)){by('userInput').value=(finalText+interim).trim();by('userInput').dispatchEvent(new Event('input',{bubbles:true}));}
     };
-    recognition.onerror = event => { if (voiceNote) voiceNote.textContent = event.error === 'not-allowed' ? '需要允许麦克风权限才能语音聊天。' : '语音没有听清，请再试一次。'; };
+    recognition.onerror = event => { if(!valid())return;finalText='';if (voiceNote) voiceNote.textContent = event.error === 'not-allowed' ? '需要允许麦克风权限才能语音聊天。' : '语音没有听清，请再试一次。'; };
     recognition.onend = () => {
-      listening = false; presence?.idle(); micButton?.classList.remove('active');
-      if (micButton) micButton.textContent = '🎙 说话'; if (voiceNote?.textContent === '正在听…') voiceNote.textContent = '';
+      if(!valid())return;starting=false;listening = false; recognition=null;presence?.idle(); micButton?.classList.remove('active');
+      if (micButton) micButton.textContent = '🎙'; if (voiceNote?.textContent === '正在听…') voiceNote.textContent = '';
+      if(finalText.trim()&&!sent&&!pendingReplies.has(activeCharacterId)){sent=true;by('userInput').value=finalText.trim();by('userInput').dispatchEvent(new Event('input',{bubbles:true}));handleSendMessage();}
     };
-    try { recognition.start(); } catch (error) { presence?.idle(); if (voiceNote) voiceNote.textContent = '语音输入暂时无法启动。'; }
+    try { recognition.start(); } catch (error) { stopRecognition();presence?.idle(); if (voiceNote) voiceNote.textContent = '语音输入暂时无法启动。'; }
   }
 
+  function stopRecognition(){recognitionEpoch++;starting=false;listening=false;const old=recognition;recognition=null;try{old?.abort()}catch{}micButton?.classList.remove('active');if(micButton)micButton.textContent='🎙';}
   function patchCharacterSwitch() {
     if (typeof switchCharacter !== 'function' || switchCharacter.__liveStage) return;
     const base = switchCharacter;
     const wrapped = function(...args) {
-      stopSpeaking();
+      stopRecognition();stopSpeaking();
       const result = base.apply(this, args);
       syncVoiceSelection();
       return result;
@@ -255,7 +265,7 @@
       try {
         const result = await base.call(this, char, ...args);
         const last = (chatHistories[char.id] || []).at(-1);
-        if (last?.sender === 'bot' && last.id && last.id !== before) {
+        if (char.id===activeCharacterId && !document.body.classList.contains('role-discovery-open') && last?.sender === 'bot' && last.id && last.id !== before) {
           if (voiceAuto) speak(last.text, char, false); else presence?.idle();
         } else presence?.idle();
         return result;
@@ -276,6 +286,7 @@
     if (typeof characters === 'undefined' || typeof switchCharacter !== 'function' || typeof requestCharacterReply !== 'function') return setTimeout(boot, 80);
     removeLegacyFakeStage();
     patchCharacterSwitch(); patchReplies(); installVoiceControls();
+    document.addEventListener('visibilitychange',()=>{if(document.hidden){stopRecognition();stopSpeaking();}});
     presence?.idle();
     window.__ROLE_VOICE_STAGE_VERSION = VERSION;
   }
@@ -283,7 +294,8 @@
   window.RoleVoiceStage=Object.freeze({
     preview:char=>speak('',char,true),
     enable(value=true){voiceAuto=Boolean(value);saveVoiceState();syncVoiceSelection();if(!voiceAuto)stopSpeaking();return voiceAuto;},
-    stop:stopSpeaking
+    read:(text,char)=>speak(text,char,false,true),
+    stop(){stopRecognition();stopSpeaking();}
   });
   boot();
 })();

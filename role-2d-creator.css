@@ -60,7 +60,7 @@ body.r2-editor-open{overflow:hidden}
 .r2-header .r2-titles{flex:1;min-width:0}
 .r2-template-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .r2-template-card{min-width:0;overflow:hidden;border-radius:15px;border:1px solid #49375f;background:#241c31}
-.r2-template-card img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#302440}
+.r2-template-card img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#302440}.r2-template-card img.r2-full-art{object-fit:contain;object-position:center;background:radial-gradient(ellipse at 50% 35%,#604b79,#1d152c 78%)}
 .r2-template-info{padding:9px 8px;display:grid;gap:5px}
 .r2-template-info strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .r2-template-info span{color:#c1aecf;font-size:11px;line-height:1.4;min-height:2.8em}

@@ -679,6 +679,7 @@ function appendMessageToDOM(msg, char) {
   time.className = 'message-time';
   time.textContent = msg.timestamp || '';
   content.append(bubble, time);
+  if(msg.sender==='bot'&&msg.id&&!msg.id.startsWith('stream_')&&!validPortraitMessage(msg,char)&&window.RoleVoiceStage){const read=document.createElement('button');read.type='button';read.className='role-reply-read';read.textContent='朗读';read.setAttribute('aria-label','朗读这条回复');read.addEventListener('click',()=>window.RoleVoiceStage.read(msg.text,char));content.appendChild(read);}
   row.appendChild(content);
   messagesDiv.appendChild(row);
 }

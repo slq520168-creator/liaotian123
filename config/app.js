@@ -2,7 +2,7 @@
 window.LIAOTIAN_CONFIG=Object.freeze({chatApiUrl:'/api/chat',chatApiKind:'role-free'});
 (()=>{
  'use strict';
- const version='20261125-role2d82';
+ const version='20261125-voice01';
  const retiredIds=new Set(["nuannuan","linwan","sutang","xuzhixia","yeqingge","lingyi","luchen","taiyang","shenyan","guyan","jiangyu","yunzhou"]);
  window.LIAOTIAN_BUILD_VERSION=version;
  window.LIAOTIAN_3D_ONLY=false;

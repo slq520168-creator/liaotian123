@@ -8,7 +8,7 @@ const runtimeJs=[
 ];
 const staticEntries=[
   'index.html','role-discovery.js','role-story-volume-a.js','role-story-volume-b.js','role-photo-collection.js','role-story-cover-catalog.js','role-story-engine.js','role-story.css','role-2d-creator.js','role-2d-creator.css','role-discovery.css','role-chat-immersive.css','app.js','memory.js','role-code.js','roles.js','styles.css','chat-compact-ui.css',
-  'role-experience.css','role-voice-stage.css','chat-compact-ui.css','role-creator-wizard.css','role-home.css','manifest.webmanifest','apple-touch-icon.png','favicon.ico','version.json','config','roles','assets','docs'
+  'role-experience.css','role-voice-stage.js','role-speech-chunker.js','role-voice-stage.css','chat-compact-ui.css','role-creator-wizard.css','role-home.css','manifest.webmanifest','apple-touch-icon.png','favicon.ico','version.json','config','roles','assets','docs'
 ];
 
 await rm(out,{recursive:true,force:true});

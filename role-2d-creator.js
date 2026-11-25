@@ -82,7 +82,7 @@
     entryActions=text('div','r2-entry-actions');
     const entries=[
       ['realistic','写实人物','assets/role-portraits/intl-rosalie.webp'],
-      ['cartoon','卡通人物',cartoonTemplates[0].avatar],
+      ['cartoon','卡通人物',typeof characters!=='undefined'?(characters.find(c=>c.illustratedFullBody&&!c.portraitDraft)?.avatar||cartoonTemplates[0].avatar):cartoonTemplates[0].avatar],
       ['free','自由创建','＋'],
       ['import','上传角色卡 / 代码','⇧']
     ];
@@ -133,11 +133,12 @@
     }catch(e){chooserStatus.textContent=String(e?.message||'角色保存失败');chooserStatus.hidden=false}
   }
   function renderTemplates(){
-    const list=selectedStyle==='cartoon'?cartoonTemplates:(typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&!c.portraitDraft&&!c.illustratedFullBody&&(c.photoRealistic===true||/^assets\/role-portraits\/.*\.webp$/i.test(c.avatar||''))):[]);
+    const illustrated=typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&c.illustratedFullBody&&!c.portraitDraft):[];
+    const list=selectedStyle==='cartoon'?[...illustrated,...cartoonTemplates]:(typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&!c.portraitDraft&&!c.illustratedFullBody&&(c.photoRealistic===true||/^assets\/role-portraits\/.*\.webp$/i.test(c.avatar||''))):[]);
     templateGrid.replaceChildren();
     for(const item of list){
       const card=text('article','r2-template-card'),img=document.createElement('img');
-      img.src=item.avatar;img.alt=item.name;img.loading='lazy';img.decoding='async';
+      img.src=item.avatar;img.alt=item.name;img.loading='lazy';img.decoding='async';if(item.illustratedFullBody)img.classList.add('r2-full-art');
       const copy=text('div','r2-template-info');copy.append(text('strong','',item.name),text('span','',item.tag));
       const row=text('div','r2-template-actions');
       const use=text('button','r2-template-use','直接使用');use.type='button';use.addEventListener('click',()=>chooseTemplate(item,false));

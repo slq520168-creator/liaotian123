@@ -165,7 +165,7 @@
   let galleryScroll=0;
   function switchView(showLobby, updateHistory = true) {
     if(!showLobby&&!root.hidden)galleryScroll=root.scrollTop;
-    if(showLobby)closeCardPreview();
+    if(showLobby){closeCardPreview();window.RoleVoiceStage?.stop?.();}
     root.hidden = !showLobby;
     document.body.classList.toggle('role-discovery-open', showLobby);
     document.body.classList.toggle('role-chat-immersive', !showLobby);
