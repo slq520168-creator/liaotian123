@@ -47,13 +47,15 @@
       "age": 27
     },
     {
-      "path": "assets/role-portraits/anime-fashion-velvet.webp",
-      "gitBlob": "32cbf8f80da67f8e8a019fe81f8b19728d642031",
+      "path": "assets/role-portraits/anime-angle-velvet.webp",
+      "gitBlob": "2b12070903f71d6b9ec2d1122e1f256c1a09aa9d",
       "character": "anime_fashion_velvet",
       "age": 32,
       "generator": "OpenAI image generation",
-      "width": 512,
-      "height": 512
+      "width": 768,
+      "height": 1024,
+      "pose": "回眸",
+      "previousPath": "assets/role-portraits/anime-fashion-velvet.webp"
     },
     {
       "path": "assets/role-portraits/anime-fashion-stage.webp",
@@ -110,49 +112,59 @@
       "height": 512
     },
     {
-      "path": "assets/role-portraits/anime-fashion-coast.webp",
-      "gitBlob": "924dd5f3faf3b457380d081039de9b5a822a959c",
+      "path": "assets/role-portraits/anime-angle-coast.webp",
+      "gitBlob": "743576ae9d34a1b88b54ac2bfe8c4bb830cfb73e",
       "character": "anime_fashion_coast",
       "age": 29,
       "generator": "OpenAI image generation",
-      "width": 512,
-      "height": 512
+      "width": 768,
+      "height": 1024,
+      "pose": "侧身仰望",
+      "previousPath": "assets/role-portraits/anime-fashion-coast.webp"
     },
     {
-      "path": "assets/role-portraits/anime-fashion-mika.webp",
-      "gitBlob": "b3a74aac719cc7c808a9c8a65315778a45d890bd",
+      "path": "assets/role-portraits/anime-angle-mika.webp",
+      "gitBlob": "d868e66de28ae5480d65de8e5aa6438bce1821c3",
       "character": "anime_fashion_mika",
       "age": 28,
       "generator": "OpenAI image generation",
-      "width": 512,
-      "height": 512
+      "width": 768,
+      "height": 1024,
+      "pose": "斜靠侧视",
+      "previousPath": "assets/role-portraits/anime-fashion-mika.webp"
     },
     {
-      "path": "assets/role-portraits/anime-fashion-qipao.webp",
-      "gitBlob": "9c8df7c9d1a2ef9ace21eb3023f37ca9426b341a",
+      "path": "assets/role-portraits/anime-angle-qipao.webp",
+      "gitBlob": "0bca234f9f02a019a182c7690b366357a758c359",
       "character": "anime_fashion_qipao",
       "age": 32,
       "generator": "OpenAI image generation",
-      "width": 512,
-      "height": 512
+      "width": 768,
+      "height": 1024,
+      "pose": "左侧低头",
+      "previousPath": "assets/role-portraits/anime-fashion-qipao.webp"
     },
     {
-      "path": "assets/role-portraits/anime-fashion-punk.webp",
-      "gitBlob": "675e8396d1c5398c257b5495fb4044de53661fd0",
+      "path": "assets/role-portraits/anime-angle-punk.webp",
+      "gitBlob": "a12c4c42ac066254cdb1e348264fb9f2e49c42aa",
       "character": "anime_fashion_punk",
       "age": 27,
       "generator": "OpenAI image generation",
-      "width": 512,
-      "height": 512
+      "width": 768,
+      "height": 1024,
+      "pose": "蹲姿仰视",
+      "previousPath": "assets/role-portraits/anime-fashion-punk.webp"
     },
     {
-      "path": "assets/role-portraits/anime-fashion-sapphire.webp",
-      "gitBlob": "40f4c2e73d8e2c8bde6d1eb2efd5e0f71abd3521",
+      "path": "assets/role-portraits/anime-angle-sapphire.webp",
+      "gitBlob": "ebeb052468705836b28559065fb74d9428968359",
       "character": "anime_fashion_sapphire",
       "age": 34,
       "generator": "OpenAI image generation",
-      "width": 512,
-      "height": 512
+      "width": 768,
+      "height": 1024,
+      "pose": "仰头倚靠",
+      "previousPath": "assets/role-portraits/anime-fashion-sapphire.webp"
     }
   ]
 }
