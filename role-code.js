@@ -31,7 +31,7 @@ function parseRoleData(source) {
       if (/\s/.test(text[position])) {position++; continue;}
       if (text.startsWith('//', position)) {
         position += 2;
-        while (position < text.length && !/[\r\n]/.test(text[position])) position++;
+        while (position < text.length && !/[\r\n\u2028\u2029]/.test(text[position])) position++;
         continue;
       }
       if (text.startsWith('/*', position)) {
@@ -52,10 +52,12 @@ function parseRoleData(source) {
   function expect(symbol, message) {if (!take(symbol)) fail(message);}
   function identifier() {
     skip();
-    const match = text.slice(position).match(/^[$_\p{ID_Start}][$_\u200c\u200d\p{ID_Continue}]*/u);
+    const match = text.slice(position).match(/^(?:[$_\p{ID_Start}]|\\u[\da-fA-F]{4})(?:[$_\u200c\u200d\p{ID_Continue}]|\\u[\da-fA-F]{4})*/u);
     if (!match) fail('字段名请写成 name 或 "name" 这样的形式。');
+    const key = match[0].replace(/\\u([\da-fA-F]{4})/g, (_,hex)=>String.fromCharCode(parseInt(hex,16)));
+    if (!/^[$_\p{ID_Start}][$_\u200c\u200d\p{ID_Continue}]*$/u.test(key)) fail('无效的字段名。');
     position += match[0].length;
-    return match[0];
+    return key;
   }
   function word(value) {
     skip();
@@ -75,7 +77,7 @@ function parseRoleData(source) {
       const escape = text[position++];
       const escapes = {n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', '0': '\0'};
       if (Object.hasOwn(escapes, escape)) {out += escapes[escape]; continue;}
-      if (escape === '\n' || escape === '\r') {
+      if (['\n','\r','\u2028','\u2029'].includes(escape)) {
         if (escape === '\r' && text[position] === '\n') position++;
         continue;
       }
@@ -127,7 +129,9 @@ function parseRoleData(source) {
       expect(')', '缺少结尾 )。');
       return inner;
     }
-    for (const [literal, result] of [['true', true], ['false', false], ['null', null]]) if (word(literal)) return result;
+    for (const [literal, result] of [['true', true], ['false', false], ['null', null], ['Infinity', Infinity], ['NaN', NaN]]) if (word(literal)) return result;
+    const special = text.slice(position).match(/^[+-]?(?:Infinity|NaN)\b/);
+    if (special) {position += special[0].length; return Number(special[0]);}
     const number = text.slice(position).match(/^[+-]?(?:0[xX][0-9a-f]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)/i);
     if (number) {
       position += number[0].length;
@@ -194,24 +198,22 @@ function canonicalRoleData(value) {
   if (['女', '女性', '成年女性', 'female'].includes(gender)) role.gender = 'female';
   else if (['男', '男性', '成年男性', 'male'].includes(gender)) role.gender = 'male';
   if (typeof role.age === 'string' && /^\d+\s*岁$/.test(role.age.trim())) role.age = Number(role.age.trim().replace(/\s*岁$/, ''));
-  // Preserve standard character-card fields instead of dropping description and dialogue examples.
   const str = value => typeof value === 'string' ? value.trim() : '';
-  const fields = [];
-  const description = str(data.description) || str(data.desc), personality = str(data.personality) || str(role.personality);
-  const standardCard = /^chara_card_v[23]$/i.test(String(value.spec||'')) || Object.hasOwn(data,'first_mes') || Object.hasOwn(data,'mes_example');
-  if (standardCard && description && description !== personality) fields.push('角色描述：' + description);
-  if (personality) fields.push(personality);
-  // scenario is mapped to background and passed to the chat prompt separately.
-  const example = str(data.mes_example) || str(data.example_dialogue) || str(data.exampleMessage);
-  if (example) fields.push('示例对话（参考人物语气）：' + example);
-  if (str(data.system_prompt)) fields.push('角色专属设定：' + str(data.system_prompt));
-  if (str(data.post_history_instructions)) fields.push('剧情连续性设定：' + str(data.post_history_instructions));
-  role.personality = fields.join('\n\n');
-  if (!str(role.greeting)) role.greeting = str(data.firstMessage);
-  if (!str(role.greeting) && Array.isArray(data.alternate_greetings)) role.greeting = data.alternate_greetings.find(x => typeof x === 'string' && x.trim()) || '';
-  if (!str(role.tag) && Array.isArray(data.tags)) role.tag = data.tags.filter(x => typeof x === 'string').join(' · ').slice(0,20);
-  const alternativeAvatar = str(data.image) || str(data.image_url) || str(data.avatar_url) || str(value.avatar);
-  if (!str(role.avatar) && alternativeAvatar) role.avatar = alternativeAvatar;
+  const first = (...values) => values.map(str).find(Boolean) || '';
+  role.description = first(data.description, data.desc);
+  role.personality = first(role.personality, role.description, data.system_prompt, data.scenario);
+  role.mes_example = first(data.mes_example, data.example_dialogue, data.exampleMessage);
+  for (const key of ['system_prompt','post_history_instructions']) role[key] = str(data[key]);
+  for (const key of ['alternate_greetings','tags']) {
+    if (Array.isArray(data[key])) role[key] = data[key].map(str).filter(Boolean);
+  }
+  role.greeting = first(role.greeting, data.first_mes, data.firstMessage, role.alternate_greetings?.[0]);
+  role.background = first(role.background, data.scenario);
+  if (!str(role.tag) && role.tags?.length) role.tag = role.tags.join(' · ');
+  const images = [data.avatar,data.image,data.image_url,data.avatar_url,value.avatar,role.avatar];
+  const avatar = images.map(src => safeAvatar(src, '')).find(Boolean);
+  if (avatar) role.avatar = avatar;
+  else delete role.avatar;
   return role;
 }
 
@@ -228,8 +230,6 @@ function parseRoleCode(source, targetId = '') {
     if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(label + '请用 { ... } 填写角色配置。');
     if (typeof item.name !== 'string' || !item.name.trim()) throw new Error(label + '缺少角色姓名，请填写 name: "角色姓名"。');
     if (typeof item.personality !== 'string' || !item.personality.trim()) throw new Error(label + '缺少角色性格，请填写 personality: "性格与人设"。');
-    if (item.personality.trim().length > CHAT_LIMITS.personality) throw new Error(label + '合并后的人设超过12000字，请精简，避免丢失角色设定。');
-    if (typeof item.greeting === 'string' && item.greeting.length > 4000) throw new Error(label + '开场白最多4000字，请精简后导入。');
     if (item.age !== undefined && (!Number.isFinite(Number(item.age)) || Number(item.age) < 18 || Number(item.age) > 100)) throw new Error('角色年龄请填写18到100岁。');
     const id = typeof item.id === 'string' && /^[a-z0-9_-]{1,70}$/i.test(item.id) ? item.id : makeId();
     return normalizeCustomCharacter({
@@ -260,7 +260,7 @@ function setRoleCodeTarget(targetId, source) {
   byId('generateRoleCodeBtn').textContent = existing ? '保存修改' : '生成角色';
   byId('generateRoleCodeBtn').title = (existing ? '保存修改' : '生成角色') + '（Ctrl/Cmd + Enter）';
   const {isPreset, ...data} = existing || {};
-  byId('roleCodeEditor').value = source !== undefined ? source : existing ? JSON.stringify(data, null, 2) : createRoleCodeTemplate();
+  byId('roleCodeEditor').value = source !== undefined ? source : existing ? JSON.stringify(data, null, 2) : '';
   byId('roleCodeEditor').scrollTop = 0;
   byId('roleCodeEditorStatus').textContent = '';
   saveRoleCodeDraft();
@@ -304,7 +304,7 @@ function renderRoleCodeControls() {
     byId('roleCodeEditor').focus();
   };
   byId('roleCodeEditor').wrap = 'soft';
-  byId('roleCodeEditor').placeholder = "例如 { 姓名: '小雨', 性格: '成熟坦率，喜欢读书' }；也支持 name/personality、JSON 和 JS 对象";
+  byId('roleCodeEditor').placeholder = "例如 { 姓名: '小雨', 性格: '成熟坦率，喜欢读书' }；支持 PNG 角色卡、JSON、JSON5、JS 对象和 TXT 文件";
 }
 
 function useRoleCodeTemplate() {

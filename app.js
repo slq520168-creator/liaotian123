@@ -113,23 +113,37 @@ function normalizeCustomCharacter(value) {
       if(serialized.length<=16000)visualRecipe=JSON.parse(serialized);
     }
   } catch {}
+  const imported = value.roleSource === 'code';
+  const field = (key, limit) => {
+    const text = typeof value[key] === 'string' ? value[key].trim() : '';
+    return imported ? text : text.slice(0, limit);
+  };
+  const cardFields = {};
+  if (imported) {
+    for (const key of ['description','mes_example','system_prompt','post_history_instructions']) {
+      if (typeof value[key] === 'string' && value[key].trim()) cardFields[key] = value[key].trim();
+    }
+    for (const key of ['tags','alternate_greetings']) {
+      if (Array.isArray(value[key])) cardFields[key] = value[key].filter(text => typeof text === 'string' && text.trim());
+    }
+  }
   return {
     id: value.id, isPreset: false,
     ...(value.roleKind==='2d'?{roleKind:'2d'}:{}),
     ...(value.roleSource==='code'?{roleSource:'code'}:{}),
     ...(typeof value.templateOrigin==='string'&&/^[a-z0-9_-]{1,80}$/i.test(value.templateOrigin)?{templateOrigin:value.templateOrigin}:{}),
     ...(visualRecipe?{visualRecipe}:{}),
-    name: value.name.trim().slice(0, value.roleSource==='code'?64:12), tag: value.tag.trim().slice(0, 20),
-    greeting: value.greeting.trim().slice(0, value.roleSource==='code'?4000:300),
-    personality: value.personality.trim().slice(0, CHAT_LIMITS.personality),
+    ...cardFields,
+    name: field('name', 12), tag: field('tag', 20),
+    greeting: field('greeting', 300), personality: field('personality', CHAT_LIMITS.personality),
     avatar: safeAvatar(value.avatar),
     video: typeof value.video === 'string' && /^https:\/\/[^\s]{1,900}$/i.test(value.video.trim()) ? value.video.trim() : '',
     gender: ['male', 'female', 'unspecified'].includes(value.gender) ? value.gender : 'unspecified',
     age: Number.isFinite(Number(value.age)) && Number(value.age) >= 18 ? Math.min(100, Math.floor(Number(value.age))) : 24,
-    voice: typeof value.voice === 'string' && value.voice.trim() ? value.voice.trim().slice(0, 240) : '忠实使用用户设定的性格和说话风格，保持自然、尊重和体贴。',
-    interests: typeof value.interests === 'string' ? value.interests.trim().slice(0, 240) : '',
-    relationship: typeof value.relationship === 'string' ? value.relationship.trim().slice(0, 300) : '',
-    background: typeof value.background === 'string' ? value.background.trim().slice(0, 600) : '',
+    voice: field('voice', 240) || '忠实使用用户设定的性格和说话风格，保持自然、尊重和体贴。',
+    interests: field('interests', 240) || '',
+    relationship: field('relationship', 300) || '',
+    background: field('background', 600) || '',
     conversation: value.conversation && typeof value.conversation === 'object' && !Array.isArray(value.conversation) ? Object.fromEntries(Object.entries(value.conversation).filter(([key, text]) => key.length < 20 && typeof text === 'string').slice(0, 8).map(([key, text]) => [key, text.slice(0, 300)])) : null,
     quickReplies: Array.isArray(value.quickReplies) && value.quickReplies.some(x => typeof x === 'string' && x.trim()) ? value.quickReplies.filter(x => typeof x === 'string' && x.trim()).slice(0, 12).map(x => x.slice(0, 100)) : ['你好，认识一下', '今天想找你聊聊', '说说你喜欢的事', '听听我的心事', '我有件开心的事', '讲一个有意思的小故事']
   };
@@ -777,19 +791,22 @@ function replyProfile(latest, preference, storyActive = false) {
 }
 function expandRoleCardText(text,char){
   if(char.roleSource!=='code')return text;
-  return String(text).replace(/\{\{\s*char\s*\}\}/gi,()=>char.name).replace(/\{\{\s*user\s*\}\}/gi,()=>playerProfile.name||'你');
+  return String(text).replace(/\{\{\s*(char|user)\s*\}\}/gi,(_,key)=>key.toLowerCase()==='char'?char.name:playerProfile.name||'你');
 }
 function buildSystemPrompt(char) {
   const gender = char.gender === 'male' ? '成年男性' : char.gender === 'female' ? '成年女性' : '成年角色';
   const scenes = char.conversation && typeof char.conversation === 'object' ?
     Object.entries(char.conversation).filter(([, value]) => typeof value === 'string').map(([key, value]) => key + '：' + value).join('\n') : ROLE_REPLY_SCENES.join('\n');
+  const settings = [
+    ['角色描述',char.description !== char.personality ? char.description : ''],
+    ['性格',char.personality], ['说话风格',char.voice], ['兴趣',char.interests],
+    ['角色背景（虚构设定）',char.background], ['相处方式',char.relationship],
+    ['示例对话',char.mes_example], ['角色专属设定',char.system_prompt]
+  ].filter(([,value])=>value).map(([label,value])=>label+'：'+expandRoleCardText(value,char)).join('\n');
   const base = ROLE_CHAT_RULES.join('\n') + '\n当前角色：' + char.name + '，' + char.age + '岁，' + gender +
-    '。\n性格：' + expandRoleCardText(char.personality,char) + '\n说话风格：' + char.voice +
-    (char.interests ? '\n兴趣：' + char.interests : '') +
-    (char.background ? '\n角色背景（虚构设定）：' + char.background : '') +
-    (char.relationship ? '\n相处方式：' + char.relationship : '') +
+    '。\n' + settings +
     '\n当前虚构场景：' + ROLE_SCENES[currentRoleScene(char.id)] + '。继续原先剧情、关系和事实，不重新开始。' +
-    '\n不同情境的接话方式（用来理解性格，不是固定回复，不要照着念）：\n' + scenes +
+    '\n不同情境的接话方式（用来理解性格，不是固定回复，不要照着念）：\n' + expandRoleCardText(scenes,char) +
     '\n本轮顺着对方正在聊的事接话。变化措辞和节奏，直接输出角色说的话，不复述这些规则。';
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const memory = ROLE_MEMORY.prompt(roleMemories[char.id] || ROLE_MEMORY.normalize(null), playerProfile, latest, previousVisits[char.id]);
@@ -802,7 +819,15 @@ function buildSystemPrompt(char) {
   const preferences = roleMemories[char.id]?.preferences.join(' ') || '';
   const noQuestion = /(?:不要|别|少|不用).{0,16}(?:追问|反问|问号|问题)/.test(preferences) || /[？?]\s*$/.test(lastBot) && !/[？?]\s*$/.test(latest);
   const styleRule = '\n当前聊天风格：' + ROLE_CHAT_STYLES[chatStyle].label + '。\n' + ROLE_CHAT_STYLES[chatStyle].rules.join('\n');
-  return (base + (plotRule?'\n'+plotRule:'') + styleRule + '\n' + lengthRule + '\n回复排版紧凑，必要时使用单次换行，段落之间不插入空白行。' + (noQuestion ? '\n本轮不要追加追问或以问号收尾，直接接住对方说的内容。' : '') + memory.slice(0, 4000)).slice(0, CHAT_LIMITS.system - 350) + '\n表情可选：🤭、👀、😌、(≧◡≦)、(*ﾉωﾉ)、(｡•̀ᴗ-)✧、(╥﹏╥)。按性格和情绪偶尔使用一个，不堆叠、不照搬。\n最终本轮输出要求：' + lengthRule;
+  const isCard=char.roleSource==='code';
+  const context = isCard ? '你正在扮演虚构的成年角色'+char.name+'，'+char.age+'岁。用角色自己的身份和语气直接回应玩家，延续已有对话和记忆。' : base + (plotRule?'\n'+plotRule:'') + styleRule + '\n' + lengthRule +
+    '\n回复排版紧凑，必要时换行。' + (noQuestion?'本轮直接接话，不追加追问。':'');
+  const ending = (isCard ? '\n'+settings : '\n表情可选：🤭、👀、😌。按性格和情绪偶尔使用一个。\n最终本轮输出要求：' + lengthRule) +
+    (char.post_history_instructions?'\n剧情连续性设定：'+expandRoleCardText(char.post_history_instructions,char):'');
+  const room = CHAT_LIMITS.system - context.length - ending.length;
+  if (room < 0) throw new Error('角色设定展开后超出聊天接口容量，请缩短人设、背景或示例后保存。');
+  return context + memory.slice(0,Math.min(4000,room)) + ending;
+
 }
 
 function buildRequestMessages(char) {
@@ -864,7 +889,7 @@ async function requestCharacterReply(char) {
   const latest = (chatHistories[char.id] || []).filter(msg => msg.sender === 'user').at(-1)?.text || '';
   const profile = replyProfile(latest, replyLength, Boolean(window.RoleStory?.has?.(char.id) && typeof document !== 'undefined' && document.getElementById('roleStoryPanel')?.hidden === false));
   const longRequest = profile.extended;
-  const job = {controller, timedOut: false, text: '', messages: buildRequestMessages(char), maxTokens: profile.maxTokens};
+  const job = {controller, timedOut: false, text: '', messages: [], maxTokens: profile.maxTokens};
   pendingReplies.set(char.id, job);
   replyErrors.delete(char.id);
   if (activeCharacterId === char.id) {
@@ -878,6 +903,7 @@ async function requestCharacterReply(char) {
   try {
     let text = '';
     const startedAt=Date.now();
+    job.messages = buildRequestMessages(char);
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (navigator.onLine === false) throw new TypeError('offline');
@@ -916,7 +942,7 @@ async function requestCharacterReply(char) {
     if (!text.trim()) throw new Error('没有收到回复，请重试。');
     if (pendingReplies.get(char.id) !== job || !chatHistories[char.id]) return;
     clearTimeout(timer); // Network timeout must not interrupt a completed reply's display.
-    const reply = {id: makeId(), sender: 'bot', text: formatCharacterReply(text).slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()};
+    const reply = {id: makeId(), sender: 'bot', text: formatCharacterReply(char.roleSource==='code' ? expandRoleCardText(text,char) : text).slice(0, CHAT_LIMITS.reply), timestamp: getCurrentTime(), createdAt: new Date().toISOString()};
     const buffered = !job.text;
     if (buffered) {job.revealing = true; job.finalMessageId = reply.id;}
     chatHistories[char.id].push(reply);
@@ -1063,12 +1089,22 @@ function commitCustomCharacters(incoming, targetId = '') {
   roles.forEach(char => {
     if (!char) throw new Error('请补全角色姓名和性格。');
     if (ids.has(char.id)) throw new Error('角色已经存在。请在“操作角色”中选择它，再保存修改。');
+    if (char.roleSource === 'code') {
+      if (expandRoleCardText(char.greeting,char).length > CHAT_LIMITS.message) throw new Error('开场白超过聊天接口容量，请缩短后保存。');
+      buildSystemPrompt(char);
+    }
     ids.add(char.id);
   });
   const previous = {characters, activeCharacterId, chatHistories, roleMemories};
   characters = target ? characters.map(char => char.id === targetId ? roles[0] : char) : characters.concat(roles);
   chatHistories = Object.assign(Object.create(null), chatHistories);
   roleMemories = Object.assign(Object.create(null), roleMemories);
+  if (target && target.greeting !== roles[0].greeting) {
+    const thread = chatHistories[targetId];
+    if (thread?.length === 1 && thread[0].sender === 'bot') {
+      chatHistories[targetId] = [{...thread[0],text:expandRoleCardText(roles[0].greeting,roles[0])}];
+    }
+  }
   switchCharacter(roles[0].id, false);
   if (!saveDataToStorage()) {
     characters = previous.characters;

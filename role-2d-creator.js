@@ -164,6 +164,12 @@
     for(const id of ['name','tag','greeting','personality','background','interests','voice','relationship','video']){
       get('r2-'+id).value=typeof item?.[id]==='string'?item[id]:'';
     }
+    for(const id of ['name','tag','greeting','personality','background','interests','voice','relationship']){
+      const input=get('r2-'+id);
+      input.dataset.normalLimit ||= String(input.maxLength);
+      if(item?.roleSource==='code')input.removeAttribute('maxlength');
+      else input.maxLength=Number(input.dataset.normalLimit);
+    }
     get('r2-gender').value=item?.gender||'female';
     get('r2-age').value=String(item?.age||24);
     get('r2-title').textContent=editing?'编辑角色':item?'自定义人物':'自由创建';

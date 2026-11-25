@@ -377,7 +377,7 @@
     illustration.alt = char.name + '的角色形象';
     name.textContent = char.name;
     age.textContent = Number(char.age) >= 18 ? String(char.age) : '';
-    bio.textContent = String(char.hook || char.personality || char.greeting || '').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,140);
+    bio.textContent = expandRoleCardText(String(char.hook || char.personality || char.greeting || ''),char).replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,140);
     const heroScene=$('rdHeroScene'),heroTraits=$('rdHeroTraits');
     if(heroScene)heroScene.textContent=char.sceneLabel || char.headline || '';
     if(heroTraits)heroTraits.replaceChildren(...roleTraits(char).slice(0,3).map(value=>{const item=document.createElement('span');item.textContent=value;return item;}));
@@ -438,13 +438,13 @@
       const age=Number(char.age);if(Number.isFinite(age)&&age>=18){const label=document.createElement('span');label.className='rd-mini-age';label.textContent=String(age);title.append(label);}
       const role=document.createElement('span');role.className='rd-mini-role';role.textContent=story?story.title:char.headline||char.tag||'自定义角色';
       const hook=document.createElement('span');hook.className='rd-mini-hook';
-      hook.textContent=String(char.hook||char.greeting||char.personality||'').replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,88);
+      hook.textContent=expandRoleCardText(String(char.hook||char.greeting||char.personality||''),char).replace(/【角色自定义设定】[\s\S]*?【自定义设定结束】/g,'').trim().slice(0,88);
       info.append(title,role,hook);open.append(info);
       open.addEventListener('click',()=>toggleCardPreview(card));
       const panel=document.createElement('div');panel.className='rd-mini-preview';panel.hidden=true;
       const speech=document.createElement('p');speech.className='rd-mini-opening';
       // Opening text comes from the character's saved greeting or current chapter, never a fabricated live reply.
-      speech.textContent=String(story?story.chapterTitle+' · '+story.text:char.greeting||char.hook||char.personality||'').slice(0,180);
+      speech.textContent=String(story?story.chapterTitle+' · '+story.text:expandRoleCardText(char.greeting||char.hook||char.personality||'',char)).slice(0,180);
       panel.append(speech);
       const chat=document.createElement('button');chat.type='button';chat.className='rd-mini-enter';
       chat.textContent=story?(story.finished?'查看结局':story.chapter?'继续故事':'开始故事'):'开始聊天';

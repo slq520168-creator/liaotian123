@@ -21,7 +21,7 @@ function element(id) {
 }
 let generated = 0, executed = 0, quotaExceeded = false;
 const context = {
-  URL, console,
+  URL, console, expandRoleCardText: text=>text, buildSystemPrompt: ()=>'',
   DEFAULT_AVATAR: 'assets/avatars/nuannuan-portrait.jpg', MAX_AVATAR_DATA_LENGTH: 180000,
   CHAT_LIMITS: {personality: 12000}, makeId: () => 'generated_' + (++generated),
   characters: [], activeCharacterId: '', chatHistories: Object.create(null),
@@ -78,6 +78,21 @@ assert.equal(parse('{role:' + literal + '}')[0].name, '阿晴');
 assert.throws(() => parse('{姓名:"小雨",性格:"开朗",年龄:"17岁"}'), /18到100/);
 assert.equal(parse('{name:"阿晴",姓名:"其他名字",personality:"直接设定",description:"备用设定"}')[0].personality, '直接设定');
 
+const longScenario='背景'.repeat(900)+'场景末尾';
+const rich=parse(JSON.stringify({name:'航海员',personality:'果断',description:'守塔人',scenario:longScenario,
+  system_prompt:'守护灯塔',post_history_instructions:'保持潮汐表',example_dialogue:'今天风平浪静',
+  tags:['航海','灯塔'],alternate_greetings:['第二开场'],avatar:'none',image_url:'https://example.test/portrait.jpg'}))[0];
+assert.equal(rich.description,'守塔人');
+assert.equal(rich.background,longScenario);
+assert.equal(rich.mes_example,'今天风平浪静');
+assert.equal(rich.system_prompt,'守护灯塔');
+assert.equal(rich.post_history_instructions,'保持潮汐表');
+assert.equal(rich.greeting,'第二开场');
+assert.deepEqual(plain(rich.alternate_greetings),['第二开场']);
+assert.deepEqual(plain(rich.tags),['航海','灯塔']);
+assert.equal(rich.avatar,'https://example.test/portrait.jpg');
+assert.deepEqual(plain(parse(JSON.stringify(rich))[0]),plain(rich));
+
 const broken = "{\n name: '阿晴'\n personality: '成熟坦率'\n}";
 assert.throws(() => parse(broken), error => /第3行，第2列：字段之间缺少逗号/.test(error.message) && error.position === broken.indexOf('personality'));
 assert.throws(() => parse('```js\n' + broken + '\n```'), /第4行，第2列/);
@@ -89,7 +104,7 @@ for (const [source, message] of [
   ["{personality:'性格'}", /缺少角色姓名/], ["{name:'阿晴'}", /缺少角色性格/],
   ["{name:'阿晴', personality:'性格', age:17}", /18到100/],
   ["{name:'阿晴', personality:'性格', age:101}", /18到100/],
-  [JSON.stringify({name: '阿晴', personality: '字'.repeat(12001)}), /12000/],
+
   ['[]', /1到24/], [JSON.stringify(Array(25).fill(expected)), /1到24/],
   [' '.repeat(524289), /524288/],
   ['{x:' + '{x:'.repeat(65) + 'null' + '}'.repeat(66), /嵌套层数/],

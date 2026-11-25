@@ -16,10 +16,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261003-logo1">
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="stylesheet" href="styles.css?v=20261124-role2d79">
-  <link rel="stylesheet" href="role-discovery.css?v=20261125-role2d81">
+  <link rel="stylesheet" href="role-discovery.css?v=20261125-role2d82">
   <link rel="stylesheet" href="role-story.css?v=20261124-create3d68">
   <link rel="stylesheet" href="role-chat-immersive.css?v=20261124-role2d79">
-  <link rel="stylesheet" href="role-2d-creator.css?v=20261125-role2d81">
+  <link rel="stylesheet" href="role-2d-creator.css?v=20261125-role2d82">
 </head>
 <body class="role-discovery-open">
   <div class="app-container">
@@ -190,7 +190,7 @@
   <dialog id="rdPhotoDialog" class="rd-photo-dialog" aria-labelledby="rdPhotoName"><header><strong id="rdPhotoName"></strong><button type="button" id="rdPhotoClose" aria-label="关闭图片">×</button></header><div class="rd-photo-media"><img id="rdFullPhoto" alt=""><video id="rdFullVideo" controls playsinline preload="none" hidden></video><p id="rdPhotoError" hidden>人物图片暂不可用</p></div><footer><button type="button" id="rdPhotoMode" hidden>播放视频</button><button type="button" id="rdPhotoChat">开始聊天</button></footer></dialog>
   <div class="modal-overlay" id="roleCodeModalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleCodeTitle">
-      <div class="modal-header"><h2 id="roleCodeTitle">角色代码</h2><button class="icon-btn" id="closeRoleCodeBtn" type="button" aria-label="关闭角色代码">&times;</button></div>
+      <div class="modal-header"><h2 id="roleCodeTitle">上传角色卡 / 代码</h2><button class="icon-btn" id="closeRoleCodeBtn" type="button" aria-label="关闭角色代码">&times;</button></div>
       <form id="roleCodeForm" class="modal-body">
         <div id="roleCodeTargetControls" class="form-group"></div>
         <div class="role-code-toolbar">
@@ -202,7 +202,7 @@
         </div>
         <div class="form-group">
           <label for="roleCodeEditor">编写或粘贴角色代码</label>
-          <textarea class="role-code-editor" id="roleCodeEditor" rows="10" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="soft" placeholder="填写角色配置数据；支持 JSON 和 JS 对象" required></textarea>
+          <textarea class="role-code-editor" id="roleCodeEditor" rows="10" maxlength="524288" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="soft" placeholder="上传 PNG 角色卡或 JSON、JSON5、JS、TXT 文件，也可直接粘贴代码" required></textarea>
         </div>
         <p class="form-hint" id="roleCodeEditorStatus" role="alert"></p>
         <div class="modal-footer">
@@ -273,7 +273,7 @@
     </div>
   </div>
 
-  <script src="config/app.js?v=20261125-role2d81" defer></script>
+  <script src="config/app.js?v=20261125-role2d82" defer></script>
   <script src="roles.js?v=20261124-role2d79" defer></script>
   <script src="role-story-volume-a.js?v=20261124-create3d68" defer></script>
   <script src="role-story-volume-b.js?v=20261124-create3d68" defer></script>
@@ -281,9 +281,9 @@
   <script src="role-story-cover-catalog.js?v=20261124-role2d76"></script>
   <script src="role-story-engine.js?v=20261124-create3d68" defer></script>
   <script src="memory.js?v=20261124-role2d79" defer></script>
-  <script src="role-code.js?v=20261125-role2d81" defer></script>
-  <script src="app.js?v=20261125-role2d81" defer></script>
-  <script src="role-discovery.js?v=20261125-role2d81" defer></script>
-    <script src="role-2d-creator.js?v=20261125-role2d81" defer></script>
+  <script src="role-code.js?v=20261125-role2d82" defer></script>
+  <script src="app.js?v=20261125-role2d82" defer></script>
+  <script src="role-discovery.js?v=20261125-role2d82" defer></script>
+    <script src="role-2d-creator.js?v=20261125-role2d82" defer></script>
   </body>
 </html>
