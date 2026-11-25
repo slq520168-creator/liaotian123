@@ -25,13 +25,15 @@ function valid(payload){
 // Dedicated free-plan credentials only; no cross-project keys. Groq must be provisioned from an organization on its Free plan, not a paid account.
 const CHAT_ROUTES=[
  {id:'workers-ai-free',host:'workers-ai',binding:true,model:'@cf/meta/llama-3.1-8b-instruct-fast',timeout:16000},
- {id:'openrouter-free',host:'openrouter',secret:'ROLE_OPENROUTER_FREE_TOKEN',url:'https://openrouter.ai/api/v1/chat/completions',model:'openrouter/free',timeout:18000},
+ {id:'openrouter-ling-free',host:'openrouter',secret:'ROLE_OPENROUTER_FREE_TOKEN',url:'https://openrouter.ai/api/v1/chat/completions',model:'inclusionai/ling-3.2-flash:free',timeout:11000},
+ {id:'openrouter-gemma-free',host:'openrouter',secret:'ROLE_OPENROUTER_FREE_TOKEN',url:'https://openrouter.ai/api/v1/chat/completions',model:'google/gemma-4-26b-a4b-it:free',timeout:11000},
+ {id:'openrouter-free',host:'openrouter',secret:'ROLE_OPENROUTER_FREE_TOKEN',url:'https://openrouter.ai/api/v1/chat/completions',model:'openrouter/free',timeout:11000},
  {id:'groq-free',host:'groq',secret:'ROLE_GROQ_FREE_TOKEN',url:'https://api.groq.com/openai/v1/chat/completions',model:'llama-3.3-70b-versatile',timeout:12000},
  {id:'llm7-mistral',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'mistral-Nemo-Instruct-2407',timeout:13000},
  {id:'ovh-mistral',host:'ovh',url:'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',model:'Mistral-Small-3.2-24B-Instruct-2506',timeout:13000},
  {id:'llm7-gpt',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'gpt-oss:20b',reasoning:true,timeout:14000}
 ];
-const cooldowns=new Map();
+const cooldowns=new Map(),modelCooldowns=new Map();
 function retrySeconds(raw){if(!raw)return 30;const n=Number(raw);const seconds=Number.isFinite(n)?n:(Date.parse(raw)-Date.now())/1000;return Number.isFinite(seconds)?Math.max(1,Math.ceil(seconds)):30;}
 function providerError(status,retryAfter){
  const error=Object.assign(Error('upstream_http_'+status),{status});
@@ -67,8 +69,8 @@ async function model(messages,requested,provider,deadline,signal,token){
  if(signal?.aborted)cancel();else signal?.addEventListener?.('abort',cancel,{once:true});
  const timeout=setTimeout(cancel,Math.min(provider.timeout,Math.max(1,deadline-Date.now())));
  try{
-  const max_tokens=Math.max(provider.reasoning?1500:256,requested);
-  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8,...(provider.host==='openrouter'?{provider:{max_price:{prompt:0,completion:0}}}:{})}),signal:abort.signal,redirect:'manual'});
+  const max_tokens=Math.max(provider.host==='openrouter'?2048:provider.reasoning?1500:256,requested);
+  const response=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json','accept':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify({model:provider.model,messages,max_tokens,stream:false,temperature:0.8,...(provider.host==='openrouter'?{provider:{max_price:{prompt:0,completion:0}},reasoning:{enabled:false,exclude:true}}:{})}),signal:abort.signal,redirect:'manual'});
   // Workers rejects redirect:'error' before sending a request. Use manual mode and reject redirects explicitly; never forward credentials to a redirected host.
   if(response.status>=300&&response.status<400)throw Object.assign(Error('upstream_redirect_rejected'),{status:response.status});
   if(!response.ok){
@@ -104,6 +106,7 @@ export default{async fetch(req,env){
    for(const {provider} of routes)eligibleHosts.add(provider.host);
    for(const {provider,token} of routes){
     if(req.signal?.aborted||Date.now()>deadline-1000)break;
+    if((modelCooldowns.get(provider.id)||0)>Date.now()){attempted.push(provider.id+':model_cooldown');continue;}
     if((cooldowns.get(provider.host)?.until||0)>Date.now()){
      const state=cooldowns.get(provider.host);
      if(state.quota)quotaHosts.add(provider.host);
@@ -114,6 +117,8 @@ export default{async fetch(req,env){
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
      if(req.signal?.aborted)break;
+     // Empty output or unavailable model is model-specific, not an account quota failure.
+     if(provider.host==='openrouter'&&(e.message==='empty_visible_reply'||[400,404].includes(e.status))){modelCooldowns.set(provider.id,Date.now()+60000);attempted.push(provider.id+':'+(e.status?'http_'+e.status:'empty_reply'));continue;}
      if(!e.cooldown&&(e.name==='AbortError'||e.name==='TypeError'))e.cooldown=8;
      if(e.cooldown){const quota=e.status===429||e.status===402;cooldowns.set(provider.host,{until:Date.now()+e.cooldown*1000,quota,status:e.status||0});if(quota)quotaHosts.add(provider.host);}
      else quotaHosts.delete(provider.host);

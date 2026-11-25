@@ -87,7 +87,7 @@ test('Cloudflare-compatible manual redirect mode reaches the real transport and 
  }finally{globalThis.fetch=original;}
 });
 
-test('dedicated OpenRouter route requests only zero-price models; a rate-limited route falls through to independent OVH',async()=>{const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// free-router-contract'))).default;const original=globalThis.fetch,seen=[];globalThis.fetch=async(url,init)=>{seen.push({url,body:JSON.parse(init.body),auth:init.headers.authorization});return seen.length===1?new Response('{}',{status:429,headers:{'retry-after':'60'}}):Response.json({choices:[{message:{content:'测试真实回复链路'}}]});};try{const res=await worker.fetch(new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.52'},body:JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]})}),{ROLE_OPENROUTER_FREE_TOKEN:'fixture-only'});assert.equal(res.status,200);assert.equal(seen.length,2);assert.equal(seen[0].body.model,'openrouter/free');assert.equal(seen[0].body.provider.max_price.prompt,0);assert.equal(seen[0].body.provider.max_price.completion,0);assert.equal(seen[0].auth,'Bearer fixture-only');assert.match(seen[1].url,/ovh\.net/);assert.equal(seen[1].auth,undefined);}finally{globalThis.fetch=original;}});
+test('dedicated OpenRouter route requests only zero-price models; a rate-limited route falls through to independent OVH',async()=>{const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// free-router-contract'))).default;const original=globalThis.fetch,seen=[];globalThis.fetch=async(url,init)=>{seen.push({url,body:JSON.parse(init.body),auth:init.headers.authorization});return seen.length===1?new Response('{}',{status:429,headers:{'retry-after':'60'}}):Response.json({choices:[{message:{content:'测试真实回复链路'}}]});};try{const res=await worker.fetch(new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.52'},body:JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]})}),{ROLE_OPENROUTER_FREE_TOKEN:'fixture-only'});assert.equal(res.status,200);assert.equal(seen.length,2);assert.equal(seen[0].body.model,'inclusionai/ling-3.2-flash:free');assert.equal(seen[0].body.reasoning.enabled,false);assert.ok(seen[0].body.max_tokens>=2048);assert.equal(seen[0].body.provider.max_price.prompt,0);assert.equal(seen[0].body.provider.max_price.completion,0);assert.equal(seen[0].auth,'Bearer fixture-only');assert.match(seen[1].url,/ovh\.net/);assert.equal(seen[1].auth,undefined);}finally{globalThis.fetch=original;}});
 
 
 test('HTTP 200 quota envelope triggers independent Groq fallback and respects provider cooldown',async()=>{
@@ -118,7 +118,7 @@ test('provider quota reports its real retry time and diagnostic, never retries b
   const first=await worker.fetch(request(),env);
   assert.equal(first.status,429);assert.equal(first.headers.get('x-role-chat-limiter'),'upstream');
   assert.ok(Number(first.headers.get('retry-after'))>=899);
-  assert.match(first.headers.get('x-role-chat-diagnostic'),/openrouter-free:http_429/);
+  assert.match(first.headers.get('x-role-chat-diagnostic'),/openrouter-ling-free:http_429/);
   assert.match(first.headers.get('x-role-chat-diagnostic'),/ovh-mistral:http_429/);
   const second=await worker.fetch(request(),env);
   assert.equal(second.status,429);assert.match(second.headers.get('x-role-chat-diagnostic'),/cooldown_429/);
@@ -137,5 +137,18 @@ test('native binding works without external transport on confirmed free account'
   const off=await worker.fetch(request(),{AI,ROLE_CF_AI_FREE:'0'});assert.equal(off.status,429);assert.equal(native,0);
   for(let i=0;i<2;i++){const res=await worker.fetch(request(),{AI,ROLE_CF_AI_FREE:'1'});assert.equal(res.status,200);assert.equal(res.headers.get('x-role-chat-provider'),'workers-ai-free');assert.equal((await res.json()).text,'真实模型的测试响应');}
   assert.equal(native,2);assert.equal(external,1);
+ }finally{globalThis.fetch=original;}
+});
+
+test('empty completion switches to a different zero-price model and preserves the real reply',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// free-model-fallback'))).default;
+ const original=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,init)=>{const body=JSON.parse(init.body);seen.push(body);assert.equal(body.provider.max_price.prompt,0);assert.equal(body.provider.max_price.completion,0);assert.equal(body.reasoning.enabled,false);return body.model==='inclusionai/ling-3.2-flash:free'?Response.json({choices:[{finish_reason:'length',message:{content:'',reasoning:'not a visible reply'}}]}):Response.json({choices:[{message:{content:'第二条真实线路的可见回复'}}]});};
+ const request=()=>new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.65'},body:JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]})});
+ try{
+  const env={ROLE_OPENROUTER_FREE_TOKEN:'fixture-only'};
+  for(let i=0;i<2;i++){const res=await worker.fetch(request(),env);assert.equal(res.status,200);assert.equal(res.headers.get('x-role-chat-provider'),'openrouter-gemma-free');assert.equal((await res.json()).text,'第二条真实线路的可见回复');}
+  assert.deepEqual(seen.map(x=>x.model),['inclusionai/ling-3.2-flash:free','google/gemma-4-26b-a4b-it:free','google/gemma-4-26b-a4b-it:free']);
  }finally{globalThis.fetch=original;}
 });
