@@ -31,9 +31,6 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Verify real production chat completion
-        run: node scripts/check-live-chat.mjs
-
       - name: Install pinned dependencies
         run: npm install --no-audit --no-fund --package-lock=false
 
@@ -87,3 +84,7 @@ jobs:
           grep -Fq 'role-photo-collection.js' "$tmp/index.html"
           if grep -Eq 'role-avatar-stage\.js|studio-bridge\.js' "$tmp/index.html"; then echo "Retired 3D runtime still linked" >&2; exit 1; fi
           echo '2D production gallery, story engine and self-hosted photo covers verified'
+
+      - name: Verify real production chat completion
+        if: steps.cloudflare-auth.outputs.ready == 'true'
+        run: node scripts/check-live-chat.mjs

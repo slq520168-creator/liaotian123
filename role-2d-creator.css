@@ -17,7 +17,7 @@
 .r2-field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .r2-label{font-size:12px;color:#c9bdd8;font-weight:680}
 .r2-field input,.r2-field textarea,.r2-field select{
- background:#232032!important;color:#fff!important;border:1px solid #463958!important;border-radius:11px!important;padding:11px 12px!important;min-height:42px;font:inherit;font-size:14px!important;resize:vertical;outline:none;width:100%;box-sizing:border-box
+ background:#232032!important;color:#fff!important;border:1px solid #463958!important;border-radius:11px!important;padding:11px 12px!important;min-height:42px;font:inherit;font-size:16px!important;resize:vertical;outline:none;width:100%;box-sizing:border-box
 }
 .r2-field input:focus,.r2-field textarea:focus,.r2-field select:focus{border-color:#b989ff!important;box-shadow:0 0 0 3px rgba(168,111,240,.12)}
 .r2-field input::placeholder,.r2-field textarea::placeholder{color:#857894}
@@ -44,8 +44,16 @@ body.r2-editor-open{overflow:hidden}
 /* Creation hub: same dialog, four clear entry points and reusable templates. */
 .r2-form[hidden],.r2-chooser[hidden],.r2-back[hidden]{display:none!important}
 .r2-chooser{padding:16px 20px 24px;overflow:auto;overscroll-behavior:contain;min-height:0}
-.r2-entry-actions,.r2-style-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
-.r2-entry,.r2-style-tab,.r2-back{border:1px solid #56436d;background:#272034;color:#f4eaff;border-radius:12px;min-height:42px;font-size:14px;font-weight:700;cursor:pointer}
+.r2-entry-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.r2-entry-actions[hidden],.r2-template-grid[hidden]{display:none}
+.r2-entry,.r2-back{border:1px solid #56436d;background:#272034;color:#f4eaff;border-radius:14px;cursor:pointer}
+.r2-entry{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:flex-end;min-height:96px;text-align:left;padding:15px;font:inherit}
+.r2-entry img{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:center 28%}
+.r2-entry:has(img){aspect-ratio:3/4}
+.r2-entry:has(img)::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#100c21ed,transparent 60%)}
+.r2-entry-icon{font-size:24px;color:#debbff;position:absolute;top:8px;left:15px}
+.r2-entry strong{font-size:clamp(15px,3.8vw,22px);line-height:1.2}
+.r2-back{border:1px solid #56436d;background:#272034;color:#f4eaff;border-radius:12px;min-height:42px;font-size:14px;font-weight:700;cursor:pointer}
 .r2-entry{background:#342644;border-color:#a777ed}
 .r2-style-tab[aria-pressed=true]{background:#b282fc;color:#1b102b;border-color:#b282fc}
 .r2-back{padding:0 9px;min-height:35px;flex:none;font-size:12px}
@@ -57,7 +65,7 @@ body.r2-editor-open{overflow:hidden}
 .r2-template-info strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .r2-template-info span{color:#c1aecf;font-size:11px;line-height:1.4;min-height:2.8em}
 .r2-template-actions{display:flex;gap:5px;padding:0 7px 9px}
-.r2-template-actions button{flex:1;min-width:0;min-height:34px;padding:4px 2px;font-size:11px;font-weight:750;border-radius:8px;cursor:pointer}
+.r2-template-actions button{flex:1;min-width:0;min-height:44px;padding:4px 2px;font-size:13px;font-weight:750;border-radius:8px;cursor:pointer}
 .r2-template-use{color:#1b102b;background:#b282fc;border:1px solid #b282fc}
 .r2-template-edit{color:#e7d9fc;background:#30253d;border:1px solid #665179}
 @media(max-width:680px){.r2-chooser{padding:14px 13px calc(18px + env(safe-area-inset-bottom))}.r2-template-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}

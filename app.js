@@ -443,7 +443,6 @@ function setupEventListeners() {
   byId('changeUserAvatarBtn').addEventListener('click', () => userAvatarUpload.click());
   userAvatarUpload.addEventListener('change', handleUserAvatarUpload);
   createRoleForm.addEventListener('submit', handleCreateRole);
-  byId('uploadRoleCodeBtn').addEventListener('click', () => openRoleCodeEditor());
   byId('chooseRoleCodeFileBtn').addEventListener('click', () => byId('roleCodeUpload').click());
   byId('useRoleCodeTemplateBtn').addEventListener('click', useRoleCodeTemplate);
   byId('roleCodeEditor').addEventListener('input', saveRoleCodeDraft);

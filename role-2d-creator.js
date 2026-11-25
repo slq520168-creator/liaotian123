@@ -3,7 +3,7 @@
   // 2D role authoring reuses the existing role schema, storage and chat engine.
   // It does not modify or delete the 3D Studio and never creates a second chat runtime.
   let modal=null,form=null,avatar=null,submit=null,avatarInput=null,chooser=null,templateGrid=null,chooserStatus=null,backButton=null;
-  let selectedStyle='cartoon',templateOrigin='';
+  let selectedStyle='',templateOrigin='',entryActions=null,templateSeed=null,avatarRequest=0;
   const cartoonTemplates=[["暖阳","nuannuan","female",25,"治愈插画 · 花艺师","窗边的花刚刚开了，要不要过来看看？","温暖独立的花艺师，喜欢用具体的小事表达关怀，有自己的想法。","花艺、烘焙"],["雾岚","linwan","female",29,"都市漫画 · 设计师","设计稿终于画完了，今天想聊些轻松的。","冷静敏锐的平面设计师，审美鲜明，习惯坦率地交流。","插画、建筑"],["苏糖","sutang","female",24,"甜系漫画 · 甜品师","今天试做了一款新甜点，你想听听它的故事吗？","开朗的成年甜品师，好奇、独立、爱开玩笑。","甜点、旅行"],["知夏","xuzhixia","female",27,"清新手绘 · 摄影师","刚拍到一束很好看的光，今天真不错。","自由随性的摄影师，善于发现日常细节，直率不做作。","摄影、电影"],["青歌","yeqingge","female",28,"古风插画 · 琴师","茶已经备好，慢慢说，不必着急。","沉静聪慧的虚构古风琴师，爱读诗，善于倾听，保有独立主见。","古琴、诗词"],["零伊","lingyi","unspecified",26,"赛博漫画 · 工程师","系统准备就绪。今天探索什么有趣的问题？","科幻世界的成年工程师，理性、幽默、对新奇技术充满好奇。","机器人、科幻"],["陆晨","luchen","male",28,"日常漫画 · 咖啡师","咖啡刚煮好。坐下来聊一会吧。","沉稳的咖啡店主，温和直接，擅长聊生活里的具体事情。","咖啡、音乐"],["晴空","taiyang","male",25,"运动漫画 · 户外教练","今天阳光很好，要不要计划一趟虚构旅行？","积极独立的成年户外教练，热爱自然，尊重伙伴的选择。","登山、运动"],["顾言","guyan","male",30,"都市插画 · 编辑","我刚看完一本很有意思的书，想和你讨论。","成熟理性的文学编辑，善于讨论观点，有克制的幽默。","文学、电影"],["江屿","jiangyu","male",29,"水彩漫画 · 旅行家","海风正好，来讲个路上的故事吧。","自由随性的成年旅行写作者，喜欢分享见闻，不冒充真实旅行。","海洋、写作"],["沈砚","shenyan","male",31,"古风漫画 · 书画家","案上的墨还没干，你想从哪一页故事开始？","架空古风书画家，沉着、博学但不故作高深。","书法、历史"],["云舟","yunzhou","male",27,"奇幻插画 · 星图师","星图上多出一个陌生坐标，一起看看？","幻想世界成年星图师，谨慎、机智，善于推进互动故事而不替玩家决定。","星空、冒险"]].map(([name,asset,gender,age,tag,greeting,personality,interests])=>({id:'cartoon_'+asset,name,avatar:'assets/avatars/'+asset+'.svg',gender,age,tag,greeting,personality,interests,voice:'自然口语，忠实使用人物设定。',relationship:'平等相处，尊重玩家选择。'}));
   let editingId='',avatarSrc='',avatarBusy=false,previousFocus=null;
   const get=id=>document.getElementById(id);
@@ -28,6 +28,7 @@
     return wrap;
   }
   function controls(){
+    if(modal)return;
     modal=text('div','r2-overlay');
     modal.id='role2dOverlay';modal.hidden=true;
     modal.setAttribute('aria-hidden','true');
@@ -37,7 +38,6 @@
     dialog.setAttribute('aria-labelledby','r2-title');
     const header=text('header','r2-header');
     const title=text('div','r2-titles');
-    title.append(text('span','r2-eyebrow','CHARACTER CREATOR'));
     const h=text('h2','','创建角色');h.id='r2-title';title.append(h);
     const close=text('button','r2-close','×');close.type='button';close.setAttribute('aria-label','关闭角色创建');close.addEventListener('click',hide);
     backButton=text('button','r2-back','‹ 返回');backButton.type='button';backButton.hidden=true;backButton.addEventListener('click',showChooser);
@@ -79,15 +79,32 @@
     footer.append(cancel,submit);
     form.append(group,grid,basics,error,footer);
     chooser=text('div','r2-chooser');
-    const actions=text('div','r2-entry-actions');
-    const free=text('button','r2-entry','自由创建');free.type='button';free.addEventListener('click',()=>showForm(null,false));
-    const uploadCard=text('button','r2-entry','上传角色卡 / 代码');uploadCard.type='button';uploadCard.addEventListener('click',()=>{hide();if(typeof openRoleCodeEditor==='function')openRoleCodeEditor('');else get('uploadRoleCodeBtn')?.click()});
-    actions.append(free,uploadCard);
-    const tabs=text('div','r2-style-tabs');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','人物风格');
-    for(const [key,label] of [['realistic','写实'],['cartoon','卡通']]){const b=text('button','r2-style-tab',label);b.type='button';b.dataset.style=key;b.addEventListener('click',()=>{selectedStyle=key;renderTemplates()});tabs.append(b)}
+    entryActions=text('div','r2-entry-actions');
+    const entries=[
+      ['realistic','写实人物','assets/role-portraits/intl-rosalie.webp'],
+      ['cartoon','卡通人物',cartoonTemplates[0].avatar],
+      ['free','自由创建','＋'],
+      ['import','上传角色卡 / 代码','⇧']
+    ];
+    for(const [key,label,visual] of entries){
+      const button=text('button','r2-entry');button.type='button';button.dataset.entry=key;
+      if(key==='realistic'||key==='cartoon'){
+        const cover=document.createElement('img');cover.src=visual;cover.alt='';button.append(cover);
+      }else{
+        const icon=text('span','r2-entry-icon',visual);icon.setAttribute('aria-hidden','true');button.append(icon);
+      }
+      button.append(text('strong','',label));
+      button.addEventListener('click',()=>{
+        if(key==='import'){hide();openRoleCodeEditor('');return}
+        if(key==='free'){showForm(null,false);return}
+        selectedStyle=key;entryActions.hidden=true;templateGrid.hidden=false;backButton.hidden=false;
+        get('r2-title').textContent=label;renderTemplates();chooser.scrollTop=0;backButton.focus();
+      });
+      entryActions.append(button);
+    }
     chooserStatus=text('p','r2-error');chooserStatus.hidden=true;chooserStatus.setAttribute('role','alert');
     templateGrid=text('div','r2-template-grid');
-    chooser.append(actions,tabs,chooserStatus,templateGrid);
+    chooser.append(entryActions,chooserStatus,templateGrid);
     dialog.append(header,chooser,form);modal.append(dialog);
     document.body.appendChild(modal);
     modal.addEventListener('pointerdown',event=>{if(event.target===modal)hide();});
@@ -103,24 +120,20 @@
     if(!modal||modal.hidden)return;
     modal.hidden=true;modal.setAttribute('aria-hidden','true');
     document.body.classList.remove('r2-editor-open');
-    editingId='';avatarBusy=false;
+    editingId='';avatarBusy=false;avatarRequest++;
     avatarInput.value='';error('');
     if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
   }
   function chooseTemplate(item,customize){
     if(customize){showForm(item,false);return}
-    if(item.isPreset){hide();window.RoleDiscovery?.openChat?.(item.id);return}
     try{
-      const existing=characters.find(char=>!char.isPreset&&char.templateOrigin===item.id);
-      if(existing){hide();window.RoleDiscovery?.openChat?.(existing.id);return}
       const role=normalizeCustomCharacter({...item,id:'custom_'+makeId(),roleKind:'2d',templateOrigin:item.id});
       if(!role)throw new Error('角色模板不完整。');
       commitCustomCharacters([role]);hide();window.RoleDiscovery?.refresh?.();window.RoleDiscovery?.openChat?.(role.id);
     }catch(e){chooserStatus.textContent=String(e?.message||'角色保存失败');chooserStatus.hidden=false}
   }
   function renderTemplates(){
-    for(const b of chooser.querySelectorAll('.r2-style-tab'))b.setAttribute('aria-pressed',String(b.dataset.style===selectedStyle));
-    const list=selectedStyle==='cartoon'?cartoonTemplates:(typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&!c.portraitDraft&&(c.photoRealistic===true||/^assets\/role-portraits\/.*\.webp$/i.test(c.avatar||''))):[]);
+    const list=selectedStyle==='cartoon'?cartoonTemplates:(typeof characters!=='undefined'?characters.filter(c=>c.isPreset&&!c.portraitDraft&&!c.illustratedFullBody&&(c.photoRealistic===true||/^assets\/role-portraits\/.*\.webp$/i.test(c.avatar||''))):[]);
     templateGrid.replaceChildren();
     for(const item of list){
       const card=text('article','r2-template-card'),img=document.createElement('img');
@@ -134,7 +147,7 @@
     if(!list.length)templateGrid.append(text('p','r2-avatar-note','暂无此风格的角色模板。'));
   }
   function showChooser(){
-    editingId='';templateOrigin='';form.hidden=true;chooser.hidden=false;backButton.hidden=true;get('r2-title').textContent='创建角色';chooserStatus.hidden=true;renderTemplates();chooser.scrollTop=0;
+    editingId='';templateOrigin='';templateSeed=null;selectedStyle='';entryActions.hidden=false;templateGrid.hidden=true;templateGrid.replaceChildren();form.hidden=true;chooser.hidden=false;backButton.hidden=true;get('r2-title').textContent='创建角色';chooserStatus.hidden=true;chooser.scrollTop=0;entryActions.querySelector('button').focus({preventScroll:true});
   }
   function open(roleId=''){
     if(!modal)controls();
@@ -146,14 +159,14 @@
   }
   function showForm(item,editing){
     chooser.hidden=true;form.hidden=false;backButton.hidden=editing;
-    form.reset();editingId=editing?item?.id||'':'';templateOrigin=editing?item?.templateOrigin||'':'';avatarBusy=false;
+    form.reset();templateSeed=item;avatarRequest++;submit.disabled=false;editingId=editing?item?.id||'':'';templateOrigin=editing?item?.templateOrigin||'':item?.id||'';avatarBusy=false;
     avatarSrc=item?.avatar||'assets/avatars/nuannuan-portrait.jpg';avatar.src=avatarSrc;
     for(const id of ['name','tag','greeting','personality','background','interests','voice','relationship','video']){
       get('r2-'+id).value=typeof item?.[id]==='string'?item[id]:'';
     }
     get('r2-gender').value=item?.gender||'female';
     get('r2-age').value=String(item?.age||24);
-    get('r2-title').textContent=editing?'编辑角色':'自由创建';
+    get('r2-title').textContent=editing?'编辑角色':item?'自定义人物':'自由创建';
     submit.textContent=editing?'保存修改':'创建角色';
     error('');
     modal.hidden=false;modal.setAttribute('aria-hidden','false');
@@ -166,14 +179,14 @@
     if(!/^image\/(png|jpeg|webp|avif)$/.test(file.type)||file.size>20*1024*1024){
       error('请选择 20MB 以内的 JPG、PNG、WebP 或 AVIF 照片。');return;
     }
-    avatarBusy=true;submit.disabled=true;error('');
+    const request=++avatarRequest;avatarBusy=true;submit.disabled=true;error('');
     try{
       if(typeof readAlbumAvatar!=='function')throw new Error('图片上传组件尚未加载。');
       const data=await readAlbumAvatar(file);
-      if(modal.hidden)return;
+      if(modal.hidden||request!==avatarRequest)return;
       avatarSrc=data;avatar.src=data;
-    }catch(e){error(String(e?.message||'图片读取失败'));}
-    finally{avatarBusy=false;submit.disabled=false;avatarInput.value='';}
+    }catch(e){if(request===avatarRequest)error(String(e?.message||'图片读取失败'));}
+    finally{if(request===avatarRequest){avatarBusy=false;submit.disabled=false;avatarInput.value='';}}
   }
   function save(event){
     event.preventDefault();
@@ -183,7 +196,7 @@
     const age=Number(get('r2-age').value);
     if(!Number.isInteger(age)||age<18||age>100)return error('角色年龄需要在 18–100 岁之间。');
     const raw={
-      ...(existing||{}),
+      ...(existing||templateSeed||{}),
       id:editingId||(typeof makeId==='function'?'custom_'+makeId():'custom_'+Date.now().toString(36)),
       roleKind:'2d',templateOrigin,
       name:get('r2-name').value,tag:get('r2-tag').value,greeting:get('r2-greeting').value,

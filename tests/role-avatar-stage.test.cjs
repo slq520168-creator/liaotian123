@@ -37,7 +37,7 @@ test('custom 2D roles share existing chat engine, data and backup',()=>{
 test('role model distribution is local and absent models do not become fake features',()=>{
  const build=read('scripts/build-cloudflare.mjs'),index=read('index.html');
  const pkg=JSON.parse(read('package.json'));
- assert.equal(pkg.devDependencies['mesh-avatar-element'],'0.4.5','legacy package remains archived for reproducibility');
+ assert.equal(pkg.devDependencies['mesh-avatar-element'],undefined,'the retired model renderer is excluded from the active 2D build');
  assert.match(build,/'role-2d-creator\.js'/);
  assert.doesNotMatch(index,/src="role-avatar-stage\.js/);
  assert.match(index,/role-2d-creator\.js/);
