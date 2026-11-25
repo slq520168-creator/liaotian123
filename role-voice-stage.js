@@ -248,9 +248,9 @@
     if (typeof switchCharacter !== 'function' || switchCharacter.__liveStage) return;
     const base = switchCharacter;
     const wrapped = function(...args) {
-      stopRecognition();stopSpeaking();
+      try{stopRecognition();stopSpeaking();}catch{}
       const result = base.apply(this, args);
-      syncVoiceSelection();
+      try{syncVoiceSelection();}catch{}
       return result;
     };
     wrapped.__liveStage = true; switchCharacter = wrapped;
@@ -261,18 +261,15 @@
     const base = requestCharacterReply;
     const wrapped = async function(char, ...args) {
       const before = (chatHistories[char.id] || []).at(-1)?.id || '';
-      presence?.think();
+      try{presence?.think?.();}catch{}
+      const result = await base.call(this, char, ...args);
       try {
-        const result = await base.call(this, char, ...args);
         const last = (chatHistories[char.id] || []).at(-1);
         if (char.id===activeCharacterId && !document.body.classList.contains('role-discovery-open') && last?.sender === 'bot' && last.id && last.id !== before) {
           if (voiceAuto) speak(last.text, char, false); else presence?.idle();
         } else presence?.idle();
-        return result;
-      } catch (error) {
-        presence?.idle();
-        throw error;
-      }
+      } catch { /* Optional speech must never reject a completed text request. */ }
+      return result;
     };
     wrapped.__liveVoice = true; requestCharacterReply = wrapped;
   }
@@ -285,7 +282,7 @@
   function boot() {
     if (typeof characters === 'undefined' || typeof switchCharacter !== 'function' || typeof requestCharacterReply !== 'function') return setTimeout(boot, 80);
     removeLegacyFakeStage();
-    patchCharacterSwitch(); patchReplies(); installVoiceControls();
+    patchCharacterSwitch(); patchReplies(); try{installVoiceControls();}catch{/* Text chat remains available when system speech initialization fails. */}
     document.addEventListener('visibilitychange',()=>{if(document.hidden){stopRecognition();stopSpeaking();}});
     presence?.idle();
     window.__ROLE_VOICE_STAGE_VERSION = VERSION;

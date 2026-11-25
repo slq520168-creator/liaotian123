@@ -231,7 +231,7 @@
     if(error){
       live.hidden=false;
       live.classList.remove('rd-is-typing');
-      text.textContent='回复没有完成，可以重试。';
+      text.textContent=error.querySelector('span')?.textContent||'回复没有完成，可以重试。';
     }
   }
   function closeHistory() {

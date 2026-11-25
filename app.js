@@ -753,7 +753,7 @@ function updateComposer() {
   const imageBtn=byId('roleImageMessageBtn'),char=characters.find(item=>item.id===activeCharacterId);if(imageBtn){imageBtn.hidden=!portraitSources(char).length;imageBtn.disabled=busy;}
   sendBtn.setAttribute('aria-label', busy ? '等待角色回复' : '发送消息');
   quickRepliesDiv.querySelectorAll('button').forEach(button => { button.disabled = busy; });
-  replyStatus.textContent = '';
+  if(!replyStatus.textContent.startsWith('设备存储空间不足')&&!replyStatus.textContent.startsWith('本机保存失败'))replyStatus.textContent = '';
   userInput.placeholder = '给' + headerName.textContent + '发送消息…';
 }
 
@@ -761,7 +761,8 @@ function handleSendMessage() {
   const text = userInput.value.trim();
   const char = characters.find(item => item.id === activeCharacterId);
   if (!text || !char || pendingReplies.has(char.id)) return;
-  if((replyErrors.get(char.id)?.retryAt||0)>Date.now()){renderMessages();return;}
+  const retryAt=replyErrors.get(char.id)?.retryAt||0;
+  if(retryAt>Date.now()){replyStatus.textContent='服务暂忙，请 '+Math.ceil((retryAt-Date.now())/1000)+' 秒后重试，输入内容已保留。';return;}
   if (text.length > CHAT_LIMITS.message) {
     replyStatus.textContent = '每条消息最多30000字，请分段发送。';
     return;
@@ -771,8 +772,9 @@ function handleSendMessage() {
     return;
   }
   const createdAt = new Date().toISOString();
+  if(!Array.isArray(chatHistories[char.id]))chatHistories[char.id]=[];
   chatHistories[char.id].push({id: makeId(), sender: 'user', text: text, timestamp: getCurrentTime(), createdAt});
-  ROLE_MEMORY.learn(roleMemories[char.id], text, createdAt);
+  try { roleMemories[char.id]=ROLE_MEMORY.normalize(roleMemories[char.id]); ROLE_MEMORY.learn(roleMemories[char.id], text, createdAt); } catch { /* A memory failure cannot prevent sending the user's message. */ }
   const named = text.match(/(?:我叫|我的名字是|叫我)[“「"']?([^，。！？、\s”」"']{1,24})/);
   if (named && !/^(?:如果|假如|假设)/.test(text)) {
     const name = named[1].split(/今年|今天|最近|已经|正在|喜欢|来自/)[0];
@@ -782,7 +784,7 @@ function handleSendMessage() {
   userInput.style.height = 'auto';
   replyErrors.delete(char.id);
   saveDataToStorage();
-  requestCharacterReply(char);
+  return requestCharacterReply(char);
 }
 
 function replyProfile(latest, preference, storyActive = false) {
@@ -894,10 +896,13 @@ async function requestCharacterReply(char) {
   const job = {controller, timedOut: false, text: '', messages: [], maxTokens: profile.maxTokens};
   pendingReplies.set(char.id, job);
   replyErrors.delete(char.id);
-  if (activeCharacterId === char.id) {
-    renderMessages();
-    updateComposer();
-  }
+  // The network lifecycle must not depend on optional presentation or voice controls.
+  const refresh=()=>{
+    if(activeCharacterId!==char.id)return;
+    try{renderMessages();}catch{if(typeof replyStatus!=='undefined'&&replyStatus)replyStatus.textContent='消息显示暂时异常，聊天请求仍可继续。';}
+    try{updateComposer();}catch{}
+  };
+  refresh();
   const timer = setTimeout(() => {
     job.timedOut = true;
     controller.abort();
@@ -928,9 +933,9 @@ async function requestCharacterReply(char) {
           if (pendingReplies.get(char.id) !== job) return;
           job.text = (job.text + delta).slice(0, CHAT_LIMITS.reply);
           if (activeCharacterId !== char.id) return;
-          const bubble = messagesDiv.querySelector('[data-message-id="stream_' + char.id + '"] .message-bubble');
+          try{const bubble = messagesDiv.querySelector('[data-message-id="stream_' + char.id + '"] .message-bubble');
           if (bubble) {bubble.textContent = formatCharacterReply(job.text); scrollToBottom();}
-          else renderMessages();
+          else renderMessages();}catch{/* Display is not part of stream validation. */}
         });
         break;
       } catch (error) {
@@ -948,12 +953,11 @@ async function requestCharacterReply(char) {
     const buffered = !job.text;
     if (buffered) {job.revealing = true; job.finalMessageId = reply.id;}
     chatHistories[char.id].push(reply);
-    const advanced=window.RoleStory?.commitPending?.(char.id,latest,text);
-    if(advanced&&activeCharacterId===char.id)window.RoleDiscovery?.refreshScene?.();
     previousVisits[char.id] = '';
     saveDataToStorage();
-    // Save first so closing/reloading the page cannot lose the real reply.
-    if (buffered) await revealCharacterReply(char, job, reply.text);
+    // The actual model reply is committed before optional scene, animation or speech work.
+    try{const advanced=window.RoleStory?.commitPending?.(char.id,latest,text);if(advanced&&activeCharacterId===char.id)window.RoleDiscovery?.refreshScene?.();}catch{}
+    if (buffered) {try{await revealCharacterReply(char, job, reply.text);}catch{/* Finally renders the full saved reply. */}}
   } catch (error) {
     if (pendingReplies.get(char.id) !== job) return;
     if (error.name === 'AbortError' && !job.timedOut) return;
@@ -968,10 +972,7 @@ async function requestCharacterReply(char) {
     clearTimeout(timer);
     if (pendingReplies.get(char.id) === job) {
       pendingReplies.delete(char.id);
-      if (activeCharacterId === char.id) {
-        renderMessages();
-        updateComposer();
-      }
+      refresh();
     }
   }
 }
