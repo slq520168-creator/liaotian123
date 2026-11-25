@@ -45,6 +45,60 @@
       "gitBlob": "e7ee6b920f150803637f76a908ddd725079a3441",
       "character": "anime_noelle",
       "age": 27
+    },
+    {
+      "path": "assets/role-portraits/anime-fashion-velvet.webp",
+      "gitBlob": "32cbf8f80da67f8e8a019fe81f8b19728d642031",
+      "character": "anime_fashion_velvet",
+      "age": 32,
+      "generator": "OpenAI image generation",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "path": "assets/role-portraits/anime-fashion-stage.webp",
+      "gitBlob": "67196ad540451d1afb71e374f153bb8ef18c9773",
+      "character": "anime_fashion_stage",
+      "age": 29,
+      "generator": "OpenAI image generation",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "path": "assets/role-portraits/anime-fashion-noelle.webp",
+      "gitBlob": "81499c204fbed6c83de09f2bb2e00f53c4926773",
+      "character": "anime_fashion_noelle",
+      "age": 28,
+      "generator": "OpenAI image generation",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "path": "assets/role-portraits/anime-fashion-sable.webp",
+      "gitBlob": "49fb6c849ced6888a645fbc28c311149bfd3c4d9",
+      "character": "anime_fashion_sable",
+      "age": 30,
+      "generator": "OpenAI image generation",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "path": "assets/role-portraits/anime-fashion-luna.webp",
+      "gitBlob": "61819b12ca8ea740f09fde80dc68d1ab22482c3a",
+      "character": "anime_fashion_luna",
+      "age": 31,
+      "generator": "OpenAI image generation",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "path": "assets/role-portraits/anime-fashion-iris.webp",
+      "gitBlob": "d9fcec1b0877dfb511521b647c3e1f40b7c498a5",
+      "character": "anime_fashion_iris",
+      "age": 33,
+      "generator": "OpenAI image generation",
+      "width": 512,
+      "height": 512
     }
   ]
 }
