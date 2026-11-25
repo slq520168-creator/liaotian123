@@ -198,10 +198,10 @@ function canonicalRoleData(value) {
   const str = value => typeof value === 'string' ? value.trim() : '';
   const fields = [];
   const description = str(data.description) || str(data.desc), personality = str(data.personality) || str(role.personality);
-  if (description && description !== personality) fields.push('角色描述：' + description);
+  const standardCard = /^chara_card_v[23]$/i.test(String(value.spec||'')) || Object.hasOwn(data,'first_mes') || Object.hasOwn(data,'mes_example');
+  if (standardCard && description && description !== personality) fields.push('角色描述：' + description);
   if (personality) fields.push(personality);
-  const scenario = str(data.scenario);
-  if (scenario) fields.push('场景及背景：' + scenario);
+  // scenario is mapped to background and passed to the chat prompt separately.
   const example = str(data.mes_example) || str(data.example_dialogue) || str(data.exampleMessage);
   if (example) fields.push('示例对话（参考人物语气）：' + example);
   if (str(data.system_prompt)) fields.push('角色专属设定：' + str(data.system_prompt));
@@ -210,7 +210,8 @@ function canonicalRoleData(value) {
   if (!str(role.greeting)) role.greeting = str(data.firstMessage);
   if (!str(role.greeting) && Array.isArray(data.alternate_greetings)) role.greeting = data.alternate_greetings.find(x => typeof x === 'string' && x.trim()) || '';
   if (!str(role.tag) && Array.isArray(data.tags)) role.tag = data.tags.filter(x => typeof x === 'string').join(' · ').slice(0,20);
-  if (!str(role.avatar)) role.avatar = str(data.image) || str(data.image_url) || str(data.avatar_url) || str(value.avatar);
+  const alternativeAvatar = str(data.image) || str(data.image_url) || str(data.avatar_url) || str(value.avatar);
+  if (!str(role.avatar) && alternativeAvatar) role.avatar = alternativeAvatar;
   return role;
 }
 
@@ -340,7 +341,7 @@ function addRolesFromCode(source) {
   try { sessionStorage.removeItem(ROLE_CODE_DRAFT_KEY); sessionStorage.removeItem(ROLE_CODE_TARGET_KEY); } catch (error) {}
   byId('roleCodeEditorStatus').textContent = '';
   byId('roleCodeStatus').textContent = '';
-  window.RoleDiscovery?.openChat?.(added[0].id);
+  if(typeof window!=='undefined')window.RoleDiscovery?.openChat?.(added[0].id);
 }
 
 function handleRoleCodeSubmit(event) {
@@ -358,6 +359,39 @@ function handleRoleCodeSubmit(event) {
   }
 }
 
+// Character card PNG metadata is parsed as data, not executable code.
+async function readPngRoleCard(file){
+  const bytes=new Uint8Array(await file.arrayBuffer()),sig=[137,80,78,71,13,10,26,10];
+  if(bytes.length<20||!sig.every((v,i)=>bytes[i]===v))throw new Error('不是有效的 PNG 角色卡。');
+  const dv=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),decoder=new TextDecoder();
+  const inflate=async part=>{
+    if(typeof DecompressionStream!=='function')throw new Error('浏览器不支持压缩角色卡，请使用 JSON 版本。');
+    const reader=new Blob([part]).stream().pipeThrough(new DecompressionStream('deflate')).getReader();
+    const parts=[];let size=0;
+    try{while(true){const next=await reader.read();if(next.done)break;size+=next.value.length;if(size>1048576){await reader.cancel();throw new Error('角色卡元数据过大。')}parts.push(next.value)}}finally{reader.releaseLock()}
+    const all=new Uint8Array(size);let offset=0;for(const p of parts){all.set(p,offset);offset+=p.length}return all;
+  };
+  let v2=null,v3=null;
+  for(let i=8;i+12<=bytes.length;){
+    const size=dv.getUint32(i),end=i+12+size;if(end>bytes.length)throw new Error('PNG 角色卡数据不完整。');
+    const type=decoder.decode(bytes.subarray(i+4,i+8)),part=bytes.subarray(i+8,i+8+size);i=end;
+    if(type==='IEND')break;if(!['tEXt','zTXt','iTXt'].includes(type))continue;
+    const k=part.indexOf(0);if(k<1)continue;const key=decoder.decode(part.subarray(0,k)).toLowerCase();
+    if(!['chara','ccv3'].includes(key))continue;
+    let payload;
+    if(type==='tEXt')payload=part.subarray(k+1);
+    else if(type==='zTXt'){if(part[k+1]!==0)continue;payload=await inflate(part.subarray(k+2))}
+    else{const a=part.indexOf(0,k+3),b=a<0?-1:part.indexOf(0,a+1);if(b<0||part[k+2]!==0)continue;payload=part[k+1]===1?await inflate(part.subarray(b+1)):part.subarray(b+1)}
+    let raw=decoder.decode(payload).trim();if(raw.length>1048576)throw new Error('角色卡元数据过大。');
+    if(!raw.startsWith('{')){try{raw=decoder.decode(Uint8Array.from(atob(raw),x=>x.charCodeAt(0)))}catch{throw new Error('PNG 角色卡编码错误。')}}
+    if(key==='ccv3')v3=raw;else v2=raw;
+  }
+  const raw=v3||v2;if(!raw)throw new Error('这张 PNG 没有角色卡数据。普通图片请在自由创建中上传头像。');
+  const card=parseRoleData(raw);if(!card||typeof card!=='object'||Array.isArray(card))throw new Error('PNG 角色卡格式不正确。');
+  const portrait=await readAlbumAvatar(file);
+  if(card.data&&typeof card.data==='object'&&!Array.isArray(card.data))card.data.avatar=portrait;else card.avatar=portrait;
+  return JSON.stringify(card,null,2);
+}
 async function handleRoleCodeUpload() {
   const input = byId('roleCodeUpload');
   const file = input.files[0];
@@ -369,8 +403,9 @@ async function handleRoleCodeUpload() {
   const controls = ['chooseRoleCodeFileBtn', 'generateRoleCodeBtn', 'roleCodeTarget', 'roleCodeEditor', 'useRoleCodeTemplateBtn', 'clearRoleCodeBtn'].map(byId).filter(Boolean);
   controls.forEach(control => {control.disabled = true;});
   try {
-    if (file.size > 5 * 1024 * 1024) throw new Error('角色代码文件最多5MB。');
-    const source = await file.text();
+    if (file.size > 20 * 1024 * 1024 || (file.type!=='image/png'&&!/\.png$/i.test(file.name||'')&&file.size>5*1024*1024)) throw new Error('角色代码最多5MB，PNG角色卡最多20MB。');
+    const png = file.type==='image/png'||/\.png$/i.test(file.name||'');
+    const source = png ? await readPngRoleCard(file) : await file.text();
     if (source.length > 524288) throw new Error('角色代码最多524288字符，请精简后上传。');
     byId('roleCodeEditor').value = source;
     saveRoleCodeDraft();

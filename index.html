@@ -16,10 +16,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261003-logo1">
   <link rel="manifest" href="manifest.webmanifest?v=20261003-logo1">
   <link rel="stylesheet" href="styles.css?v=20261124-role2d79">
-  <link rel="stylesheet" href="role-discovery.css?v=20261125-rolecode01">
+  <link rel="stylesheet" href="role-discovery.css?v=20261125-createhub01">
   <link rel="stylesheet" href="role-story.css?v=20261124-create3d68">
   <link rel="stylesheet" href="role-chat-immersive.css?v=20261124-role2d79">
-  <link rel="stylesheet" href="role-2d-creator.css?v=20261123-character01">
+  <link rel="stylesheet" href="role-2d-creator.css?v=20261125-createhub01">
 </head>
 <body class="role-discovery-open">
   <div class="app-container">
@@ -128,7 +128,7 @@
     <div class="rd-container">
       <nav class="rd-nav" aria-label="角色大厅导航">
         <div class="rd-brand"><img class="rd-brand-mark" src="assets/brand/logo-96.png" width="35" height="35" alt=""><span class="rd-brand-text">IM角色</span></div>
-        <div class="rd-nav-actions"><button type="button" class="rd-header-button" id="rdImportRoleCode">上传角色代码</button><button type="button" class="rd-header-button rd-primary" id="rdCreateRole">＋ 创建角色</button></div>
+        <div class="rd-nav-actions"><button type="button" class="rd-header-button rd-primary" id="rdCreateRole">＋ 创建角色</button></div>
       </nav>
       <div class="rd-intro">
         <h1>发现角色</h1>
@@ -199,7 +199,7 @@
           <button class="btn btn-outline" id="useRoleCodeTemplateBtn" type="button">使用模板</button>
           <button class="btn btn-outline" id="clearRoleCodeBtn" type="button">清空代码</button>
           <a class="template-link" href="roles/new-role.role.json" download>下载模板</a>
-          <input type="file" id="roleCodeUpload" accept=".json,.json5,.js,.txt,.role,application/json,text/javascript,text/plain" hidden>
+          <input type="file" id="roleCodeUpload" accept=".json,.json5,.js,.txt,.role,.png,application/json,text/javascript,text/plain,image/png" hidden>
         </div>
         <div class="form-group">
           <label for="roleCodeEditor">编写或粘贴角色代码</label>
@@ -274,7 +274,7 @@
     </div>
   </div>
 
-  <script src="config/app.js?v=20261125-rolecode01" defer></script>
+  <script src="config/app.js?v=20261125-createhub01" defer></script>
   <script src="roles.js?v=20261124-role2d79" defer></script>
   <script src="role-story-volume-a.js?v=20261124-create3d68" defer></script>
   <script src="role-story-volume-b.js?v=20261124-create3d68" defer></script>
@@ -282,9 +282,9 @@
   <script src="role-story-cover-catalog.js?v=20261124-role2d76"></script>
   <script src="role-story-engine.js?v=20261124-create3d68" defer></script>
   <script src="memory.js?v=20261124-role2d79" defer></script>
-  <script src="role-code.js?v=20261125-rolecode01" defer></script>
-  <script src="app.js?v=20261125-rolecode01" defer></script>
-  <script src="role-discovery.js?v=20261125-rolecode01" defer></script>
-    <script src="role-2d-creator.js?v=20261123-character01" defer></script>
+  <script src="role-code.js?v=20261125-createhub01" defer></script>
+  <script src="app.js?v=20261125-createhub01" defer></script>
+  <script src="role-discovery.js?v=20261125-createhub01" defer></script>
+    <script src="role-2d-creator.js?v=20261125-createhub01" defer></script>
   </body>
 </html>

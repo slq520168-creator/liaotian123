@@ -117,6 +117,7 @@ function normalizeCustomCharacter(value) {
     id: value.id, isPreset: false,
     ...(value.roleKind==='2d'?{roleKind:'2d'}:{}),
     ...(value.roleSource==='code'?{roleSource:'code'}:{}),
+    ...(typeof value.templateOrigin==='string'&&/^[a-z0-9_-]{1,80}$/i.test(value.templateOrigin)?{templateOrigin:value.templateOrigin}:{}),
     ...(visualRecipe?{visualRecipe}:{}),
     name: value.name.trim().slice(0, value.roleSource==='code'?64:12), tag: value.tag.trim().slice(0, 20),
     greeting: value.greeting.trim().slice(0, value.roleSource==='code'?4000:300),

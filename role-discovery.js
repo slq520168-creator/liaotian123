@@ -581,7 +581,6 @@
     $('rdFavorite').addEventListener('click', toggleFavorite);
     $('rdStartChat').addEventListener('click', () => startChat(current()));
     $('rdCreateRole').addEventListener('click', openCreate);
-    $('rdImportRoleCode').addEventListener('click', () => $('uploadRoleCodeBtn').click());
     $('rdCreateEmpty').addEventListener('click', openCreate);
     $('rdHeroCard').addEventListener('click', event => {
       if (state.drag || Date.now() < state.suppressClickUntil || event.target.closest('button')) return;
