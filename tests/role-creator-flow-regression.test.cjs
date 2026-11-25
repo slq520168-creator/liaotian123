@@ -111,13 +111,18 @@ test('outer clothing covers the authored body zone and inner layer while retaini
 });
 
 test('creator voice preview uses the selected role and style without toggling chat audio',()=>{
-  const spoken=[],storage=new Map();
+  const spoken=[],storage=new Map(),timers=new Map();let timerId=0;
   const context={document:{getElementById:()=>null},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
-    setTimeout(){},SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},RolePresence:{getDefault:()=>({idle(){}})},
+    setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);},SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},RolePresence:{getDefault:()=>({idle(){}})},
     RoleVoiceStyle:{profileFor:char=>{assert.equal(char.visualRecipe.voiceStyle,'低沉');return{rate:.92,pitchDelta:-.1};}},
     speechSynthesis:{cancel(){},speak:u=>spoken.push(u)}};
   context.window=context;vm.createContext(context);vm.runInContext(fs.readFileSync('role-voice-stage.js','utf8'),context);
   context.RoleVoiceStage.preview({id:'custom_creator_preview',name:'预览角色',gender:'male',visualRecipe:{voiceStyle:'低沉'}});
   assert.equal(spoken.length,1);assert.match(spoken[0].text,/预览角色/);assert.equal(spoken[0].rate,.92);assert.ok(Math.abs(spoken[0].pitch-.84)<1e-9);
+  assert.equal(storage.get('liaotian_voice_auto'),undefined);
+  assert.equal(timers.size,2); // boot retry plus active speech watchdog
+  spoken[0].onend();
+  assert.equal(timers.size,1); // speech completion clears its watchdog
+  context.RoleVoiceStage.stop();
   assert.equal(storage.get('liaotian_voice_auto'),undefined);
 });
