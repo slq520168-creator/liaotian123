@@ -56,7 +56,17 @@ jobs:
 
       - name: Deploy main to Cloudflare Workers
         if: steps.cloudflare-auth.outputs.ready == 'true'
-        run: npm run cf:deploy
+        run: |
+          set -euo pipefail
+          # No connector authorization or subscription change. Only enable native AI on a verified free Workers account.
+          free=0
+          if [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            if plans="$(curl -fsS --max-time 12 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/subscriptions" 2>/dev/null)"; then
+              if printf '%s' "$plans" | node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{try{const x=JSON.parse(s);if(x.success!==true||!Array.isArray(x.result))process.exit(1);const ids=x.result.map(p=>String(p.rate_plan?.id||"").toUpperCase());if(ids.some(id=>!id||(/WORKERS|WORKER_AI|WORKERS_AI/.test(id)&&!/(^|_)FREE$/.test(id))))process.exit(1)}catch{process.exit(1)}})'; then free=1; fi
+            fi
+          fi
+          echo "Verified free Workers AI eligibility: $free"
+          npm run cf:deploy -- --var "ROLE_CF_AI_FREE:$free"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

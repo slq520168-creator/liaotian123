@@ -125,3 +125,17 @@ test('provider quota reports its real retry time and diagnostic, never retries b
   assert.equal(seen.length,2,'no repeated upstream call while retry-after is active');
  }finally{globalThis.fetch=original;}
 });
+
+test('native binding works without external transport on confirmed free account',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// native-free-test'))).default;
+ const original=globalThis.fetch;let external=0,native=0;
+ globalThis.fetch=async()=>{external++;return new Response('{}',{status:429,headers:{'retry-after':'3170117'}});};
+ const request=()=>new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.64'},body:JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]})});
+ const AI={run:async(model,payload)=>{native++;assert.equal(model,'@cf/meta/llama-3.1-8b-instruct-fast');assert.equal(payload.messages.at(-1).content,'你好');return {response:'真实模型的测试响应'};}};
+ try{
+  const off=await worker.fetch(request(),{AI,ROLE_CF_AI_FREE:'0'});assert.equal(off.status,429);assert.equal(native,0);
+  for(let i=0;i<2;i++){const res=await worker.fetch(request(),{AI,ROLE_CF_AI_FREE:'1'});assert.equal(res.status,200);assert.equal(res.headers.get('x-role-chat-provider'),'workers-ai-free');assert.equal((await res.json()).text,'真实模型的测试响应');}
+  assert.equal(native,2);assert.equal(external,1);
+ }finally{globalThis.fetch=original;}
+});

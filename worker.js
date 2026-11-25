@@ -24,6 +24,7 @@ function valid(payload){
 }
 // Dedicated free-plan credentials only; no cross-project keys. Groq must be provisioned from an organization on its Free plan, not a paid account.
 const CHAT_ROUTES=[
+ {id:'workers-ai-free',host:'workers-ai',binding:true,model:'@cf/meta/llama-3.1-8b-instruct-fast',timeout:16000},
  {id:'openrouter-free',host:'openrouter',secret:'ROLE_OPENROUTER_FREE_TOKEN',url:'https://openrouter.ai/api/v1/chat/completions',model:'openrouter/free',timeout:18000},
  {id:'groq-free',host:'groq',secret:'ROLE_GROQ_FREE_TOKEN',url:'https://api.groq.com/openai/v1/chat/completions',model:'llama-3.3-70b-versatile',timeout:12000},
  {id:'llm7-mistral',host:'llm7',url:'https://api.llm7.io/v1/chat/completions',model:'mistral-Nemo-Instruct-2407',timeout:13000},
@@ -38,6 +39,27 @@ function providerError(status,retryAfter){
  else if(status===401||status===403)error.cooldown=60;
  else if(status>=500&&status<=599)error.cooldown=10;
  return error;
+}
+async function nativeModel(messages,requested,provider,deadline,signal,env){
+ if(env.ROLE_CF_AI_FREE!=='1'||typeof env.AI?.run!=='function')throw providerError(503);
+ if(signal?.aborted)throw new DOMException('Aborted','AbortError');
+ let timer,cancel;
+ try{
+  const result=await Promise.race([
+   env.AI.run(provider.model,{messages,max_tokens:Math.max(180,requested),temperature:0.8,stream:false}),
+   new Promise((_,reject)=>{cancel=()=>reject(new DOMException('Aborted','AbortError'));timer=setTimeout(cancel,Math.min(provider.timeout,Math.max(1,deadline-Date.now())));signal?.addEventListener?.('abort',cancel,{once:true});})
+  ]);
+  if(result?.error)throw providerError(Number(result.error.status)||503);
+  const choice=result?.choices?.[0];
+  const text=typeof result?.response==='string'?result.response:choice?.message?.content;
+  if(choice?.finish_reason==='content_filter'||choice?.message?.refusal)throw Object.assign(Error('content_filtered'),{filtered:true});
+  if(typeof text==='string'&&text.trim()&&text.length<=30000)return text.trim();
+  throw Error('empty_visible_reply');
+ }catch(e){
+  if(e.filtered||e.name==='AbortError'||e.status||e.message==='empty_visible_reply')throw e;
+  if(/quota|allocation|rate.limit|too many requests/i.test(String(e.message)))throw providerError(429);
+  throw providerError(503);
+ }finally{clearTimeout(timer);if(cancel)signal?.removeEventListener?.('abort',cancel);}
 }
 async function model(messages,requested,provider,deadline,signal,token){
  const abort=new AbortController();
@@ -78,7 +100,7 @@ export default{async fetch(req,env){
   try{
    const requested=Math.max(180,Math.min(4096,Math.floor(Number(payload.max_tokens)||400)));
    const deadline=Date.now()+42000,attempted=[],eligibleHosts=new Set(),quotaHosts=new Set();
-   const routes=CHAT_ROUTES.map(provider=>{const secret=provider.secret||(provider.host==='llm7'?'ROLE_LLM7_FREE_TOKEN':'');return {provider,token:secret?String(env[secret]||'').trim():'',secret};}).filter(x=>!x.secret||x.token);
+   const routes=CHAT_ROUTES.map(provider=>{const secret=provider.secret||(provider.host==='llm7'?'ROLE_LLM7_FREE_TOKEN':'');return {provider,token:secret?String(env[secret]||'').trim():'',secret};}).filter(x=>(!x.secret||x.token)&&(!x.provider.binding||(env.ROLE_CF_AI_FREE==='1'&&typeof env.AI?.run==='function')));
    for(const {provider} of routes)eligibleHosts.add(provider.host);
    for(const {provider,token} of routes){
     if(req.signal?.aborted||Date.now()>deadline-1000)break;
@@ -88,7 +110,7 @@ export default{async fetch(req,env){
      attempted.push(provider.id+':cooldown_'+(state.status||'transport'));
      continue;
     }
-    try{return out(200,{ok:true,text:await model(messages,requested,provider,deadline,req.signal,token)},{'x-role-chat-provider':provider.id});}
+    try{return out(200,{ok:true,text:await (provider.binding?nativeModel(messages,requested,provider,deadline,req.signal,env):model(messages,requested,provider,deadline,req.signal,token))},{'x-role-chat-provider':provider.id});}
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
      if(req.signal?.aborted)break;

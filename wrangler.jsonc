@@ -22,5 +22,11 @@
   "observability": {
     "enabled": false
   },
-  "main": "worker.js"
+  "main": "worker.js",
+  "ai": {
+    "binding": "AI"
+  },
+  "vars": {
+    "ROLE_CF_AI_FREE": "0"
+  }
 }
