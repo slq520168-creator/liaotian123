@@ -69,10 +69,10 @@ async function nativeModel(messages,requested,provider,deadline,signal,env){
   const choice=result?.choices?.[0];
   const text=typeof result?.response==='string'?result.response:choice?.message?.content;
   if(choice?.finish_reason==='content_filter'||choice?.message?.refusal)throw Object.assign(Error('content_filtered'),{filtered:true});
-  if(typeof text==='string'&&text.trim()&&text.length<=30000)return text.trim();
+  if(typeof text==='string'&&text.trim()&&text.length<=30000){if(choice?.finish_reason==='length'&&requested<=512)throw Error('incomplete_visible_reply');return text.trim();}
   throw Error('empty_visible_reply');
  }catch(e){
-  if(e.filtered||e.name==='AbortError'||e.status||e.message==='empty_visible_reply')throw e;
+  if(e.filtered||e.name==='AbortError'||e.status||e.message==='empty_visible_reply'||e.message==='incomplete_visible_reply')throw e;
   if(/quota|allocation|rate.limit|too many requests/i.test(String(e.message)))throw providerError(429);
   throw providerError(503);
  }finally{clearTimeout(timer);if(cancel)signal?.removeEventListener?.('abort',cancel);}
@@ -122,7 +122,9 @@ export default{async fetch(req,env){
    // Prefer the last successful zero-price model, avoiding repeated failed probes every turn.
    if(lastWorkingRouter){const i=routes.findIndex(x=>x.provider.id===lastWorkingRouter);const first=routes.findIndex(x=>x.provider.host==='openrouter');if(i>first&&first>=0)routes.splice(first,0,...routes.splice(i,1));}
    for(const {provider} of routes)eligibleHosts.add(provider.host);
-   for(const {provider,token} of routes){
+   const hostDeadlines=new Map();
+   for(let routeIndex=0;routeIndex<routes.length;routeIndex++){
+    const {provider,token}=routes[routeIndex];
     if(req.signal?.aborted||Date.now()>deadline-1000)break;
     if((modelCooldowns.get(provider.id)||0)>Date.now()){attempted.push(provider.id+':model_cooldown');continue;}
     if((cooldowns.get(provider.host)?.until||0)>Date.now()){
@@ -131,7 +133,15 @@ export default{async fetch(req,env){
      attempted.push(provider.id+':cooldown_'+(state.status||'transport'));
      continue;
     }
-    try{const text=await (provider.binding?nativeModel(messages,requested,provider,deadline,req.signal,env):model(messages,requested,provider,deadline,req.signal,token));if(provider.host==='openrouter')lastWorkingRouter=provider.id;return out(200,{ok:true,text},{'x-role-chat-provider':provider.id});}
+    // Budget each independent host separately: a slow gateway must not starve other hosts.
+    const now=Date.now();
+    if(!hostDeadlines.has(provider.host)){
+     const futureHosts=new Set(routes.slice(routeIndex).filter(({provider:p})=>(modelCooldowns.get(p.id)||0)<=now&&(cooldowns.get(p.host)?.until||0)<=now).map(({provider:p})=>p.host));
+     hostDeadlines.set(provider.host,now+Math.floor((deadline-now)/Math.max(1,futureHosts.size)));
+    }
+    const hostDeadline=hostDeadlines.get(provider.host);
+    if(hostDeadline-now<1000){attempted.push(provider.id+':host_budget_exhausted');continue;}
+    try{const text=await (provider.binding?nativeModel(messages,requested,provider,hostDeadline,req.signal,env):model(messages,requested,provider,hostDeadline,req.signal,token));if(provider.host==='openrouter')lastWorkingRouter=provider.id;return out(200,{ok:true,text},{'x-role-chat-provider':provider.id});}
     catch(e){
      if(e.filtered)return out(422,{ok:false,error:'content_filtered'});
      if(req.signal?.aborted)break;

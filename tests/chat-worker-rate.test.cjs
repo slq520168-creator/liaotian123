@@ -173,3 +173,22 @@ test('a failed provider cannot disable other free models, and consecutive player
   assert.equal(seen.length,5);assert.equal(seen[2].model,'openrouter/free');assert.equal(seen[3].model,'openrouter/free');assert.equal(seen[4].model,'openrouter/free');
  }finally{globalThis.fetch=original;}
 });
+
+
+test('slow router cannot consume the time reserved for independent providers',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','worker.js'),'utf8');
+ const worker=(await import('data:text/javascript,'+encodeURIComponent(source+'\n// independent-host-budget'))).default;
+ const originalFetch=globalThis.fetch,originalNow=Date.now,seen=[];let clock=originalNow();
+ Date.now=()=>clock;
+ globalThis.fetch=async(url,init)=>{
+  seen.push(JSON.parse(init.body).model);
+  if(url.includes('openrouter.ai')){clock+=16000;throw new DOMException('Aborted','AbortError');}
+  return Response.json({choices:[{message:{content:'独立备用线路返回的测试回复'}}]});
+ };
+ try{
+  const req=new Request('https://sirole.vip/api/chat',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'203.0.113.90'},body:JSON.stringify({messages:[{role:'system',content:'成年虚构角色'},{role:'user',content:'你好'}]})});
+  const res=await worker.fetch(req,{ROLE_OPENROUTER_FREE_TOKEN:'fixture-only',ROLE_GROQ_FREE_TOKEN:'fixture-only'});
+  assert.equal(res.status,200);assert.equal(res.headers.get('x-role-chat-provider'),'groq-free');
+  assert.deepEqual(seen,['inclusionai/ling-3.2-flash:free','llama-3.3-70b-versatile']);
+ }finally{globalThis.fetch=originalFetch;Date.now=originalNow;}
+});
