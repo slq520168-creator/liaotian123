@@ -138,6 +138,8 @@ function normalizeCustomCharacter(value) {
     name: field('name', 12), tag: field('tag', 20),
     greeting: field('greeting', 300), personality: field('personality', CHAT_LIMITS.personality),
     avatar: safeAvatar(value.avatar),
+    // Preserve only known same-template local portraits; a replacement avatar starts a new gallery.
+    portraitGallery: (()=>{const template=PRESET_CHARACTERS.find(c=>c.id===value.templateOrigin);const allowed=template?[template.avatar,...(template.portraitGallery||[])]:[];return allowed.includes(value.avatar)?[...new Set([value.avatar,...(Array.isArray(value.portraitGallery)?value.portraitGallery:[]).filter(src=>allowed.includes(src))])].slice(0,12):[];})(),
     video: typeof value.video === 'string' && /^https:\/\/[^\s]{1,900}$/i.test(value.video.trim()) ? value.video.trim() : '',
     gender: ['male', 'female', 'unspecified'].includes(value.gender) ? value.gender : 'unspecified',
     age: Number.isFinite(Number(value.age)) && Number(value.age) >= 18 ? Math.min(100, Math.floor(Number(value.age))) : 24,
@@ -626,7 +628,7 @@ function formatCharacterReply(text) {
 }
 
 function portraitSources(char){
-  if(!char?.isPreset)return [];
+  if(!char?.isPreset&&!char?.templateOrigin)return [];
   return [...new Set([char.avatar,...(Array.isArray(char.portraitGallery)?char.portraitGallery:[])])].filter(src=>typeof src==='string'&&/^assets\/(?:avatars\/[a-z0-9_-]+\.(?:jpg|jpeg|png|webp)|role-portraits\/(?:(?:stories|originals)\/)?[a-z0-9_-]+\.webp)$/i.test(src));
 }
 function validPortraitMessage(msg,char){

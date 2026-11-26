@@ -32,7 +32,7 @@ const listed=new Set(PRESET_CHARACTERS.map(x=>x.id));
 seeds.forEach((seed,index)=>{
  if(listed.has(seed.id))throw new Error('Story ID already in existing roster '+seed.id);
  listed.add(seed.id);byId.set(seed.id,seed);
- const intro=seed.greeting||('【'+seed.title+'】'+seed.opening+'。'+seed.name+'低声说：“你来得正好。这里有一件事，我不想一个人面对。”');
+ const intro=seed.greeting||('【'+seed.title+'】'+seed.opening+'。'+seed.name+'：'+(seed.traits.includes('冷静')?'先别急，我们把眼前的事情弄清楚。':seed.traits.includes('幽默')?'看来今天又有意外了，愿意陪我看看吗？':seed.traits.includes('温柔')?'你愿意留下来听我说说这件事吗？':'这件事关系到我的生活，我想听听你的看法。'));
  const role={
  id:seed.id,name:seed.name,age:seed.age,gender:seed.gender,isPreset:true,roleKind:'2d',
  category:seed.genre,headline:seed.occupation,tag:seed.genre+' · '+seed.occupation,
@@ -41,10 +41,10 @@ seeds.forEach((seed,index)=>{
  photoRealistic:Boolean(seed.photoRealistic),region:seed.region||'',countryLabel:seed.countryLabel||'',
  mark:'✦',greeting:intro,
  personality:seed.age+'岁的'+seed.occupation+'。'+seed.traits.join('、')+'。有独立人格、隐秘的过去与完整动机。故事真相与人物代价必须随章节逐步揭示。',
- voice:traitVoice[seed.genre],background:'虚构舞台：'+(sceneByGenre[seed.genre]||'故事世界')+'。第一幕：'+seed.opening+'。后续线索和真相只能按剧情进度揭示，不得在开场泄露。',
- interests:'故事研究、场景探索、人物关系',relationship:'玩家是平等的故事参与者；不替玩家做决定，不能强迫亲密或操纵关系。',
+ voice:(traitVoice[seed.genre]||'自然口语。')+'角色特有性格：'+seed.traits.join('、')+'。以'+seed.occupation+'的生活经验回应，不套用其他角色的语气。',background:'虚构舞台：'+(sceneByGenre[seed.genre]||'故事世界')+'。第一幕：'+seed.opening+'。后续线索和真相只能按剧情进度揭示，不得在开场泄露。',
+ interests:seed.interests||seed.occupation+'的工作与日常、'+seed.title+'中的世界与人物',relationship:'玩家是平等的故事参与者；不替玩家做决定，不能强迫亲密或操纵关系。',
  conversation:{日常:'保持角色生活与独特语气；不重复开场白。',故事:'跟随独立的故事章节与玩家选择逐步推进，先埋线索再揭谜底。',情感:'尊重已建立的信任与边界，不快速强制确立关系。'},
- quickReplies:Array.isArray(seed.quickReplies)?seed.quickReplies:['这个故事从哪里开始？','先告诉我现在发生了什么','我们一起找第一条线索','你为什么要信任我？']
+ quickReplies:Array.isArray(seed.quickReplies)?seed.quickReplies:['聊聊你作为'+seed.occupation+'的日常','关于「'+seed.title+'」，你最担心什么？','我们一起查看现场']
  };
  PRESET_CHARACTERS.push(role);
 });

@@ -121,6 +121,8 @@
     const url = String(char?.avatar || '');
     img.alt = char.name + '的角色立绘';
     img.dataset.roleId = String(char.id);
+    img.hidden=false;delete img.dataset.imageRetried;
+    img.closest('.rd-mini-card, .rd-card')?.classList.remove('rd-portrait-unavailable');
     img.classList.toggle('rd-full-body-art',char.illustratedFullBody===true);
     img.onerror = () => {
       if(img.dataset.imageRetried !== 'yes' && /^https:\/\/images\.pexels\.com\/photos\/\d+\/pexels-photo-\d+\.jpeg\?/i.test(url)){
@@ -363,8 +365,9 @@
     $('rdDeckCounter').textContent = char ? String(state.index + 1).padStart(2, '0') + ' / ' + String(available().length).padStart(2, '0') : '00 / 00';
     renderFan(available());
     if (!char) return;
-    if (illustration.dataset.charId !== String(char.id)) {
+    if (illustration.dataset.charId !== String(char.id)||illustration.dataset.roleSource!==String(char.avatar||'')) {
       illustration.dataset.charId = String(char.id);
+      illustration.dataset.roleSource=String(char.avatar||'');
       illustration.hidden = false;
       illustration.classList.remove('rd-art-retry');
       illustration.closest('.rd-card')?.classList.remove('rd-portrait-unavailable');
@@ -510,25 +513,26 @@
     });
   }
   let photoRole=null,photoResume=null,photoIndex=0;
+  const photoSources=char=>[...new Set([char?.avatar,...(Array.isArray(char?.portraitGallery)?char.portraitGallery:[])].filter(src=>typeof src==='string'&&src))];
   function openPhoto(char,selectedPath=null){
     if(!char)return;
     const dialog=$('rdPhotoDialog'),img=$('rdFullPhoto'),video=$('rdFullVideo');
     if(!dialog||!img||!video||typeof dialog.showModal!=='function')return;
-    photoRole=char;photoIndex=Math.max(0,Array.isArray(char.portraitGallery)?char.portraitGallery.indexOf(selectedPath):0);photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
+    photoRole=char;photoIndex=Math.max(0,photoSources(char).indexOf(selectedPath));photoResume=root.hidden?'rdChatVideo':'rdHeroVideo';$(photoResume)?.pause();
     $('rdPhotoName').textContent=char.name;
     $('rdPhotoError').hidden=Boolean(char.avatar);
     img.hidden=!char.avatar;img.alt=char.name+'完整人物图片';
     img.onerror=()=>{img.hidden=true;$('rdPhotoError').hidden=false;};
-    if(char.avatar)img.src=char.portraitGallery?.[photoIndex]||char.avatar;else img.removeAttribute('src');
-    video.hidden=true;const gallery=Array.isArray(char.portraitGallery)&&char.portraitGallery.length>1;
+    if(photoSources(char).length)img.src=photoSources(char)[photoIndex];else img.removeAttribute('src');
+    video.hidden=true;const gallery=photoSources(char).length>1;
     $('rdPhotoMode').hidden=!gallery&&!roleVideo(char);
-    $('rdPhotoMode').textContent=gallery?'下一张 · '+(photoIndex+1)+'/'+char.portraitGallery.length:'播放视频';
+    $('rdPhotoMode').textContent=gallery?'下一张 · '+(photoIndex+1)+'/'+photoSources(char).length:'播放视频';
     $('rdPhotoChat').hidden=root.hidden&&typeof activeCharacterId!=='undefined'&&activeCharacterId===char.id;
     dialog.showModal();
   }
   function togglePhotoVideo(){
-    if(Array.isArray(photoRole?.portraitGallery)&&photoRole.portraitGallery.length>1){
-      const gallery=photoRole.portraitGallery,img=$('rdFullPhoto');
+    if(photoSources(photoRole).length>1){
+      const gallery=photoSources(photoRole),img=$('rdFullPhoto');
       photoIndex=(photoIndex+1)%gallery.length;
       img.hidden=false;$('rdPhotoError').hidden=true;
       img.src=gallery[photoIndex];mediaArrival(img);

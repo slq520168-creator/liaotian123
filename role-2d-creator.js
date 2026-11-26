@@ -209,7 +209,8 @@
       personality:get('r2-personality').value,background:get('r2-background').value,
       interests:get('r2-interests').value,voice:get('r2-voice').value,
       relationship:get('r2-relationship').value,video:get('r2-video').value,gender:get('r2-gender').value,
-      age,avatar:avatarSrc
+      age,avatar:avatarSrc,
+      portraitGallery:avatarSrc===(existing||templateSeed)?.avatar?(existing||templateSeed)?.portraitGallery||[]:[]
     };
     if(raw.video.trim()&&!/^https:\/\/[^\s]{1,900}$/i.test(raw.video.trim()))return error('需要有效的 HTTPS 视频链接。');
     const normalized=normalizeCustomCharacter(raw);
